@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Testing Claude</title>
+  <meta name="description" content="Index of the experiments in this repository.">
+  <style>
+    :root { --bg: #f5f6fa; --fg: #1c1d24; --muted: #5d6070; --accent: #3f51b5; --card: #ffffff; --line: #e2e4ec; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #15161c; --fg: #ecedf3; --muted: #a3a6b5; --accent: #8c9eff; --card: #20222b; --line: #2f3240; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 16px; background: var(--bg); color: var(--fg);
+           font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }
+    main { max-width: 640px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; }
+    .lede { margin: 0 0 24px; color: var(--muted); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .card h2 { margin: 0 0 4px; font-size: 1.2rem; }
+    .card p { margin: 0 0 12px; color: var(--muted); }
+    .card ul { margin: 0; padding-left: 20px; }
+    a { color: var(--accent); }
+    .button { display: inline-block; padding: 8px 16px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; }
+    @media (prefers-color-scheme: dark) { .button { color: #15161c; } }
+    nav { margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Testing Claude</h1>
+    <p class="lede">Experiments in this repository.</p>
+
+    <section class="card">
+      <h2><a href="PWA/index.html">PWA</a></h2>
+      <p>Progressive Web App exploration.</p>
+      <a class="button" href="PWA/Sample/index.html">Open the Hello World PWA</a>
+    </section>
+  </main>
+</body>
+</html>

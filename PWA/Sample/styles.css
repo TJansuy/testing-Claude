@@ -3,6 +3,7 @@
   --fg: #1c1d24;
   --accent: #3f51b5;
   --card: #ffffff;
+  --on-accent: #ffffff;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -10,6 +11,7 @@
     --fg: #ecedf3;
     --accent: #8c9eff;
     --card: #20222b;
+    --on-accent: #15161c;
   }
 }
 * { box-sizing: border-box; }
@@ -39,7 +41,23 @@ button {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font: inherit;
   cursor: pointer;
+}
+.counter { margin-top: 24px; }
+.counter output {
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.counter-buttons { display: flex; gap: 12px; justify-content: center; margin-top: 12px; }
+.counter-buttons button { margin-top: 0; min-width: 56px; font-size: 1.25rem; }
+.counter-buttons button.secondary {
+  background: transparent;
+  color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  font-size: 1rem;
 }

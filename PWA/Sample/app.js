@@ -4,6 +4,26 @@
 
   $('protocol').textContent = location.protocol;
 
+  // Counter, saved to localStorage so it survives reloads and app restarts.
+  // localStorage is on-device, so this works fully offline (and from file://).
+  var KEY = 'hello-pwa-counter';
+  var count = 0;
+  try { count = parseInt(localStorage.getItem(KEY), 10) || 0; } catch (e) { /* storage blocked */ }
+  function render() { $('count').textContent = count; }
+  function setCount(n) {
+    count = n;
+    try { localStorage.setItem(KEY, String(count)); } catch (e) { /* storage blocked: keep in memory */ }
+    render();
+  }
+  $('inc').addEventListener('click', function () { setCount(count + 1); });
+  $('dec').addEventListener('click', function () { setCount(count - 1); });
+  $('reset').addEventListener('click', function () { setCount(0); });
+  // Keep other open tabs/windows of the app in sync.
+  window.addEventListener('storage', function (e) {
+    if (e.key === KEY) { count = parseInt(e.newValue, 10) || 0; render(); }
+  });
+  render();
+
   // Network status
   function updateNet() { $('net-status').textContent = navigator.onLine ? 'online' : 'offline'; }
   window.addEventListener('online', updateNet);

@@ -18,6 +18,15 @@
     <h1>Hello, World!</h1>
     <p>This is a minimal Progressive Web App.</p>
 
+    <section class="counter" aria-label="Counter">
+      <output id="count" aria-live="polite">0</output>
+      <div class="counter-buttons">
+        <button id="dec" type="button" aria-label="Decrement">&minus;</button>
+        <button id="reset" type="button" class="secondary">Reset</button>
+        <button id="inc" type="button" aria-label="Increment">+</button>
+      </div>
+    </section>
+
     <ul class="status">
       <li>Protocol: <strong id="protocol">…</strong></li>
       <li>Service worker: <strong id="sw-status">…</strong></li>

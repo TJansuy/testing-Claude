@@ -1,6 +1,18 @@
 # Hello World PWA
 
-A minimal, dependency-free Progressive Web App.
+A minimal, dependency-free Progressive Web App with a counter.
+
+## Counter
+
+The **−**, **Reset** and **+** buttons change a counter on the page. Its value is
+saved in the browser's `localStorage` under the key `hello-pwa-counter`, so it:
+
+- persists across reloads and app restarts,
+- works with no internet connection (storage is on the device),
+- stays in sync between open tabs of the app.
+
+The value is stored per browser and per origin, so it isn't shared between
+devices, and clearing site data resets it.
 
 ## Files
 
@@ -8,7 +20,7 @@ A minimal, dependency-free Progressive Web App.
 | --- | --- |
 | `index.html` | The app page. |
 | `styles.css` | Styling (light and dark). |
-| `app.js` | Registers the service worker, shows status, handles the install button. |
+| `app.js` | Counter logic, service worker registration, status display, install button. |
 | `sw.js` | Service worker: caches the app shell so it works offline. |
 | `manifest.webmanifest` | App name, colours, icons, display mode. |
 | `icons/` | SVG icon plus 192px and 512px PNGs. |

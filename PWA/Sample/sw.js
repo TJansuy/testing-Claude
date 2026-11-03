@@ -1,5 +1,5 @@
 // Bump the version whenever cached files change so clients pick up the update.
-var CACHE = 'hello-pwa-v1';
+var CACHE = 'hello-pwa-v2';
 var ASSETS = [
   './',
   'index.html',

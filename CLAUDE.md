@@ -6,3 +6,9 @@
 - Never use the repository owner's name or email as the author or committer of any commit you create.
 - Before committing, verify with `git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT`. If either is not Claude, set it for this repo:
   `git config --local user.name Claude && git config --local user.email noreply@anthropic.com`
+
+## Pull requests
+
+- Never monitor, watch or subscribe to pull requests on this repo (no `subscribe_pr_activity`, no polling).
+- Don't offer to monitor them either.
+- Only act on a pull request when the user explicitly asks.

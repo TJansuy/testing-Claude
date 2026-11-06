@@ -23,11 +23,20 @@
     retryTimer: null,
     everConnected: false,
     role: 'member',
-    perms: {},
-    roles: [],
-    debug: false,
-    adminPassword: ''  // memory only, so admin can rejoin after a reconnect; never saved
+    debug: false
   };
+
+  // Roles live entirely in the app: anyone can switch their own, and each app
+  // decides what to show based on its own role. The relay just passes messages on.
+  var ROLES = {
+    member: { description: 'Chat as normal.' },
+    monitor: { description: 'Also sees system messages, such as role changes.', viewSystem: true },
+    admin: {
+      description: 'Sees system messages and who really sent spoofed messages, and can use debug mode.',
+      viewSystem: true, debug: true, impersonate: true, seeSpoofer: true
+    }
+  };
+  function can(perm) { return !!(ROLES[state.role] || ROLES.member)[perm]; }
 
   // ---------------------------------------------------------------- storage
   function load(key) { try { return localStorage.getItem(key) || ''; } catch (e) { return ''; } }
@@ -113,7 +122,9 @@
     var line = EFFECT_LINES[name];
     var notes = [];
     if (msg.via === 'nfc') notes.push('NFC tag');
-    if (msg.spoofedBy) notes.push('really sent by ' + msg.spoofedBy.name);
+    if (msg.via === 'qr') notes.push('QR code');
+    var spoofer = spoofedBy(msg);
+    if (spoofer) notes.push('really sent by ' + spoofer.name);
     systemLine(line[0] + ' ' + who + ' ' + line[1] + (notes.length ? ' (' + notes.join(', ') + ')' : ''));
     window.LocalChatterFX.play(name);
   }
@@ -124,8 +135,15 @@
     return p ? p.name : 'someone';
   }
 
+  // A spoofed message carries its real sender in "from" and the shown sender in "as".
+  // Only admins are told who really sent it; for everyone else it's hidden here, in the app.
+  function spoofedBy(msg) {
+    return msg.as && msg.from && msg.as.id !== msg.from.id && can('seeSpoofer') ? msg.from : null;
+  }
+
   function renderMessage(msg, mine) {
-    var who = mine ? (msg.as ? 'You (as ' + nameOf(msg.as) + ')' : 'You') : (msg.from && msg.from.name) || 'Someone';
+    var shown = msg.as || msg.from;
+    var who = mine ? (msg.as ? 'You (as ' + msg.as.name + ')' : 'You') : (shown && shown.name) || 'Someone';
     var effect = !msg.file && window.LocalChatterFX && window.LocalChatterFX.parse(msg.text);
     if (effect) { renderEffect(effect, msg, who); return null; }
 
@@ -133,8 +151,10 @@
     var meta = el('div', 'meta');
     meta.appendChild(el('span', 'who', who));
     if (msg.via === 'nfc') meta.appendChild(el('span', 'via', 'via NFC tag'));
+    if (msg.via === 'qr') meta.appendChild(el('span', 'via', 'via QR code'));
     // Only people who can see system messages are told who really sent a spoofed message.
-    if (msg.spoofedBy) meta.appendChild(el('span', 'spoof', 'really sent by ' + msg.spoofedBy.name));
+    var spoofer = !mine && spoofedBy(msg);
+    if (spoofer) meta.appendChild(el('span', 'spoof', 'really sent by ' + spoofer.name));
     meta.appendChild(el('time', null, formatTime(msg.at || Date.now())));
     box.appendChild(meta);
 
@@ -186,8 +206,8 @@
     $('send').disabled = !connected;
     $('attach').disabled = !connected;
     $('effects').disabled = !connected;
-    $('nfc').disabled = !connected;
-    if (!connected) closeEffects();
+    $('scan').disabled = !connected;
+    if (!connected) { closeEffects(); closeScanMenu(); }
     // Keep scanning through brief reconnects; stop only when the user disconnects.
     if (kind === 'off') stopNfc();
   }
@@ -299,28 +319,18 @@
         $('room').textContent = msg.room || 'LocalChatter';
         document.title = msg.room || 'LocalChatter';
         banner(null);
-        state.roles = msg.roles || [];
-        applyRole(msg.role || 'member', msg.perms || {}, true);
         renderPeople();
-        systemLine('You joined as ' + state.me.name);
+        systemLine('You joined as ' + state.me.name + (state.role !== 'member' ? ' (role: ' + state.role + ')' : ''));
         state.everConnected = true;
-        restoreRole();
-        break;
-      case 'role':
-        applyRole(msg.role, msg.perms || {});
-        save(KEY_ROLE, msg.role);
-        systemLine('Your role is now ' + msg.role + '.' + (msg.perms && msg.perms.viewSystem ? ' You\'ll see system messages.' : ''));
         break;
       case 'system':
         renderSystem(msg);
         break;
       case 'effect':
-        // Triggered by an admin in debug mode. Who did it shows up as a system message for those allowed to see it.
-        if (window.LocalChatterFX) window.LocalChatterFX.play(msg.name);
-        break;
-      case 'error':
-        if (msg.about === 'role') { state.adminPassword = ''; save(KEY_ROLE, state.role); }
-        systemLine(msg.message || 'Something went wrong.');
+        // Targeted effect from someone in debug mode: everyone receives it, only the target plays it.
+        var forMe = msg.to === 'all' || (state.me && msg.to === state.me.id);
+        if (forMe && window.LocalChatterFX) window.LocalChatterFX.play(msg.name);
+        renderSystem({ kind: 'effect', from: msg.from, name: msg.name, to: msg.to });
         break;
       case 'join':
         state.peers.set(msg.peer.id, msg.peer);
@@ -356,8 +366,9 @@
     payload.type = 'chat';
     payload.id = randomId();
     // Admin debug mode: send as someone else.
-    var as = state.debug && state.perms.impersonate ? $('send-as').value : '';
-    if (as && as !== state.me.id) payload.as = as;
+    var as = state.debug && can('impersonate') ? $('send-as').value : '';
+    var asPeer = as && as !== state.me.id && state.peers.get(as);
+    if (asPeer) payload.as = { id: asPeer.id, name: asPeer.name };
     state.ws.send(JSON.stringify(payload));
     payload.at = Date.now();
     renderMessage(payload, true);
@@ -445,8 +456,9 @@
   tray.addEventListener('click', function (e) {
     var b = e.target.closest('[data-effect]');
     if (!b) return;
-    if (state.debug && state.perms.debug) {
-      sendRaw({ type: 'effect', name: b.dataset.effect, to: $('fx-to').value || 'all' });
+    if (state.debug && can('debug')) {
+      var fx = { type: 'effect', name: b.dataset.effect, to: $('fx-to').value || 'all' };
+      if (sendRaw(fx)) handle(Object.assign({ from: state.me }, fx)); // show/play it here too
     } else {
       sendChat({ text: '/' + b.dataset.effect });
     }
@@ -458,6 +470,12 @@
   // stays hidden everywhere else.
   var nfc = { supported: 'NDEFReader' in window, reader: null, abort: null, last: '', lastAt: 0 };
   if (nfc.supported) $('nfc').hidden = false;
+  function showNfcState() {
+    var on = !!nfc.abort;
+    $('nfc').setAttribute('aria-pressed', String(on));
+    $('nfc').textContent = on ? '\uD83D\uDCF6 Stop NFC' : '\uD83D\uDCF6 NFC tags';
+    $('scan').classList.toggle('nfc-on', on);
+  }
 
   function decodeRecord(record) {
     var data = record.data;
@@ -510,8 +528,7 @@
   function stopNfc() {
     if (nfc.abort) nfc.abort.abort();
     nfc.abort = null;
-    $('nfc').setAttribute('aria-pressed', 'false');
-    $('nfc').setAttribute('aria-label', 'Scan NFC tags');
+    showNfcState();
   }
 
   function startNfc() {
@@ -522,8 +539,7 @@
     reader.onreadingerror = function () { systemLine('Couldn\'t read that NFC tag. Try holding it still.'); };
     reader.scan({ signal: ctrl.signal }).then(function () {
       if (nfc.abort !== ctrl) return;
-      $('nfc').setAttribute('aria-pressed', 'true');
-      $('nfc').setAttribute('aria-label', 'Stop scanning NFC tags');
+      showNfcState();
       systemLine('Scanning for NFC tags. Hold a tag to the back of your phone.');
     }).catch(function (err) {
       if (nfc.abort === ctrl) nfc.abort = null;
@@ -536,37 +552,149 @@
   }
 
   $('nfc').addEventListener('click', function () {
+    closeScanMenu();
     if (nfc.abort) { stopNfc(); systemLine('Stopped scanning for NFC tags.'); }
     else startNfc();
   });
 
-  // ----------------------------------------------------------------- roles
-  // The server decides what each role may do; the app only shows the matching controls.
-  function applyRole(role, perms, quiet) {
-    state.role = role;
-    state.perms = perms;
-    if (!perms.debug && state.debug) setDebug(false, quiet);
-    $('role-line').textContent = 'Your role: ' + role + '. Type /role to see the others.';
-    $('debug-row').hidden = !perms.debug;
-    updateDebugUi();
+  // ------------------------------------------------------------------- QR
+  // Uses the camera, so it works on iPhone and iPad too. Decodes with the browser's
+  // BarcodeDetector where there is one, otherwise with the bundled jsQR library.
+  var camera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  var qr = { stream: null, timer: null, detector: null, canvas: null };
+  var qrDialog = $('qr');
+  var video = $('qr-video');
+  if (camera || nfc.supported) $('scan').hidden = false;
+  if (!camera) $('scan-qr').hidden = true;
+
+  function closeScanMenu() {
+    $('scan-menu').hidden = true;
+    $('scan').setAttribute('aria-expanded', 'false');
+  }
+  $('scan').addEventListener('click', function () {
+    // With only one way to scan, go straight to it.
+    if (!nfc.supported) { openQr(); return; }
+    if (!camera) { $('nfc').click(); return; }
+    var open = $('scan-menu').hidden;
+    $('scan-menu').hidden = !open;
+    this.setAttribute('aria-expanded', String(open));
+  });
+  $('scan-qr').addEventListener('click', function () { closeScanMenu(); openQr(); });
+
+  function qrStatus(text) { $('qr-status').textContent = text; }
+
+  function loadJsQr() {
+    if (window.jsQR) return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      var sc = document.createElement('script');
+      sc.src = 'vendor/jsQR.js';
+      sc.onload = resolve;
+      sc.onerror = function () { reject(new Error('Couldn\'t load the QR decoder.')); };
+      document.head.appendChild(sc);
+    });
   }
 
-  function restoreRole() {
-    var saved = load(KEY_ROLE);
-    if (!saved || saved === state.role) return;
-    var info = state.roles.filter(function (r) { return r.name === saved; })[0];
-    if (!info) { save(KEY_ROLE, state.role); return; }
-    if (info.password && !state.adminPassword) {
-      systemLine('You were ' + saved + ' before. Type /role ' + saved + ' <password> to switch back.');
-      save(KEY_ROLE, state.role);
-      return;
+  function getDetector() {
+    if (!('BarcodeDetector' in window)) return Promise.resolve(null);
+    return window.BarcodeDetector.getSupportedFormats().then(function (f) {
+      return f.indexOf('qr_code') >= 0 ? new window.BarcodeDetector({ formats: ['qr_code'] }) : null;
+    }).catch(function () { return null; });
+  }
+
+  function openQr() {
+    if (qrDialog.open) return;
+    closeEffects();
+    qrStatus('Starting camera\u2026');
+    qrDialog.showModal();
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .then(function (stream) {
+        if (!qrDialog.open) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+        qr.stream = stream;
+        video.srcObject = stream;
+        return Promise.all([video.play(), getDetector()]).then(function (r) {
+          qr.detector = r[1];
+          return qr.detector ? null : loadJsQr();
+        }).then(function () {
+          if (qr.stream !== stream) return; // closed while starting
+          qrStatus('Point the camera at a QR code.');
+          scanSoon();
+        });
+      })
+      .catch(function (err) {
+        qrStatus(err && err.name === 'NotAllowedError'
+          ? 'Camera access was blocked. Allow it for this site in your browser settings, then try again.'
+          : err && err.name === 'NotFoundError' ? 'No camera was found.'
+          : (err && err.message) || 'Couldn\'t start the camera.');
+      });
+  }
+
+  function scanSoon() { qr.timer = setTimeout(scanFrame, 150); }
+
+  function decodeFrame() {
+    if (qr.detector) {
+      return qr.detector.detect(video).then(function (codes) { return codes.length ? codes[0].rawValue : null; })
+        .catch(function () { return null; });
     }
-    sendRaw({ type: 'role', role: saved, password: info.password ? state.adminPassword : undefined });
+    // Scale down to keep decoding quick on phones.
+    var w = video.videoWidth, h = video.videoHeight;
+    var k = Math.min(1, 720 / Math.max(w, h));
+    w = Math.round(w * k); h = Math.round(h * k);
+    if (!qr.canvas) qr.canvas = document.createElement('canvas');
+    qr.canvas.width = w; qr.canvas.height = h;
+    var ctx = qr.canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0, w, h);
+    var code = window.jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'attemptBoth' });
+    return Promise.resolve(code ? code.data : null);
+  }
+
+  function scanFrame() {
+    if (!qr.stream) return;
+    if (video.readyState < 2 || !video.videoWidth) { scanSoon(); return; }
+    decodeFrame().then(function (text) {
+      if (!qr.stream) return;
+      if (text && text.trim()) onQr(text);
+      else scanSoon();
+    });
+  }
+
+  function closeQr() {
+    stopCamera(); // release the camera straight away, not when the close event arrives
+    if (qrDialog.open) qrDialog.close();
+  }
+
+  function onQr(text) {
+    vibrate(50);
+    closeQr();
+    if (!sendChat({ text: text.slice(0, 4000), via: 'qr' })) systemLine('Not connected: the QR code wasn\'t sent');
+  }
+
+  function stopCamera() {
+    clearTimeout(qr.timer);
+    if (qr.stream) qr.stream.getTracks().forEach(function (t) { t.stop(); });
+    qr.stream = null;
+    video.srcObject = null;
+  }
+  qrDialog.addEventListener('close', stopCamera); // also covers Escape
+  $('qr-close').addEventListener('click', closeQr);
+
+  // ----------------------------------------------------------------- roles
+  function setRole(role, quiet) {
+    var old = state.role;
+    state.role = role;
+    save(KEY_ROLE, role);
+    if (!can('debug') && state.debug) setDebug(false, true);
+    $('role-line').textContent = 'Your role: ' + role + '. Type /role to see the others.';
+    $('debug-row').hidden = !can('debug');
+    updateDebugUi();
+    if (quiet || old === role) return;
+    systemLine('Your role is now ' + role + '.' + (can('viewSystem') ? ' You\'ll see system messages.' : ''));
+    // Everyone receives this; only apps whose role can view system messages show it.
+    sendRaw({ type: 'system', kind: 'role', old: old, role: role });
   }
 
   function describeRoles() {
-    var list = state.roles.map(function (r) {
-      return r.name + (r.name === state.role ? ' (current)' : '') + ': ' + r.description + (r.password ? ' Needs a password.' : '');
+    var list = Object.keys(ROLES).map(function (name) {
+      return name + (name === state.role ? ' (current)' : '') + ': ' + ROLES[name].description;
     });
     systemLine('Your role is ' + state.role + '. Switch with /role <name>.\n' + list.join('\n'));
   }
@@ -576,25 +704,18 @@
     var m = /^\s*\/(role|debug)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     var cmd = m[1].toLowerCase();
-    var rest = m[2].trim();
-    if (!state.me) { systemLine('Connect to a server first.'); return true; }
+    var rest = m[2].trim().toLowerCase();
 
     if (cmd === 'role') {
       if (!rest) { describeRoles(); return true; }
-      var parts = rest.split(/\s+/);
-      var want = parts.shift().toLowerCase();
-      var password = rest.replace(/^\S+\s+/, ''); // everything after the role name, spaces included
-      var info = state.roles.filter(function (r) { return r.name === want; })[0];
-      if (!info) { systemLine('There\'s no "' + want + '" role. Type /role to see the roles.'); return true; }
-      if (info.password && !parts.length) { systemLine('The ' + want + ' role needs a password: /role ' + want + ' <password>'); return true; }
-      if (info.password) state.adminPassword = password;
-      sendRaw({ type: 'role', role: want, password: info.password ? password : undefined });
+      if (!ROLES[rest]) { systemLine('There\'s no "' + rest + '" role. Type /role to see the roles.'); return true; }
+      setRole(rest);
       return true;
     }
 
     // /debug [on|off]
-    if (!state.perms.debug) { systemLine('Debug mode is for admins.'); return true; }
-    setDebug(rest ? /^on$/i.test(rest) : !state.debug);
+    if (!can('debug')) { systemLine('Debug mode is for admins. Switch with /role admin.'); return true; }
+    setDebug(rest ? rest === 'on' : !state.debug);
     return true;
   }
 
@@ -605,16 +726,16 @@
     updateDebugUi();
     if (!quiet) {
       systemLine('Debug mode ' + (on ? 'on: target effects at anyone, and send messages as other people.' : 'off.'));
-      sendRaw({ type: 'debug', on: on });
+      sendRaw({ type: 'system', kind: 'debug', on: on });
     }
   }
 
   function updateDebugUi() {
-    var on = state.debug && state.perms.debug;
+    var on = state.debug && can('debug');
     $('debug-bar').hidden = !on;
     $('fx-target').hidden = !on;
     $('fx-hint').hidden = on; // in debug mode only the chosen person sees it
-    $('send-as-row').hidden = !(on && state.perms.impersonate);
+    $('send-as-row').hidden = !(on && can('impersonate'));
     if (!on) $('send-as').value = '';
     document.body.classList.toggle('debugging', on);
     refreshPeerSelects();
@@ -638,17 +759,17 @@
     fillSelect($('send-as'), ['', 'Myself'], others);
   }
 
-  // System messages only reach people whose role can view them (the server filters).
+  // System messages reach everyone; only apps whose role can view them show them.
   function renderSystem(msg) {
+    if (!can('viewSystem')) return;
     var me = state.me && state.me.id;
     var name = function (p) { return p && p.id === me ? 'You' : (p && p.name) || 'Someone'; };
     var text;
-    if (msg.kind === 'role') text = name(msg.peer) + ' changed role: ' + msg.from + ' \u2192 ' + msg.to;
-    else if (msg.kind === 'effect') text = name(msg.by) + ' triggered ' + msg.name + ' for ' + (msg.to ? (msg.to.id === me ? 'you' : msg.to.name) : 'everyone');
-    else if (msg.kind === 'debug') text = name(msg.by) + ' turned debug mode ' + (msg.on ? 'on' : 'off');
+    if (msg.kind === 'role') text = name(msg.from) + ' changed role: ' + msg.old + ' → ' + msg.role;
+    else if (msg.kind === 'effect') text = name(msg.from) + ' triggered ' + msg.name + ' for ' + (msg.to === 'all' ? 'everyone' : msg.to === me ? 'you' : nameOf(msg.to));
+    else if (msg.kind === 'debug') text = name(msg.from) + ' turned debug mode ' + (msg.on ? 'on' : 'off');
     else return;
-    var line = el('p', 'system audit', '\uD83D\uDEE1\uFE0F ' + text);
-    append(line);
+    append(el('p', 'system audit', '🛡️ ' + text));
   }
 
   $('debug-toggle').addEventListener('change', function () { setDebug(this.checked); });
@@ -728,6 +849,8 @@
     state.name = load(KEY_NAME);
     var firstRun = !state.name;
     if (firstRun) state.name = 'Guest ' + Math.floor(1000 + Math.random() * 9000);
+    var savedRole = load(KEY_ROLE);
+    setRole(ROLES[savedRole] ? savedRole : 'member', true);
     registerServiceWorker();
     if (state.relay && !firstRun) {
       connect();

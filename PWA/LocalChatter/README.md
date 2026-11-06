@@ -66,11 +66,27 @@ If a device has **Reduce motion** turned on, it shows a soft glow instead:
 no shaking and no flashing. Lightning flashes twice, which stays under the
 three-flashes-a-second limit in accessibility guidelines.
 
-## NFC tags
+## Scanning QR codes and NFC tags
 
-On **Chrome for Android**, an NFC button appears next to the message box. Tap it
-to start scanning, then hold a tag to the back of the phone: the tag's contents
-are sent to the chat as a message marked *via NFC tag*. Tap the button again to stop.
+Tap the **Scan** button next to the message box. Whatever the QR code or tag
+holds is sent to the chat, marked *via QR code* or *via NFC tag*. A code or
+tag containing `/fire`, `/earthquake` or `/lightning` plays that effect for everyone.
+
+### QR codes (every device with a camera, including iPhone and iPad)
+
+The camera opens. Point it at a QR code; as soon as it's read, the scanner
+closes and the contents are sent. The camera is switched off when the scanner closes.
+
+Decoding uses the browser's built-in barcode reader where there is one, and
+otherwise the bundled [jsQR](https://github.com/cozmo/jsQR) library
+(`vendor/jsQR.js`, Apache-2.0). That makes it work offline and on Safari.
+The browser asks for camera permission the first time.
+
+### NFC tags (Chrome on Android)
+
+Where Web NFC exists, **Scan** offers *QR code* or *NFC tags*. Choose
+*NFC tags*, then hold tags to the back of the phone. It keeps listening, and
+the Scan button pulses, until you choose *Stop NFC*.
 
 - Text and URL records are sent as text, one per line. Smart posters, and
   text-like MIME records such as JSON, are read too.
@@ -78,53 +94,44 @@ are sent to the chat as a message marked *via NFC tag*. Tap the button again to 
 - An empty tag sends its serial number.
 - Holding the same tag in place doesn't send it again; tap it again after a few
   seconds to resend.
-- A tag that contains `/fire`, `/earthquake` or `/lightning` plays that effect for everyone.
 
-Web NFC only exists in Chrome on Android, so the button doesn't appear on
-iPhone, iPad, desktop or other browsers. The phone's NFC must be turned on, and
-Chrome asks for permission the first time.
+Web NFC only exists in Chrome on Android. Elsewhere, Scan goes straight to the
+QR scanner. The phone's NFC must be turned on, and Chrome asks for permission
+the first time.
 
 ## Roles
 
 Type `/role` to see your role and the others. Switch with `/role <name>`.
-`/role` commands are never sent to the chat.
+`/role` commands are never sent to the chat. Anyone can switch to any role,
+and the app remembers your role on this device.
 
-| Role | Can do |
+| Role | Sees |
 | --- | --- |
-| `member` (default) | Chat as normal. |
-| `monitor` | Also sees **system messages**. |
-| `admin` | Sees system messages, and can use **debug mode**. Needs a password: `/role admin <password>`. |
+| `member` (default) | The chat. |
+| `monitor` | The chat, plus **system messages**. |
+| `admin` | The chat, system messages, and who really sent a spoofed message. Can use **debug mode**. |
 
 **System messages** are role changes ("🛡️ Bob changed role: member → monitor"),
-admin actions, and who really sent a spoofed message. The server only sends
-them to people whose role can view system messages; everyone else never
-receives them.
+targeted effects ("🛡️ Alice triggered lightning for Bob") and debug mode being
+turned on or off.
 
-Roles are enforced by the server, not the app, so editing the app can't grant
-extra powers. A non-password role (like `monitor`) is restored automatically
-when you reconnect. Admin isn't: the password is kept in memory only, never
-saved, so after a reload you type `/role admin <password>` again.
+Roles live entirely in the app. The relay server keeps no role state and
+enforces nothing: it passes every message to everyone, and each app decides
+what to show based on its own role. So hidden things (system messages,
+"really sent by") are hidden on screen, but they're still in the data each
+device receives. Someone inspecting the traffic could see them.
 
-### Admin and debug mode
+### Debug mode (admins)
 
-The admin role is **off** unless the server has an admin password
-(`LOCALCHATTER_ADMIN_PASSWORD`, see below). After five wrong passwords from one
-address, that address is locked out for five minutes.
-
-Admins turn on debug mode with `/debug` (or `/debug on` / `/debug off`), or in
-Settings. Debug mode adds:
+Turn it on with `/debug` (or `/debug on` / `/debug off`), or in Settings.
 
 - **Effects for anyone.** The ✨ tray gets a *For* picker: play any effect for
-  one person, or everyone. Only the people chosen see it. They aren't told who
-  triggered it, but monitors and admins see "🛡️ Alice triggered lightning for Bob".
+  one person, or everyone. Only the people chosen play it, and they aren't told
+  who triggered it. Monitors and admins see a system message.
 - **Send as someone else.** A *Send as* picker above the message box sends
   messages (and effects) that appear to come from another person in the room.
-  Members see them as genuine. Monitors and admins see the message marked
-  *really sent by Alice*, so impersonation is never completely hidden.
-
-Turning debug mode on or off is also shown to monitors and admins.
-
-To add or change roles, edit `ROLES` in `server/server.js`.
+  Only **admins** see the message marked *really sent by Alice*. Everyone else,
+  monitors included, sees it as genuine.
 
 ## Server settings
 
@@ -137,7 +144,6 @@ Set these as environment variables (or the `LOCALCHATTER_*` names with Docker Co
 | `LOCALCHATTER_APP_URL` | `APP_URL` | `https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/` | Where the app is hosted. Change this if your GitHub Pages URL differs. |
 | `LOCALCHATTER_ROOM` | `ROOM_NAME` | `LocalChatter` | Room name shown in the app. |
 | `LOCALCHATTER_MAX_MB` | `MAX_MESSAGE_MB` | `25` | Largest message in MB. Files are sent base64-encoded, so the largest file is about ¾ of this. |
-| `LOCALCHATTER_ADMIN_PASSWORD` | `ADMIN_PASSWORD` | *(empty)* | Password for the admin role. Empty turns admin off. Put it in `server/.env` (ignored by git) rather than in `docker-compose.yml`. |
 | – | `MAX_PEERS` | `200` | Most people connected at once. |
 | – | `PORT` | `8443` | Port the server listens on inside the container. |
 | – | `CERT_DIR` | `/certs` | Where the TLS certificate is kept. |
@@ -187,7 +193,8 @@ special support for them.
 
 | File | Purpose |
 | --- | --- |
-| `index.html`, `styles.css`, `app.js` | The app, including NFC scanning. |
+| `index.html`, `styles.css`, `app.js` | The app, including roles and QR/NFC scanning. |
+| `vendor/jsQR.js` | QR decoder (jsQR 1.4.0, Apache-2.0), used where the browser has no built-in one. |
 | `effects.js` | Fire, earthquake and lightning animations. |
 | `sw.js` | Service worker: caches the app so it opens offline. Bump `CACHE` when you change files. |
 | `manifest.webmanifest`, `icons/` | Install metadata and icons. |

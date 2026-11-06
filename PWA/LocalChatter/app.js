@@ -13,6 +13,7 @@
   var KEY_DISPLAY_NAME = 'localchatter-display-name';
   var KEY_SPY = 'localchatter-spy';
   var KEY_FAVS = 'localchatter-favourites';
+  var KEY_NOTIFY = 'localchatter-notify';
   var MAX_FAVS = 20;
   // Display mode: opened from <app>/Display (which forwards here with ?display).
   var DISPLAY = new URLSearchParams(location.search).has('display');
@@ -208,10 +209,11 @@
     p.appendChild(star);
     append(p);
     paintStars();
-    window.LocalChatterFX.play(name, fx.arg);
     // A Stop button for the sender; anyone's "off" removes it.
     if (fx.arg === 'off') removeStop(name);
-    else if (who.indexOf('You') === 0) addStop(name, fx.arg, { to: msg.to || null });
+    if (catchingUp) return; // arrived while away: shown, not replayed
+    window.LocalChatterFX.play(name, fx.arg);
+    if (fx.arg !== 'off' && who.indexOf('You') === 0) addStop(name, fx.arg, { to: msg.to || null });
   }
 
   function nameOf(id) {
@@ -309,6 +311,7 @@
   }
 
   function renderSound(msg, mine, who) {
+    var missed = catchingUp; // arrived while away: don't play it now
     var snd = msg.sound;
     var box = el('article', 'msg' + (mine ? ' mine' : ''));
     if (!mine) colourBubble(box, msg.as || msg.from);
@@ -361,7 +364,8 @@
         });
       }
       btn.addEventListener('click', function () { SND.unlock(); go(false); });
-      if (soundOn) go(true);
+      if (missed) { status.textContent = 'Sent while you were away \u00b7 tap \u25B6 to play'; soundEvent(snd.name, r.source, false, 'missed'); }
+      else if (soundOn) go(true);
       else { status.textContent = 'Sounds are off \u00b7 tap \u25B6 to play'; soundEvent(snd.name, r.source, false, 'muted'); }
     });
     return box;
@@ -525,35 +529,35 @@
         state.everConnected = true;
         break;
       case 'system':
-        renderSystem(msg);
+        show(function () { renderSystem(msg); });
         break;
       case 'effect':
         // Targeted effect from someone in debug mode: everyone receives it, only the target plays it.
         var forMe = msg.to === 'all' || (state.me && msg.to === state.me.id);
         var tfx = window.LocalChatterFX && window.LocalChatterFX.parseFull('/' + msg.name);
-        if (forMe && tfx) window.LocalChatterFX.play(tfx.name, tfx.arg);
+        if (forMe && tfx && !away()) window.LocalChatterFX.play(tfx.name, tfx.arg);
         if (tfx && msg.from && state.me && msg.from.id === state.me.id) {
           if (tfx.arg === 'off') removeStop(tfx.name);
           else addStop(tfx.name, tfx.arg, { target: msg.to });
         }
-        renderSystem({ kind: 'effect', from: msg.from, name: msg.name, to: msg.to });
+        show(function () { renderSystem({ kind: 'effect', from: msg.from, name: msg.name, to: msg.to }); });
         break;
       case 'join':
         state.peers.set(msg.peer.id, msg.peer);
         renderPeople();
-        systemNotice(msg.peer.name + ' joined');
+        show(function () { systemNotice(msg.peer.name + ' joined'); });
         break;
       case 'leave':
         state.peers.delete(msg.peer.id);
         renderPeople();
-        systemNotice(msg.peer.name + ' left');
+        show(function () { systemNotice(msg.peer.name + ' left'); });
         break;
       case 'rename':
         if (state.me && msg.peer.id === state.me.id) { state.me = msg.peer; renderPeople(); break; }
         var old = state.peers.get(msg.peer.id);
         state.peers.set(msg.peer.id, msg.peer);
         renderPeople();
-        if (old) systemNotice(old.name + ' is now ' + msg.peer.name);
+        if (old) show(function () { systemNotice(old.name + ' is now ' + msg.peer.name); });
         break;
       case 'chat':
         // Whispers reach every device; each app only shows them to their recipients
@@ -563,7 +567,8 @@
           if (!seen) break;
           if (seen === 'spy') msg.spied = true;
         }
-        renderMessage(msg, false);
+        if (away()) notify(msg);
+        show(function () { renderMessage(msg, false); });
         break;
     }
   }
@@ -694,6 +699,103 @@
     }
     closeEffects();
   });
+
+  // ------------------------------------------------------------ background
+  // While the app is in the background (another app or tab, screen off), messages
+  // are held instead of drawn, and a notification shows the latest one. Only the
+  // newest BACKLOG_MAX are kept; older ones are dropped and counted. On return
+  // they're shown, but effects and sounds from while you were away aren't replayed.
+  var BACKLOG_MAX = 50;
+  var backlog = { items: [], skipped: 0 };
+  var catchingUp = false;
+  var notifyCount = 0;
+
+  function away() { return document.hidden && !DISPLAY; }
+  function show(fn) {
+    if (!away()) { fn(); return; }
+    backlog.items.push(fn);
+    if (backlog.items.length > BACKLOG_MAX) { backlog.items.shift(); backlog.skipped++; }
+  }
+  function catchUp() {
+    var b = backlog;
+    backlog = { items: [], skipped: 0 };
+    clearNotifications();
+    if (!b.items.length && !b.skipped) return;
+    if (b.skipped) {
+      systemLine(b.skipped + ' older ' + (b.skipped === 1 ? 'message' : 'messages') + ' arrived while you were away and ' +
+        (b.skipped === 1 ? 'was' : 'were') + ' skipped. Here are the latest ' + b.items.length + '.');
+    }
+    catchingUp = true;
+    try { b.items.forEach(function (fn) { fn(); }); } finally { catchingUp = false; }
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function notificationsSupported() {
+    return 'Notification' in window && 'serviceWorker' in navigator && location.protocol !== 'file:' && !DISPLAY;
+  }
+  function notificationsOn() {
+    return load(KEY_NOTIFY) === 'on' && notificationsSupported() && Notification.permission === 'granted';
+  }
+
+  // A short, safe preview: languages and whispers are respected, effects described.
+  function previewText(msg) {
+    var fx = !msg.file && !msg.sound && window.LocalChatterFX.parseFull(msg.text);
+    if (fx) return effectPhrase(fx).join(' ');
+    if (msg.sound) return '\uD83D\uDD0A ' + msg.sound.name;
+    if (msg.file) return '\uD83D\uDCCE ' + msg.file.name;
+    var lang = !LANG.isDefault(msg.lang) ? msg.lang : 'default';
+    var t = LANG.render(msg.text || '', lang, msg.id || msg.text);
+    return (msg.to ? '\uD83E\uDD2B ' : '') + (t.length > 140 ? t.slice(0, 139) + '\u2026' : t);
+  }
+
+  // One notification, replaced each time: the latest message, plus how many came in.
+  function notify(msg) {
+    notifyCount++;
+    if (!notificationsOn()) return;
+    var who = ((msg.as || msg.from) || {}).name || 'Someone';
+    var count = notifyCount;
+    navigator.serviceWorker.ready.then(function (reg) {
+      return reg.showNotification(count > 1 ? count + ' new messages' : who, {
+        body: count > 1 ? who + ': ' + previewText(msg) : previewText(msg),
+        tag: 'localchatter-chat',
+        renotify: true,
+        icon: 'icons/icon-192.png',
+        badge: 'icons/icon-192.png',
+        data: { url: location.href }
+      });
+    }).catch(function () { /* not allowed right now */ });
+  }
+  function clearNotifications() {
+    notifyCount = 0;
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.getRegistration().then(function (reg) {
+      return reg ? reg.getNotifications({ tag: 'localchatter-chat' }) : [];
+    }).then(function (ns) { ns.forEach(function (n) { n.close(); }); }).catch(function () {});
+  }
+
+  function setupNotifySetting() {
+    var box = $('notify-on');
+    var hint = $('notify-hint');
+    if (DISPLAY) { $('notify-row').hidden = true; return; }
+    if (!notificationsSupported()) {
+      box.checked = false;
+      box.disabled = true;
+      hint.hidden = false;
+      hint.textContent = 'Not available in this browser. On iPhone and iPad, web apps can only notify through internet push, which LocalChatter doesn\'t use; messages still catch up when you come back.';
+      return;
+    }
+    box.checked = notificationsOn();
+    box.addEventListener('change', function () {
+      if (!box.checked) { save(KEY_NOTIFY, 'off'); hint.hidden = true; return; }
+      Notification.requestPermission().then(function (p) {
+        if (p === 'granted') { save(KEY_NOTIFY, 'on'); hint.hidden = true; return; }
+        box.checked = false;
+        save(KEY_NOTIFY, 'off');
+        hint.hidden = false;
+        hint.textContent = 'Notifications are blocked for this site. Allow them in your browser settings, then try again.';
+      });
+    });
+  }
 
   // ------------------------------------------------------------ stop dock
   // While an effect you sent is running, a Stop button sits in a corner above all
@@ -1450,7 +1552,11 @@
     if (state.wanted && !state.ws) { state.retry = 0; connect(); }
   }
   window.addEventListener('online', nudge);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) nudge(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    catchUp(); // show what arrived while away
+    nudge();
+  });
 
   // The server's setup page links here with #relay=<address>.
   function readSetupLink() {
@@ -1484,6 +1590,7 @@
     applyLayout();
     renderFavourites();
     refreshLanguages();
+    setupNotifySetting();
     if (DISPLAY) { setRole('display', true); startDisplay(); }
     else setRole(ROLES[savedRole] && savedRole !== 'display' ? savedRole : 'member', true);
     registerServiceWorker();

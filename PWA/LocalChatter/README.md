@@ -74,7 +74,11 @@ Every effect takes the same options after its name:
 Long fire keeps burning; a long earthquake shakes (and rumbles) in waves; long
 lightning strikes again every 1.2–3 seconds, so there are never more than two
 flashes in any second. Sending an effect again while it's running resets its
-timer. Commands are case-insensitive and only count when they're the whole
+timer.
+
+Effects never overlap: only one runs at a time. Starting a different effect
+replaces the current one straight away (no fading flames under the lightning),
+and the sender's Stop button for the old one goes away. Commands are case-insensitive and only count when they're the whole
 message, so "I like /fire" and "/fire banana" are sent as normal text.
 
 While the chat is corrupted by zalgo, messages that arrive are corrupted too,
@@ -159,6 +163,33 @@ Each person's messages have their own bubble colour, worked out from their
 name, so they look the same on every device, in light and dark mode. Your own
 messages keep the app's teal. A message an admin sent *as* someone uses that
 person's colour.
+
+## In the background
+
+While LocalChatter is open but in the background (you've switched to another
+app or tab, or the screen is off), it keeps receiving messages for as long as
+the browser lets it run:
+
+- **Notifications.** Turn on *Notify me about new messages while LocalChatter is
+  in the background* in Settings. You get one notification that updates with
+  the latest message and a count ("5 new messages — Bob: see you at 5").
+  Whispers for other people never notify, and messages in languages you don't
+  understand stay gibberish. Tapping it brings LocalChatter back.
+- **Catching up.** Messages that arrive while you're away are shown when you
+  come back. If more than 50 arrived, only the latest 50 are shown and the
+  chat says how many older ones were skipped.
+- Effects and sounds from while you were away aren't replayed: their lines
+  appear, and sounds have a ▶ to play them.
+
+How long a browser keeps a background app running is up to the browser:
+Android Chrome allows several minutes; iPhone and iPad pause it almost
+straight away. When it comes back, it reconnects and carries on, but anything
+sent while it was paused or disconnected isn't received (the relay keeps no history).
+
+iPhone and iPad web apps can only show notifications through internet push
+(Web Push via Apple's servers), which would need the relay to store
+subscriptions and an internet connection, so LocalChatter doesn't use it. The
+notification option is shown as unavailable there.
 
 ## Wide screens (dashboard)
 

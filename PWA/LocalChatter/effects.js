@@ -67,7 +67,8 @@
   //   /fire 30, 30s, 2m  that long (up to 10 minutes)
   //   /fire on           until someone sends /fire off
   //   /fire off          stop it now
-  // Sending it again while it's running resets the timer.
+  // Sending it again while it's running resets the timer. Only one effect runs at
+  // a time: starting a different one replaces it.
   var MAX_S = 600;
   var DEFAULT_MS = { fire: 2200, earthquake: 1600, lightning: 1100, zalgo: 10000 };
 
@@ -116,7 +117,8 @@
     d.setAttribute('aria-hidden', 'true');
     document.body.appendChild(d);
     return {
-      stop: function () {
+      stop: function (early, hard) {
+        if (hard) { d.remove(); return; }
         d.classList.add('out');
         setTimeout(function () { d.remove(); }, 700);
       }
@@ -153,9 +155,11 @@
     var FADE_MS = 1200;
     var start = performance.now();
     var stoppedAt = 0;
+    var gone = false;
     var perFrame = Math.max(8, Math.round(w / (28 * dpr)));
 
     function frame(now) {
+      if (gone) return;
       var t = now - start;
       if (!stoppedAt) {
         for (var i = 0; i < perFrame; i++) {
@@ -196,7 +200,12 @@
       else o.canvas.remove();
     }
     requestAnimationFrame(frame);
-    return { stop: function () { if (!stoppedAt) stoppedAt = performance.now(); } };
+    return {
+      stop: function (early, hard) {
+        if (hard) { gone = true; o.canvas.remove(); return; } // replaced: vanish at once
+        if (!stoppedAt) stoppedAt = performance.now();
+      }
+    };
   }
 
   // ------------------------------------------------------------ earthquake
@@ -209,7 +218,7 @@
     next = setTimeout(function loop() { rumbleWave(); next = setTimeout(loop, 1600); }, 1650);
     if (reducedMotion()) {
       var g = holdGlow('fx-quake-glow');
-      return { stop: function (early) { clearTimeout(next); if (early) vibrate(0); g.stop(); } };
+      return { stop: function (early, hard) { clearTimeout(next); if (early) vibrate(0); g.stop(early, hard); } };
     }
     var root = document.body;
     root.classList.remove('fx-shake');
@@ -242,10 +251,11 @@
   }
 
   // One strike: a bolt with two flashes 380 ms apart. Removes itself when done.
-  function strike() {
+  function strike(canvases) {
     vibrate([40, 80, 40]);
     var calm = reducedMotion();
     var o = overlayCanvas('fx-lightning');
+    canvases.add(o.canvas);
     var ctx = o.ctx, w = o.w, h = o.h, dpr = o.dpr;
     var bolts = boltPath(w * (0.25 + Math.random() * 0.5), 0, h * 0.85, (Math.random() - 0.5) * 0.3, 40 * dpr, 2, []);
     var strikes = calm ? [0] : [0, 380];
@@ -273,6 +283,7 @@
     }
 
     function frame(now) {
+      if (!o.canvas.isConnected) return; // removed early
       var t = now - start;
       ctx.clearRect(0, 0, w, h);
       var a = 0;
@@ -284,7 +295,7 @@
       }
       if (a > 0) drawBolt(calm ? a * 0.8 : a);
       if (t < END_MS) requestAnimationFrame(frame);
-      else o.canvas.remove();
+      else { o.canvas.remove(); canvases.delete(o.canvas); }
     }
     requestAnimationFrame(frame);
   }
@@ -294,12 +305,19 @@
   function startLightning() {
     var stopped = false;
     var next = null;
+    var canvases = new Set();
     (function loop() {
       if (stopped) return;
-      strike();
+      strike(canvases);
       next = setTimeout(loop, 1200 + Math.random() * 1800);
     })();
-    return { stop: function () { stopped = true; clearTimeout(next); } };
+    return {
+      stop: function (early, hard) {
+        stopped = true;
+        clearTimeout(next);
+        if (hard) canvases.forEach(function (c) { c.remove(); });
+      }
+    };
   }
 
   // ------------------------------------------------------------------ zalgo
@@ -394,12 +412,12 @@
     document.dispatchEvent(new CustomEvent('localchatter:fx', { detail: { name: name, active: on } }));
   }
 
-  function stopEffect(name, early) {
+  function stopEffect(name, early, hard) {
     var a = active[name];
     if (!a) return;
     clearTimeout(a.timer);
     delete active[name];
-    try { a.ctrl.stop(early); } catch (e) { /* already gone */ }
+    try { a.ctrl.stop(early, hard); } catch (e) { /* already gone */ }
     announce(name, false);
   }
 
@@ -410,6 +428,8 @@
     if (arg === 'off') { stopEffect(name, true); return true; }
     var a = active[name];
     if (!a) {
+      // Effects never overlap: a different effect replaces whatever is running, at once.
+      Object.keys(active).forEach(function (other) { stopEffect(other, true, true); });
       var ctrl;
       try { ctrl = starter(); } catch (e) { return false; }
       a = active[name] = { ctrl: ctrl, timer: null, until: 0 };
@@ -431,6 +451,7 @@
     names: Object.keys(STARTERS),
     defaultMs: DEFAULT_MS,
     isActive: function (name) { return !!active[name]; },
+    activeNames: function () { return Object.keys(active); },
     zalgoActive: function () { return zalgo.active; },
     setVibration: function (on) { vibrationOn = !!on; if (!on) vibrate(0); },
     canVibrate: 'vibrate' in navigator,

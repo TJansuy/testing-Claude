@@ -1,7 +1,7 @@
 // Caches the app shell so LocalChatter opens with no internet connection.
 // Chat traffic goes over a WebSocket to the local server and is never cached.
 // Bump the version whenever cached files change so clients pick up the update.
-var CACHE = 'localchatter-v11';
+var CACHE = 'localchatter-v12';
 var ASSETS = [
   './',
   'index.html',
@@ -43,6 +43,20 @@ self.addEventListener('fetch', function (event) {
       return hit || fetch(req).catch(function () {
         if (req.mode === 'navigate') return caches.match('index.html');
       });
+    })
+  );
+});
+
+// Tapping a message notification brings LocalChatter back (or opens it).
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  var url = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].url.indexOf(self.registration.scope) === 0 && 'focus' in list[i]) return list[i].focus();
+      }
+      return self.clients.openWindow ? self.clients.openWindow(url) : null;
     })
   );
 });

@@ -17,6 +17,9 @@ services:
       APP_URL: "${LOCALCHATTER_APP_URL:-https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/}"
       ROOM_NAME: "${LOCALCHATTER_ROOM:-LocalChatter}"
       MAX_MESSAGE_MB: "${LOCALCHATTER_MAX_MB:-25}"
+      # Password for the admin role. Leave empty to turn admin off. Put it in a .env
+      # file next to this one (LOCALCHATTER_ADMIN_PASSWORD=...) rather than in this file.
+      ADMIN_PASSWORD: "${LOCALCHATTER_ADMIN_PASSWORD:-}"
     volumes:
       - certs:/certs
     read_only: true

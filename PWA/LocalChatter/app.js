@@ -6,6 +6,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var KEY_RELAY = 'localchatter-relay';
   var KEY_NAME = 'localchatter-name';
+  var KEY_ROLE = 'localchatter-role';
   var MAX_MESSAGES = 300;
   var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
   var INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
@@ -20,7 +21,12 @@
     wanted: false,     // the user wants to be connected
     retry: 0,
     retryTimer: null,
-    everConnected: false
+    everConnected: false,
+    role: 'member',
+    perms: {},
+    roles: [],
+    debug: false,
+    adminPassword: ''  // memory only, so admin can rejoin after a reconnect; never saved
   };
 
   // ---------------------------------------------------------------- storage
@@ -103,21 +109,32 @@
   };
 
   // "/fire", "/earthquake" and "/lightning" play an effect for everyone instead of showing as text.
-  function renderEffect(name, msg, mine) {
+  function renderEffect(name, msg, who) {
     var line = EFFECT_LINES[name];
-    var who = mine ? 'You' : (msg.from && msg.from.name) || 'Someone';
-    systemLine(line[0] + ' ' + who + ' ' + line[1] + (msg.via === 'nfc' ? ' (NFC tag)' : ''));
+    var notes = [];
+    if (msg.via === 'nfc') notes.push('NFC tag');
+    if (msg.spoofedBy) notes.push('really sent by ' + msg.spoofedBy.name);
+    systemLine(line[0] + ' ' + who + ' ' + line[1] + (notes.length ? ' (' + notes.join(', ') + ')' : ''));
     window.LocalChatterFX.play(name);
   }
 
+  function nameOf(id) {
+    if (state.me && id === state.me.id) return state.me.name;
+    var p = state.peers.get(id);
+    return p ? p.name : 'someone';
+  }
+
   function renderMessage(msg, mine) {
+    var who = mine ? (msg.as ? 'You (as ' + nameOf(msg.as) + ')' : 'You') : (msg.from && msg.from.name) || 'Someone';
     var effect = !msg.file && window.LocalChatterFX && window.LocalChatterFX.parse(msg.text);
-    if (effect) { renderEffect(effect, msg, mine); return null; }
+    if (effect) { renderEffect(effect, msg, who); return null; }
 
     var box = el('article', 'msg' + (mine ? ' mine' : ''));
     var meta = el('div', 'meta');
-    meta.appendChild(el('span', 'who', mine ? 'You' : (msg.from && msg.from.name) || 'Someone'));
+    meta.appendChild(el('span', 'who', who));
     if (msg.via === 'nfc') meta.appendChild(el('span', 'via', 'via NFC tag'));
+    // Only people who can see system messages are told who really sent a spoofed message.
+    if (msg.spoofedBy) meta.appendChild(el('span', 'spoof', 'really sent by ' + msg.spoofedBy.name));
     meta.appendChild(el('time', null, formatTime(msg.at || Date.now())));
     box.appendChild(meta);
 
@@ -192,6 +209,7 @@
     ul.appendChild(el('li', null, state.me.name + ' (you)'));
     state.peers.forEach(function (p) { ul.appendChild(el('li', null, p.name)); });
     setStatus('on', onlineText());
+    refreshPeerSelects();
   }
 
   function banner(html) {
@@ -281,9 +299,28 @@
         $('room').textContent = msg.room || 'LocalChatter';
         document.title = msg.room || 'LocalChatter';
         banner(null);
+        state.roles = msg.roles || [];
+        applyRole(msg.role || 'member', msg.perms || {}, true);
         renderPeople();
         systemLine('You joined as ' + state.me.name);
         state.everConnected = true;
+        restoreRole();
+        break;
+      case 'role':
+        applyRole(msg.role, msg.perms || {});
+        save(KEY_ROLE, msg.role);
+        systemLine('Your role is now ' + msg.role + '.' + (msg.perms && msg.perms.viewSystem ? ' You\'ll see system messages.' : ''));
+        break;
+      case 'system':
+        renderSystem(msg);
+        break;
+      case 'effect':
+        // Triggered by an admin in debug mode. Who did it shows up as a system message for those allowed to see it.
+        if (window.LocalChatterFX) window.LocalChatterFX.play(msg.name);
+        break;
+      case 'error':
+        if (msg.about === 'role') { state.adminPassword = ''; save(KEY_ROLE, state.role); }
+        systemLine(msg.message || 'Something went wrong.');
         break;
       case 'join':
         state.peers.set(msg.peer.id, msg.peer);
@@ -308,10 +345,19 @@
     }
   }
 
+  function sendRaw(obj) {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN || !state.me) return false;
+    state.ws.send(JSON.stringify(obj));
+    return true;
+  }
+
   function sendChat(payload) {
     if (!state.ws || state.ws.readyState !== WebSocket.OPEN || !state.me) return false;
     payload.type = 'chat';
     payload.id = randomId();
+    // Admin debug mode: send as someone else.
+    var as = state.debug && state.perms.impersonate ? $('send-as').value : '';
+    if (as && as !== state.me.id) payload.as = as;
     state.ws.send(JSON.stringify(payload));
     payload.at = Date.now();
     renderMessage(payload, true);
@@ -338,6 +384,11 @@
     e.preventDefault();
     var value = text.value;
     if (!value.trim()) return;
+    if (runCommand(value)) {
+      text.value = '';
+      autosize();
+      return;
+    }
     if (sendChat({ text: value })) {
       text.value = '';
       autosize();
@@ -394,7 +445,11 @@
   tray.addEventListener('click', function (e) {
     var b = e.target.closest('[data-effect]');
     if (!b) return;
-    sendChat({ text: '/' + b.dataset.effect });
+    if (state.debug && state.perms.debug) {
+      sendRaw({ type: 'effect', name: b.dataset.effect, to: $('fx-to').value || 'all' });
+    } else {
+      sendChat({ text: '/' + b.dataset.effect });
+    }
     closeEffects();
   });
 
@@ -484,6 +539,120 @@
     if (nfc.abort) { stopNfc(); systemLine('Stopped scanning for NFC tags.'); }
     else startNfc();
   });
+
+  // ----------------------------------------------------------------- roles
+  // The server decides what each role may do; the app only shows the matching controls.
+  function applyRole(role, perms, quiet) {
+    state.role = role;
+    state.perms = perms;
+    if (!perms.debug && state.debug) setDebug(false, quiet);
+    $('role-line').textContent = 'Your role: ' + role + '. Type /role to see the others.';
+    $('debug-row').hidden = !perms.debug;
+    updateDebugUi();
+  }
+
+  function restoreRole() {
+    var saved = load(KEY_ROLE);
+    if (!saved || saved === state.role) return;
+    var info = state.roles.filter(function (r) { return r.name === saved; })[0];
+    if (!info) { save(KEY_ROLE, state.role); return; }
+    if (info.password && !state.adminPassword) {
+      systemLine('You were ' + saved + ' before. Type /role ' + saved + ' <password> to switch back.');
+      save(KEY_ROLE, state.role);
+      return;
+    }
+    sendRaw({ type: 'role', role: saved, password: info.password ? state.adminPassword : undefined });
+  }
+
+  function describeRoles() {
+    var list = state.roles.map(function (r) {
+      return r.name + (r.name === state.role ? ' (current)' : '') + ': ' + r.description + (r.password ? ' Needs a password.' : '');
+    });
+    systemLine('Your role is ' + state.role + '. Switch with /role <name>.\n' + list.join('\n'));
+  }
+
+  // Handles /role and /debug. Returns true if the text was a command (and must not be sent as chat).
+  function runCommand(value) {
+    var m = /^\s*\/(role|debug)\b\s*([\s\S]*)$/i.exec(value);
+    if (!m) return false;
+    var cmd = m[1].toLowerCase();
+    var rest = m[2].trim();
+    if (!state.me) { systemLine('Connect to a server first.'); return true; }
+
+    if (cmd === 'role') {
+      if (!rest) { describeRoles(); return true; }
+      var parts = rest.split(/\s+/);
+      var want = parts.shift().toLowerCase();
+      var password = rest.replace(/^\S+\s+/, ''); // everything after the role name, spaces included
+      var info = state.roles.filter(function (r) { return r.name === want; })[0];
+      if (!info) { systemLine('There\'s no "' + want + '" role. Type /role to see the roles.'); return true; }
+      if (info.password && !parts.length) { systemLine('The ' + want + ' role needs a password: /role ' + want + ' <password>'); return true; }
+      if (info.password) state.adminPassword = password;
+      sendRaw({ type: 'role', role: want, password: info.password ? password : undefined });
+      return true;
+    }
+
+    // /debug [on|off]
+    if (!state.perms.debug) { systemLine('Debug mode is for admins.'); return true; }
+    setDebug(rest ? /^on$/i.test(rest) : !state.debug);
+    return true;
+  }
+
+  function setDebug(on, quiet) {
+    if (on === state.debug) return;
+    state.debug = on;
+    $('debug-toggle').checked = on;
+    updateDebugUi();
+    if (!quiet) {
+      systemLine('Debug mode ' + (on ? 'on: target effects at anyone, and send messages as other people.' : 'off.'));
+      sendRaw({ type: 'debug', on: on });
+    }
+  }
+
+  function updateDebugUi() {
+    var on = state.debug && state.perms.debug;
+    $('debug-bar').hidden = !on;
+    $('fx-target').hidden = !on;
+    $('fx-hint').hidden = on; // in debug mode only the chosen person sees it
+    $('send-as-row').hidden = !(on && state.perms.impersonate);
+    if (!on) $('send-as').value = '';
+    document.body.classList.toggle('debugging', on);
+    refreshPeerSelects();
+  }
+
+  function fillSelect(sel, first, people) {
+    var keep = sel.value;
+    sel.textContent = '';
+    sel.appendChild(new Option(first[1], first[0]));
+    people.forEach(function (p) { sel.appendChild(new Option(p.name, p.id)); });
+    sel.value = keep;
+    if (sel.value !== keep) sel.value = first[0]; // that person left
+  }
+
+  function refreshPeerSelects() {
+    var others = [];
+    state.peers.forEach(function (p) { others.push(p); });
+    others.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var me = state.me ? [{ id: state.me.id, name: state.me.name + ' (you)' }] : [];
+    fillSelect($('fx-to'), ['all', 'Everyone'], me.concat(others));
+    fillSelect($('send-as'), ['', 'Myself'], others);
+  }
+
+  // System messages only reach people whose role can view them (the server filters).
+  function renderSystem(msg) {
+    var me = state.me && state.me.id;
+    var name = function (p) { return p && p.id === me ? 'You' : (p && p.name) || 'Someone'; };
+    var text;
+    if (msg.kind === 'role') text = name(msg.peer) + ' changed role: ' + msg.from + ' \u2192 ' + msg.to;
+    else if (msg.kind === 'effect') text = name(msg.by) + ' triggered ' + msg.name + ' for ' + (msg.to ? (msg.to.id === me ? 'you' : msg.to.name) : 'everyone');
+    else if (msg.kind === 'debug') text = name(msg.by) + ' turned debug mode ' + (msg.on ? 'on' : 'off');
+    else return;
+    var line = el('p', 'system audit', '\uD83D\uDEE1\uFE0F ' + text);
+    append(line);
+  }
+
+  $('debug-toggle').addEventListener('change', function () { setDebug(this.checked); });
+  $('debug-off').addEventListener('click', function () { setDebug(false); });
 
   // -------------------------------------------------------------- settings
   var dialog = $('settings');

@@ -84,6 +84,48 @@ Web NFC only exists in Chrome on Android, so the button doesn't appear on
 iPhone, iPad, desktop or other browsers. The phone's NFC must be turned on, and
 Chrome asks for permission the first time.
 
+## Roles
+
+Type `/role` to see your role and the others. Switch with `/role <name>`.
+`/role` commands are never sent to the chat.
+
+| Role | Can do |
+| --- | --- |
+| `member` (default) | Chat as normal. |
+| `monitor` | Also sees **system messages**. |
+| `admin` | Sees system messages, and can use **debug mode**. Needs a password: `/role admin <password>`. |
+
+**System messages** are role changes ("🛡️ Bob changed role: member → monitor"),
+admin actions, and who really sent a spoofed message. The server only sends
+them to people whose role can view system messages; everyone else never
+receives them.
+
+Roles are enforced by the server, not the app, so editing the app can't grant
+extra powers. A non-password role (like `monitor`) is restored automatically
+when you reconnect. Admin isn't: the password is kept in memory only, never
+saved, so after a reload you type `/role admin <password>` again.
+
+### Admin and debug mode
+
+The admin role is **off** unless the server has an admin password
+(`LOCALCHATTER_ADMIN_PASSWORD`, see below). After five wrong passwords from one
+address, that address is locked out for five minutes.
+
+Admins turn on debug mode with `/debug` (or `/debug on` / `/debug off`), or in
+Settings. Debug mode adds:
+
+- **Effects for anyone.** The ✨ tray gets a *For* picker: play any effect for
+  one person, or everyone. Only the people chosen see it. They aren't told who
+  triggered it, but monitors and admins see "🛡️ Alice triggered lightning for Bob".
+- **Send as someone else.** A *Send as* picker above the message box sends
+  messages (and effects) that appear to come from another person in the room.
+  Members see them as genuine. Monitors and admins see the message marked
+  *really sent by Alice*, so impersonation is never completely hidden.
+
+Turning debug mode on or off is also shown to monitors and admins.
+
+To add or change roles, edit `ROLES` in `server/server.js`.
+
 ## Server settings
 
 Set these as environment variables (or the `LOCALCHATTER_*` names with Docker Compose).
@@ -95,6 +137,7 @@ Set these as environment variables (or the `LOCALCHATTER_*` names with Docker Co
 | `LOCALCHATTER_APP_URL` | `APP_URL` | `https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/` | Where the app is hosted. Change this if your GitHub Pages URL differs. |
 | `LOCALCHATTER_ROOM` | `ROOM_NAME` | `LocalChatter` | Room name shown in the app. |
 | `LOCALCHATTER_MAX_MB` | `MAX_MESSAGE_MB` | `25` | Largest message in MB. Files are sent base64-encoded, so the largest file is about ¾ of this. |
+| `LOCALCHATTER_ADMIN_PASSWORD` | `ADMIN_PASSWORD` | *(empty)* | Password for the admin role. Empty turns admin off. Put it in `server/.env` (ignored by git) rather than in `docker-compose.yml`. |
 | – | `MAX_PEERS` | `200` | Most people connected at once. |
 | – | `PORT` | `8443` | Port the server listens on inside the container. |
 | – | `CERT_DIR` | `/certs` | Where the TLS certificate is kept. |

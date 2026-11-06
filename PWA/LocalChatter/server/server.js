@@ -37,6 +37,8 @@ const ROOM_NAME = clean(env.ROOM_NAME, 60) || 'LocalChatter';
 // Largest single WebSocket message accepted, in megabytes (files are sent base64-encoded).
 const MAX_MESSAGE_MB = Math.max(1, toInt(env.MAX_MESSAGE_MB, 25));
 const MAX_PEERS = Math.max(2, toInt(env.MAX_PEERS, 200));
+// Password for the admin role. When empty, the admin role is turned off.
+const ADMIN_PASSWORD = env.ADMIN_PASSWORD || '';
 const CERT_DIR = env.CERT_DIR || path.join(__dirname, 'certs');
 // TLS is on by default because browsers block ws:// from HTTPS pages.
 // TLS=off is only for local development behind something else that does TLS.
@@ -209,9 +211,51 @@ const server = USE_TLS ? https.createServer(loadTls(), handleRequest) : http.cre
 // WebSocket relay
 // ---------------------------------------------------------------------------
 
-/** @type {Map<WebSocket, {id: string, name: string, alive: boolean}>} */
+/** @type {Map<WebSocket, {id: string, name: string, role: string, alive: boolean}>} */
 const peers = new Map();
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: MAX_BYTES });
+
+// ---------------------------------------------------------------------------
+// Roles. Enforced here, not in the app, so a modified client can't grant itself powers.
+//   viewSystem:  receives system messages (role changes, admin actions, who really sent a spoofed message)
+//   debug:       may trigger any effect for any one person, or everyone
+//   impersonate: may send messages that appear to come from someone else
+// ---------------------------------------------------------------------------
+const ROLES = {
+  member: { description: 'Chat as normal.' },
+  monitor: { description: 'Also sees system messages, such as role changes.', viewSystem: true },
+  admin: {
+    description: 'Sees system messages, can trigger effects for anyone and send messages as other people.',
+    viewSystem: true, debug: true, impersonate: true, password: true,
+  },
+};
+const DEFAULT_ROLE = 'member';
+// Must match the effects the app knows (effects.js).
+const EFFECTS = ['fire', 'earthquake', 'lightning'];
+
+function roleAvailable(name) { return !!ROLES[name] && (!ROLES[name].password || !!ADMIN_PASSWORD); }
+function perms(p) { const r = ROLES[p.role] || ROLES[DEFAULT_ROLE]; return { viewSystem: !!r.viewSystem, debug: !!r.debug, impersonate: !!r.impersonate }; }
+function roleList() {
+  return Object.keys(ROLES).filter(roleAvailable).map((name) => ({ name, description: ROLES[name].description, password: !!ROLES[name].password }));
+}
+
+// Slow down password guessing: 5 wrong admin passwords from one address locks it out for 5 minutes.
+const adminFails = new Map();
+function passwordOk(ip, given) {
+  const now = Date.now();
+  const f = adminFails.get(ip) || { fails: 0, until: 0 };
+  if (f.until > now) return 'locked';
+  if (f.until) { f.fails = 0; f.until = 0; } // an earlier lockout has expired
+  // Compare fixed-length hashes in constant time.
+  const a = crypto.createHash('sha256').update(String(given || '')).digest();
+  const b = crypto.createHash('sha256').update(ADMIN_PASSWORD).digest();
+  if (crypto.timingSafeEqual(a, b)) { adminFails.delete(ip); return 'ok'; }
+  f.fails += 1;
+  if (f.fails >= 5) f.until = now + 5 * 60 * 1000;
+  adminFails.set(ip, f);
+  console.log(`${new Date().toISOString()} wrong admin password (${f.fails}) from ${ip}`);
+  return 'wrong';
+}
 
 function publicPeer(p) { return { id: p.id, name: p.name }; }
 
@@ -224,6 +268,26 @@ function sendTo(ws, obj) {
 function broadcast(obj, except) {
   const data = JSON.stringify(obj); // serialise once, send to everyone
   for (const [ws, p] of peers) if (ws !== except && p.name) sendTo(ws, data);
+}
+
+// Sends one version to people who can see system messages and another to everyone else.
+function broadcastSplit(forViewers, forOthers, except) {
+  const v = forViewers && JSON.stringify(forViewers);
+  const o = forOthers && JSON.stringify(forOthers);
+  for (const [ws, p] of peers) {
+    if (ws === except || !p.name) continue;
+    const data = perms(p).viewSystem ? v : o;
+    if (data) sendTo(ws, data);
+  }
+}
+
+function systemMessage(body, except) {
+  broadcastSplit(Object.assign({ type: 'system', at: Date.now() }, body), null, except);
+}
+
+function findPeer(id) {
+  for (const p of peers.values()) if (p.id === id && p.name) return p;
+  return null;
 }
 
 // Rebuild chat messages from allowed fields only, so clients can't inject anything else.
@@ -244,9 +308,42 @@ function sanitiseChat(msg, from) {
   return out.text || out.file ? out : null;
 }
 
-wss.on('connection', (ws) => {
+function handleRole(ws, peer, msg, ip) {
+  const want = clean(msg.role, 32).toLowerCase();
+  const fail = (message) => sendTo(ws, { type: 'error', about: 'role', message });
+  if (!ROLES[want]) return fail(`There's no "${want}" role.`);
+  if (!roleAvailable(want)) return fail(`The ${want} role isn't enabled on this server.`);
+  if (ROLES[want].password) {
+    const r = passwordOk(ip, msg.password);
+    if (r === 'locked') return fail('Too many wrong passwords. Try again in a few minutes.');
+    if (r !== 'ok') return fail('Wrong password.');
+  }
+  const old = peer.role;
+  peer.role = want;
+  sendTo(ws, { type: 'role', role: want, perms: perms(peer) });
+  if (old !== want) systemMessage({ kind: 'role', peer: publicPeer(peer), from: old, to: want }, ws);
+}
+
+function handleEffect(ws, peer, msg) {
+  if (!perms(peer).debug) return sendTo(ws, { type: 'error', about: 'effect', message: 'Only admins can target effects.' });
+  const name = String(msg.name || '');
+  if (!EFFECTS.includes(name)) return sendTo(ws, { type: 'error', about: 'effect', message: `Unknown effect "${clean(name, 32)}".` });
+  const target = msg.to === 'all' ? null : findPeer(String(msg.to || ''));
+  if (msg.to !== 'all' && !target) return sendTo(ws, { type: 'error', about: 'effect', message: 'That person has left.' });
+  const by = publicPeer(peer);
+  const at = Date.now();
+  for (const [w, p] of peers) {
+    if (!p.name || (target && p !== target)) continue;
+    // Only people who can see system messages learn who triggered it.
+    sendTo(w, perms(p).viewSystem ? { type: 'effect', name, at, by } : { type: 'effect', name, at });
+  }
+  systemMessage({ kind: 'effect', by, name, to: target ? publicPeer(target) : null });
+}
+
+wss.on('connection', (ws, req) => {
   if (peers.size >= MAX_PEERS) { ws.close(1013, 'Room is full'); return; }
-  const peer = { id: crypto.randomUUID().slice(0, 8), name: '', alive: true };
+  const ip = req.socket.remoteAddress || '';
+  const peer = { id: crypto.randomUUID().slice(0, 8), name: '', role: DEFAULT_ROLE, alive: true };
   peers.set(ws, peer);
   ws.on('pong', () => { peer.alive = true; });
 
@@ -259,25 +356,47 @@ wss.on('connection', (ws) => {
     if (msg.type === 'hello' && !peer.name) {
       peer.name = clean(msg.name, MAX_NAME) || 'Guest';
       const others = [...peers.values()].filter((p) => p !== peer && p.name).map(publicPeer);
-      sendTo(ws, { type: 'welcome', you: publicPeer(peer), room: ROOM_NAME, peers: others, maxBytes: MAX_BYTES });
+      sendTo(ws, {
+        type: 'welcome', you: publicPeer(peer), room: ROOM_NAME, peers: others, maxBytes: MAX_BYTES,
+        role: peer.role, perms: perms(peer), roles: roleList(),
+      });
       broadcast({ type: 'join', peer: publicPeer(peer) }, ws);
       log();
       return;
     }
     if (!peer.name) return; // must say hello first
 
-    if (msg.type === 'rename') {
-      const name = clean(msg.name, MAX_NAME);
-      if (name && name !== peer.name) {
-        peer.name = name;
-        broadcast({ type: 'rename', peer: publicPeer(peer) });
+    switch (msg.type) {
+      case 'rename': {
+        const name = clean(msg.name, MAX_NAME);
+        if (name && name !== peer.name) {
+          peer.name = name;
+          broadcast({ type: 'rename', peer: publicPeer(peer) });
+        }
+        return;
       }
-      return;
-    }
-
-    if (msg.type === 'chat') {
-      const out = sanitiseChat(msg, peer);
-      if (out) broadcast(out, ws); // forwarded, never stored
+      case 'role':
+        return handleRole(ws, peer, msg, ip);
+      case 'effect':
+        return handleEffect(ws, peer, msg);
+      case 'debug':
+        if (perms(peer).debug) systemMessage({ kind: 'debug', by: publicPeer(peer), on: !!msg.on }, ws);
+        return;
+      case 'chat': {
+        let from = peer;
+        if (msg.as && msg.as !== peer.id) {
+          if (!perms(peer).impersonate) return sendTo(ws, { type: 'error', about: 'chat', message: 'Only admins can send as someone else.' });
+          from = findPeer(String(msg.as));
+          if (!from) return sendTo(ws, { type: 'error', about: 'chat', message: 'That person has left.' });
+        }
+        const out = sanitiseChat(msg, from);
+        if (!out) return;
+        if (from === peer) return broadcast(out, ws); // forwarded, never stored
+        // Spoofed: it looks genuine to everyone, except that people who can see
+        // system messages are also told which admin really sent it.
+        broadcastSplit(Object.assign({}, out, { spoofedBy: publicPeer(peer) }), out, ws);
+        return;
+      }
     }
   });
 
@@ -310,6 +429,7 @@ server.listen(PORT, () => {
   console.log(`Setup page: ${scheme}://${host}:${ADVERTISED_PORT}/`);
   console.log(`App: ${APP_URL}`);
   console.log(`Max message: ${MAX_MESSAGE_MB} MB. No history is kept.`);
+  console.log(`Admin role: ${ADMIN_PASSWORD ? 'enabled' : 'disabled (set ADMIN_PASSWORD to enable)'}`);
 });
 
 function shutdown() {

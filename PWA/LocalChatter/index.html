@@ -34,7 +34,14 @@
       <button type="button" data-effect="earthquake">🌍 Earthquake</button>
       <button type="button" data-effect="lightning">⚡ Lightning</button>
     </div>
-    <p class="hint">Everyone in the chat sees it. You can also type <code>/fire</code>, <code>/earthquake</code> or <code>/lightning</code>.</p>
+    <label id="fx-target" class="fx-target" hidden>For <select id="fx-to" aria-label="Who sees the effect"></select></label>
+    <p class="hint" id="fx-hint">Everyone in the chat sees it. You can also type <code>/fire</code>, <code>/earthquake</code> or <code>/lightning</code>.</p>
+  </div>
+
+  <div id="debug-bar" class="debug-bar" hidden>
+    <strong>Debug mode</strong>
+    <label id="send-as-row" hidden>Send as <select id="send-as" aria-label="Send as"></select></label>
+    <button id="debug-off" type="button">Turn off</button>
   </div>
 
   <form id="composer" class="composer" autocomplete="off">
@@ -65,6 +72,10 @@
       <input id="relay" inputmode="url" placeholder="wss://192.168.1.50:8443/ws" spellcheck="false" autocapitalize="off">
       <p class="hint">Open the LocalChatter server's page on this device (for example <code>https://192.168.1.50:8443</code>) and tap <strong>Set up LocalChatter</strong>, or type its address here.</p>
       <p class="hint" id="server-link-row" hidden>Can't connect? <a id="server-link" target="_blank" rel="noopener">Open the server page</a> and accept its certificate, then try again.</p>
+
+      <h3>Role</h3>
+      <p class="hint" id="role-line">Your role: member. Type /role to see the others.</p>
+      <label class="check" id="debug-row" hidden><input type="checkbox" id="debug-toggle"> Debug mode: target effects at anyone and send messages as other people</label>
 
       <h3>People here <span id="people-count"></span></h3>
       <ul id="people" class="people"></ul>

@@ -357,3 +357,31 @@ dialog label.check input { width: auto; margin-top: 3px; }
   box-shadow: 0 0 0 100vmax rgb(0 0 0 / .35);
 }
 .qr-dialog .hint { margin: 12px 20px 20px; }
+
+/* Sounds */
+.soundboard { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.sb-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.sb-head strong { margin-right: auto; }
+.link-button { padding: 4px 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: .9rem; cursor: pointer; }
+#sb-buttons button { flex: 0 1 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.msg .sound { display: flex; align-items: center; gap: 10px; }
+.msg .sound .sound-name { font-weight: 600; }
+.msg .sound .play {
+  display: grid; place-items: center; flex: none;
+  width: 36px; height: 36px; border: 0; border-radius: 50%;
+  background: color-mix(in srgb, currentColor 15%, transparent); color: inherit; cursor: pointer;
+}
+.msg .sound-status { font-size: .8rem; opacity: .75; }
+.msg.unavailable { opacity: .75; font-style: italic; }
+.sound-list { list-style: none; margin: 0; padding: 0; }
+.sound-list li { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.sound-list li .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sound-list li .meta { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.sound-list li button { min-width: 36px; min-height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); cursor: pointer; }
+.sound-list .empty-row { color: var(--muted); }
+.secondary-button {
+  padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--fg); font: inherit; cursor: pointer;
+}
+dialog .row { display: flex; gap: 8px; margin-top: 8px; }
+dialog .row input { flex: 1; min-width: 0; }

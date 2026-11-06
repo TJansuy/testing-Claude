@@ -7,6 +7,9 @@
   var KEY_RELAY = 'localchatter-relay';
   var KEY_NAME = 'localchatter-name';
   var KEY_ROLE = 'localchatter-role';
+  var KEY_SOUND_ON = 'localchatter-sound-on';
+  var KEY_EMBED = 'localchatter-sound-embed';
+  var SND = window.LocalChatterSounds;
   var MAX_MESSAGES = 300;
   var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
   var INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
@@ -32,8 +35,8 @@
     member: { description: 'Chat as normal.' },
     monitor: { description: 'Also sees system messages, such as role changes.', viewSystem: true },
     admin: {
-      description: 'Sees system messages and who really sent spoofed messages, and can use debug mode.',
-      viewSystem: true, debug: true, impersonate: true, seeSpoofer: true
+      description: 'Sees system messages and who really sent spoofed messages, has a soundboard, and can use debug mode.',
+      viewSystem: true, debug: true, impersonate: true, seeSpoofer: true, soundboard: true
     }
   };
   function can(perm) { return !!(ROLES[state.role] || ROLES.member)[perm]; }
@@ -144,6 +147,7 @@
   function renderMessage(msg, mine) {
     var shown = msg.as || msg.from;
     var who = mine ? (msg.as ? 'You (as ' + msg.as.name + ')' : 'You') : (shown && shown.name) || 'Someone';
+    if (msg.sound) return renderSound(msg, mine, who);
     var effect = !msg.file && window.LocalChatterFX && window.LocalChatterFX.parse(msg.text);
     if (effect) { renderEffect(effect, msg, who); return null; }
 
@@ -186,6 +190,81 @@
     }
     append(box);
     return box;
+  }
+
+  // ---------------------------------------------------------------- sounds
+  // Plays from this device's cache, else the audio in the message, else its link.
+  // If none of those work, the message just says a sound was attempted.
+  var SOURCE_TEXT = { cache: 'from this device', message: 'from the message', link: 'from a link' };
+  var soundOn = true;
+
+  function soundEvent(name, source, played, reason) {
+    document.dispatchEvent(new CustomEvent('localchatter:sound', { detail: { name: name, source: source, played: played, reason: reason || '' } }));
+  }
+
+  function renderSound(msg, mine, who) {
+    var snd = msg.sound;
+    var box = el('article', 'msg' + (mine ? ' mine' : ''));
+    var meta = el('div', 'meta');
+    meta.appendChild(el('span', 'who', who));
+    var spoofer = !mine && spoofedBy(msg);
+    if (spoofer) meta.appendChild(el('span', 'spoof', 'really sent by ' + spoofer.name));
+    meta.appendChild(el('time', null, formatTime(msg.at || Date.now())));
+    box.appendChild(meta);
+    var body = el('div', 'sound');
+    var label = el('div');
+    label.appendChild(el('div', 'sound-name', '\uD83D\uDD0A ' + snd.name));
+    var status = el('div', 'sound-status', 'Loading\u2026');
+    label.appendChild(status);
+    body.appendChild(label);
+    box.appendChild(body);
+    append(box);
+
+    function unavailable(reason) {
+      box.classList.add('unavailable');
+      body.textContent = '';
+      body.appendChild(el('div', 'text', '\uD83D\uDD07 ' + (mine ? 'You' : who) + ' tried to play "' + snd.name + '", but it isn\'t available on this device.'));
+      soundEvent(snd.name, 'none', false, reason);
+    }
+
+    SND.resolve(snd).then(function (r) {
+      if (r.source === 'none') { unavailable('no source'); return; }
+      var btn = el('button', 'play');
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Play ' + snd.name);
+      btn.textContent = '\u25B6';
+      body.insertBefore(btn, label);
+      var where = SOURCE_TEXT[r.source];
+      function go(auto) {
+        status.textContent = 'Playing ' + where;
+        return r.play().then(function () {
+          status.textContent = 'Played ' + where;
+          soundEvent(snd.name, r.source, true);
+        }).catch(function (err) {
+          if (err && err.name === 'NotAllowedError') {
+            // The browser blocks sound until the page has been tapped.
+            status.textContent = 'Tap \u25B6 to play (' + where + ')';
+            soundEvent(snd.name, r.source, false, 'blocked');
+          } else if (r.source === 'link') {
+            unavailable('link failed'); // e.g. offline
+          } else {
+            status.textContent = 'Couldn\'t play this sound here';
+            soundEvent(snd.name, r.source, false, 'error');
+          }
+        });
+      }
+      btn.addEventListener('click', function () { SND.unlock(); go(false); });
+      if (soundOn) go(true);
+      else { status.textContent = 'Sounds are off \u00b7 tap \u25B6 to play'; soundEvent(snd.name, r.source, false, 'muted'); }
+    });
+    return box;
+  }
+
+  function sendSound(entry) {
+    if (!state.me) { systemLine('Connect to a server first.'); return; }
+    SND.toMessage(entry, load(KEY_EMBED) !== 'off', state.maxBytes).then(function (sound) {
+      if (!sendChat({ sound: sound })) systemLine('Not connected: "' + entry.name + '" wasn\'t sent');
+    });
   }
 
   function showImage(url, alt) {
@@ -465,6 +544,96 @@
     closeEffects();
   });
 
+  // ------------------------------------------------------- soundboard (admin)
+  function refreshSoundboard() {
+    return SND.library().then(function (lib) {
+      var wrap = $('sb-buttons');
+      wrap.textContent = '';
+      lib.forEach(function (e) {
+        var b = el('button', null, '\uD83D\uDD0A ' + e.name);
+        b.type = 'button';
+        b.title = e.linkOnly ? 'Plays from its link' : '';
+        b.addEventListener('click', function () { SND.unlock(); sendSound(e); });
+        wrap.appendChild(b);
+      });
+      $('sb-empty').hidden = lib.length > 0;
+      renderSoundList(lib);
+    });
+  }
+  $('sb-stop').addEventListener('click', function () { SND.stopAll(); });
+  $('sb-manage').addEventListener('click', function () {
+    closeEffects();
+    $('sound-embed').checked = load(KEY_EMBED) !== 'off';
+    $('sound-status').textContent = '';
+    refreshSoundboard();
+    $('sounds').showModal();
+  });
+
+  function soundStatus(text) { $('sound-status').textContent = text; }
+
+  function renderSoundList(lib) {
+    var ul = $('sound-list');
+    ul.textContent = '';
+    if (!lib.length) { ul.appendChild(el('li', 'empty-row', 'No sounds yet.')); return; }
+    lib.forEach(function (e) {
+      var li = el('li');
+      li.appendChild(el('span', 'name', e.name));
+      li.appendChild(el('span', 'meta', e.linkOnly ? 'link' : formatSize(e.size)));
+      var actions = [
+        ['\u25B6', 'Preview ' + e.name + ' (only on this device)', function () { SND.unlock(); SND.playEntry(e).catch(function () { soundStatus('Couldn\'t play "' + e.name + '".'); }); }],
+        ['\u270E', 'Rename ' + e.name, function () {
+          var n = window.prompt('Rename sound', e.name);
+          if (n && n.trim()) SND.rename(e.id, n).then(refreshSoundboard);
+        }],
+        ['\uD83D\uDDD1', 'Delete ' + e.name, function () {
+          if (window.confirm('Delete "' + e.name + '" from this device?')) SND.remove(e.id).then(refreshSoundboard);
+        }]
+      ];
+      actions.forEach(function (a) {
+        var b = el('button', null, a[0]);
+        b.type = 'button';
+        b.setAttribute('aria-label', a[1]);
+        b.addEventListener('click', a[2]);
+        li.appendChild(b);
+      });
+      ul.appendChild(li);
+    });
+  }
+
+  $('sound-files-add').addEventListener('click', function () { $('sound-files').click(); });
+  $('sound-files').addEventListener('change', function () {
+    var files = Array.prototype.slice.call(this.files);
+    this.value = '';
+    soundStatus('Adding ' + files.length + (files.length === 1 ? ' sound\u2026' : ' sounds\u2026'));
+    var added = [], failed = [];
+    Promise.all(files.map(function (f) {
+      return SND.addFile(f).then(function (e) { added.push(e.name); }, function (err) { failed.push(err.message); });
+    })).then(function () {
+      soundStatus((added.length ? 'Added ' + added.join(', ') + '. ' : '') + failed.join(' '));
+      refreshSoundboard();
+    });
+  });
+
+  $('sound-url-add').addEventListener('click', function () {
+    var url = $('sound-url').value.trim();
+    if (!url) { soundStatus('Paste a link to a sound file first.'); return; }
+    soundStatus('Downloading\u2026');
+    SND.addFromUrl(url, $('sound-url-name').value.trim()).then(function (e) {
+      soundStatus(e.cached
+        ? 'Downloaded "' + e.name + '" and saved it on this device.'
+        : 'Saved "' + e.name + '" as a link: that site doesn\'t allow downloading (or you\'re offline), so it needs internet to play.');
+      $('sound-url').value = '';
+      $('sound-url-name').value = '';
+      refreshSoundboard();
+    }, function (err) { soundStatus(err.message); });
+  });
+
+  $('sound-embed').addEventListener('change', function () { save(KEY_EMBED, this.checked ? 'on' : 'off'); });
+
+  // Browsers only allow sound after a tap; unlock audio on the first one.
+  document.addEventListener('pointerdown', function () { SND.unlock(); }, { capture: true });
+  document.addEventListener('keydown', function () { SND.unlock(); }, { capture: true });
+
   // ------------------------------------------------------------------- NFC
   // Web NFC is only available in Chrome on Android (over https). The button
   // stays hidden everywhere else.
@@ -685,6 +854,8 @@
     if (!can('debug') && state.debug) setDebug(false, true);
     $('role-line').textContent = 'Your role: ' + role + '. Type /role to see the others.';
     $('debug-row').hidden = !can('debug');
+    $('soundboard').hidden = !can('soundboard');
+    if (can('soundboard')) refreshSoundboard();
     updateDebugUi();
     if (quiet || old === role) return;
     systemLine('Your role is now ' + role + '.' + (can('viewSystem') ? ' You\'ll see system messages.' : ''));
@@ -701,9 +872,10 @@
 
   // Handles /role and /debug. Returns true if the text was a command (and must not be sent as chat).
   function runCommand(value) {
-    var m = /^\s*\/(role|debug)\b\s*([\s\S]*)$/i.exec(value);
+    var m = /^\s*\/(role|debug|sound)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     var cmd = m[1].toLowerCase();
+    if (cmd === 'sound') { soundCommand(m[2].trim()); return true; }
     var rest = m[2].trim().toLowerCase();
 
     if (cmd === 'role') {
@@ -717,6 +889,22 @@
     if (!can('debug')) { systemLine('Debug mode is for admins. Switch with /role admin.'); return true; }
     setDebug(rest ? rest === 'on' : !state.debug);
     return true;
+  }
+
+  // /sound lists the sounds on this device; /sound <name> plays one for everyone.
+  function soundCommand(name) {
+    if (!name) {
+      SND.list().then(function (l) {
+        systemLine(l.length
+          ? 'Sounds on this device: ' + l.map(function (e) { return e.name; }).join(', ') + '. Play one with /sound <name>.'
+          : 'No sounds on this device yet. Sounds others send are saved here, and admins can add their own.');
+      });
+      return;
+    }
+    SND.findByName(name).then(function (e) {
+      if (e) sendSound(e);
+      else systemLine('There\'s no sound called "' + name + '" on this device. Type /sound to see the ones you have.');
+    });
   }
 
   function setDebug(on, quiet) {
@@ -814,6 +1002,11 @@
     if (changed || !state.ws) { banner(null); state.retry = 0; connect(); }
   });
   $('relay').addEventListener('input', function () { this.setCustomValidity(''); });
+  $('sound-on').addEventListener('change', function () {
+    soundOn = this.checked;
+    save(KEY_SOUND_ON, soundOn ? 'on' : 'off');
+    if (!soundOn) SND.stopAll();
+  });
 
   $('disconnect').addEventListener('click', function () {
     disconnect();
@@ -849,6 +1042,8 @@
     state.name = load(KEY_NAME);
     var firstRun = !state.name;
     if (firstRun) state.name = 'Guest ' + Math.floor(1000 + Math.random() * 9000);
+    soundOn = load(KEY_SOUND_ON) !== 'off';
+    $('sound-on').checked = soundOn;
     var savedRole = load(KEY_ROLE);
     setRole(ROLES[savedRole] ? savedRole : 'member', true);
     registerServiceWorker();

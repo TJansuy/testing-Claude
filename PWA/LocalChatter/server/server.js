@@ -237,6 +237,14 @@ function sanitiseChat(msg, from) {
     const as = { id: clean(msg.as.id, 64), name: clean(msg.as.name, MAX_NAME) };
     if (as.id && as.name) out.as = as;
   }
+  // Sound: a hash id and name, plus optionally a link and/or the audio itself.
+  const snd = msg.sound;
+  if (snd && typeof snd === 'object' && typeof snd.id === 'string' && /^[\w-]{1,80}$/.test(snd.id)) {
+    out.sound = { id: snd.id, name: clean(snd.name, 60) || 'sound' };
+    if (typeof snd.type === 'string' && /^audio\/[\w.+-]+$/.test(snd.type)) out.sound.type = snd.type.slice(0, 60);
+    if (typeof snd.url === 'string' && /^https?:\/\//i.test(snd.url)) out.sound.url = snd.url.slice(0, 2000);
+    if (typeof snd.data === 'string' && /^[A-Za-z0-9+/=]*$/.test(snd.data)) out.sound.data = snd.data;
+  }
   const f = msg.file;
   if (f && typeof f === 'object' && typeof f.data === 'string' && /^[A-Za-z0-9+/=]*$/.test(f.data)) {
     out.file = {
@@ -246,7 +254,7 @@ function sanitiseChat(msg, from) {
       data: f.data,
     };
   }
-  return out.text || out.file ? out : null;
+  return out.text || out.file || out.sound ? out : null;
 }
 
 // Small app-level notices (role changes, targeted effects, debug mode). The relay

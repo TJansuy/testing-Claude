@@ -35,6 +35,15 @@
       <button type="button" data-effect="lightning">⚡ Lightning</button>
     </div>
     <label id="fx-target" class="fx-target" hidden>For <select id="fx-to" aria-label="Who sees the effect"></select></label>
+    <div id="soundboard" class="soundboard" hidden>
+      <div class="sb-head">
+        <strong>Soundboard</strong>
+        <button id="sb-stop" type="button" class="link-button">Stop sounds</button>
+        <button id="sb-manage" type="button" class="link-button">Manage sounds</button>
+      </div>
+      <div id="sb-buttons" class="effects-buttons"></div>
+      <p id="sb-empty" class="hint">No sounds yet. Tap <strong>Manage sounds</strong> to add some.</p>
+    </div>
     <p class="hint" id="fx-hint">Everyone in the chat sees it. You can also type <code>/fire</code>, <code>/earthquake</code> or <code>/lightning</code>.</p>
   </div>
 
@@ -81,6 +90,8 @@
       <p class="hint">Open the LocalChatter server's page on this device (for example <code>https://192.168.1.50:8443</code>) and tap <strong>Set up LocalChatter</strong>, or type its address here.</p>
       <p class="hint" id="server-link-row" hidden>Can't connect? <a id="server-link" target="_blank" rel="noopener">Open the server page</a> and accept its certificate, then try again.</p>
 
+      <label class="check"><input type="checkbox" id="sound-on" checked> Play sounds sent to the chat</label>
+
       <h3>Role</h3>
       <p class="hint" id="role-line">Your role: member. Type /role to see the others.</p>
       <label class="check" id="debug-row" hidden><input type="checkbox" id="debug-toggle"> Debug mode: target effects at anyone and send messages as other people</label>
@@ -91,6 +102,32 @@
       <div class="actions">
         <button id="disconnect" type="button" class="secondary">Disconnect</button>
         <button id="save" type="submit" value="save">Save &amp; connect</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="sounds" aria-labelledby="sounds-title">
+    <form method="dialog" id="sounds-form">
+      <h2 id="sounds-title">Sounds</h2>
+      <ul id="sound-list" class="sound-list"></ul>
+
+      <h3>Add sound files</h3>
+      <input id="sound-files" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm,.opus" multiple hidden>
+      <button id="sound-files-add" type="button" class="secondary-button">Choose files…</button>
+
+      <h3>Add from a link</h3>
+      <input id="sound-url" type="url" inputmode="url" placeholder="https://example.com/airhorn.mp3" spellcheck="false" autocapitalize="off">
+      <div class="row">
+        <input id="sound-url-name" placeholder="Name (optional)" maxlength="60">
+        <button id="sound-url-add" type="button" class="secondary-button">Download</button>
+      </div>
+      <p class="hint">Downloaded sounds are kept on this device so they work offline. If a site doesn't allow downloading, the sound is saved as a link instead and needs internet to play.</p>
+
+      <label class="check"><input type="checkbox" id="sound-embed" checked> Include the audio in messages, so devices that don't have the sound can still play it</label>
+      <p id="sound-status" class="hint" role="status"></p>
+
+      <div class="actions">
+        <button type="submit" value="close">Done</button>
       </div>
     </form>
   </dialog>
@@ -110,6 +147,7 @@
   </dialog>
 
   <script src="effects.js"></script>
+  <script src="sounds.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

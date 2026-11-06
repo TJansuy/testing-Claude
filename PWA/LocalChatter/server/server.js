@@ -239,6 +239,8 @@ function sanitiseChat(msg, from) {
   const text = typeof msg.text === 'string' ? msg.text.slice(0, MAX_TEXT) : '';
   if (text.trim()) out.text = text;
   if (msg.via === 'nfc' || msg.via === 'qr') out.via = msg.via; // sent by scanning an NFC tag or QR code
+  // Language the message is written in. Passed through; each app decides how it looks.
+  if (typeof msg.lang === 'string') { const lang = clean(msg.lang, 24); if (lang) out.lang = lang; }
   // "Send as" (admin debug mode in the app). Passed through as-is: roles live in the app, not here.
   if (msg.as && typeof msg.as === 'object') {
     const as = { id: clean(msg.as.id, 64), name: clean(msg.as.name, MAX_NAME) };

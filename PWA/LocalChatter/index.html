@@ -110,6 +110,13 @@
       <label class="check"><input type="checkbox" id="sound-on" checked> Play sounds sent to the chat</label>
       <label class="check" id="vibrate-row" hidden><input type="checkbox" id="vibrate-on" checked> Vibrate for effects (earthquakes rumble)</label>
 
+      <h3>Languages</h3>
+      <label for="langs">Languages you understand</label>
+      <input id="langs" placeholder="Default, System, Elvish" spellcheck="false" autocapitalize="words">
+      <label for="speak">You write in</label>
+      <select id="speak"></select>
+      <p class="hint">Messages in languages you don't understand look like gibberish. Join and leave lines are in System. You can also use <code>/languages</code> and <code>/speak</code>.</p>
+
       <h3>Role</h3>
       <p class="hint" id="role-line">Your role: member. Type /role to see the others.</p>
       <label class="check" id="debug-row" hidden><input type="checkbox" id="debug-toggle"> Debug mode: target effects at anyone and send messages as other people</label>
@@ -170,6 +177,7 @@
 
   <script src="effects.js"></script>
   <script src="sounds.js"></script>
+  <script src="languages.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

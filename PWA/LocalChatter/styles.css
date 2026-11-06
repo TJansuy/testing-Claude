@@ -552,3 +552,46 @@ body.fx-zalgo .topbar h1 { text-shadow: 2px 0 rgb(255 0 60 / .6), -2px 0 rgb(0 2
 }
 .fx-dock button .left { font-weight: 400; opacity: .75; font-variant-numeric: tabular-nums; }
 body.wide .fx-dock { right: calc(clamp(320px, 30vw, 440px) + 16px); bottom: 84px; }
+
+/* Sender colours: each sender's bubbles get their own tint (by name) */
+.msg:not(.mine)[style*="--hue"] {
+  background: hsl(var(--hue) 75% 95%);
+  border-color: hsl(var(--hue) 45% 80%);
+}
+.msg:not(.mine)[style*="--hue"] .who { color: hsl(var(--hue) 60% 30%); }
+@media (prefers-color-scheme: dark) {
+  .msg:not(.mine)[style*="--hue"] {
+    background: hsl(var(--hue) 28% 19%);
+    border-color: hsl(var(--hue) 30% 32%);
+  }
+  .msg:not(.mine)[style*="--hue"] .who { color: hsl(var(--hue) 75% 78%); }
+}
+
+/* Messages in a language: an extra ring in that language's colour, plus a tag */
+.msg.in-lang {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px hsl(var(--lang-hue) 70% 50%);
+  margin: 4px;
+}
+.msg.in-lang.mine { margin-right: 4px; }
+.msg .lang-tag {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: hsl(var(--lang-hue) 70% 50% / .18);
+  color: inherit;
+  font-weight: 600;
+}
+.msg.foreign .text { font-style: italic; letter-spacing: .02em; }
+.composer textarea.in-lang { border-color: hsl(var(--lang-hue) 70% 50%); box-shadow: 0 0 0 1px hsl(var(--lang-hue) 70% 50%); }
+dialog select#speak {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+/* Busy message headers (name, language, whisper, time) wrap whole items, not letters */
+.msg .meta { flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
+.msg .meta > * { white-space: nowrap; }

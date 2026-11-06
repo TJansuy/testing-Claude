@@ -17,6 +17,7 @@
   // Display mode: opened from <app>/Display (which forwards here with ?display).
   var DISPLAY = new URLSearchParams(location.search).has('display');
   var SND = window.LocalChatterSounds;
+  var LANG = window.LocalChatterLanguages;
   var MAX_MESSAGES = 300;
   var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
   var INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
@@ -116,6 +117,40 @@
 
   function systemLine(text) { if (!DISPLAY) append(el('p', 'system', text)); }
 
+  // Text in a language: shown clearly if this device understands it, otherwise as
+  // gibberish. The original is kept on the element so it can be shown again if
+  // the viewer later learns the language.
+  function langText(tag, cls, text, lang, seed) {
+    var e = el(tag, (cls ? cls + ' ' : '') + 'lc');
+    e._lc = { text: text, lang: lang, seed: seed };
+    e.textContent = LANG.render(text, lang, seed);
+    if (!LANG.understands(lang)) e.title = 'In ' + LANG.nameOf(lang) + ', which you don\'t understand';
+    return e;
+  }
+  // Join/leave lines and system notices are in the System language.
+  function systemNotice(text, cls) {
+    if (!DISPLAY) append(langText('p', 'system' + (cls ? ' ' + cls : ''), text, 'system', text + '|' + Date.now()));
+  }
+  function refreshLanguages() {
+    document.querySelectorAll('.lc').forEach(function (n) {
+      if (!n._lc) return;
+      var known = LANG.understands(n._lc.lang);
+      n.textContent = LANG.render(n._lc.text, n._lc.lang, n._lc.seed);
+      n.title = known ? '' : 'In ' + LANG.nameOf(n._lc.lang) + ', which you don\'t understand';
+      var bubble = n.closest('.msg');
+      if (bubble) bubble.classList.toggle('foreign', !known);
+    });
+    var sp = LANG.speaking();
+    var t = $('text');
+    t.placeholder = sp ? 'Message everyone in ' + sp : 'Message everyone';
+    t.classList.toggle('in-lang', !!sp);
+    if (sp) t.style.setProperty('--lang-hue', LANG.hue(sp)); else t.style.removeProperty('--lang-hue');
+  }
+  // Each sender gets their own bubble colour (by the name shown, so a spoof isn't given away).
+  function colourBubble(box, person) {
+    if (person && person.name) box.style.setProperty('--hue', LANG.hue(person.name));
+  }
+
   function base64ToBlob(b64, type) {
     var bin = atob(b64);
     var bytes = new Uint8Array(bin.length);
@@ -205,8 +240,16 @@
     if (effect) { renderEffect(effect, msg, who); return null; }
 
     var box = el('article', 'msg' + (mine ? ' mine' : ''));
+    if (!mine) colourBubble(box, shown);
     var meta = el('div', 'meta');
     meta.appendChild(el('span', 'who', who));
+    var inLang = !LANG.isDefault(msg.lang) ? msg.lang : '';
+    if (inLang) {
+      box.classList.add('in-lang');
+      box.style.setProperty('--lang-hue', LANG.hue(inLang));
+      if (!mine && !LANG.understands(inLang)) box.classList.add('foreign');
+      meta.appendChild(el('span', 'lang-tag', '\uD83D\uDDE3 ' + LANG.nameOf(inLang)));
+    }
     if (msg.via === 'nfc') meta.appendChild(el('span', 'via', 'via NFC tag'));
     if (msg.via === 'qr') meta.appendChild(el('span', 'via', 'via QR code'));
     // Only people who can see system messages are told who really sent a spoofed message.
@@ -220,7 +263,12 @@
     meta.appendChild(el('time', null, formatTime(msg.at || Date.now())));
     box.appendChild(meta);
 
-    if (msg.text) box.appendChild(el('div', 'text', msg.text));
+    if (msg.text) {
+      // You always read your own messages; others' depend on your languages.
+      // Ordinary messages are in Default, which a device can also choose not to understand.
+      box.appendChild(mine ? el('div', 'text', msg.text) : langText('div', 'text', msg.text, inLang || 'default', msg.id || msg.text));
+      if (!mine && !inLang && !LANG.understands('default')) box.classList.add('foreign');
+    }
 
     if (msg.file) {
       var f = msg.file;
@@ -263,6 +311,7 @@
   function renderSound(msg, mine, who) {
     var snd = msg.sound;
     var box = el('article', 'msg' + (mine ? ' mine' : ''));
+    if (!mine) colourBubble(box, msg.as || msg.from);
     var meta = el('div', 'meta');
     meta.appendChild(el('span', 'who', who));
     var spoofer = !mine && spoofedBy(msg);
@@ -492,19 +541,19 @@
       case 'join':
         state.peers.set(msg.peer.id, msg.peer);
         renderPeople();
-        systemLine(msg.peer.name + ' joined');
+        systemNotice(msg.peer.name + ' joined');
         break;
       case 'leave':
         state.peers.delete(msg.peer.id);
         renderPeople();
-        systemLine(msg.peer.name + ' left');
+        systemNotice(msg.peer.name + ' left');
         break;
       case 'rename':
         if (state.me && msg.peer.id === state.me.id) { state.me = msg.peer; renderPeople(); break; }
         var old = state.peers.get(msg.peer.id);
         state.peers.set(msg.peer.id, msg.peer);
         renderPeople();
-        if (old) systemLine(old.name + ' is now ' + msg.peer.name);
+        if (old) systemNotice(old.name + ' is now ' + msg.peer.name);
         break;
       case 'chat':
         // Whispers reach every device; each app only shows them to their recipients
@@ -529,6 +578,9 @@
     if (!state.ws || state.ws.readyState !== WebSocket.OPEN || !state.me) return false;
     payload.type = 'chat';
     payload.id = randomId();
+    // Written in your chosen language (effects stay effects, in no language).
+    var sp = LANG.speaking();
+    if (sp && payload.text && !window.LocalChatterFX.parseFull(payload.text)) payload.lang = sp;
     // Admin debug mode: send as someone else.
     var as = state.debug && can('impersonate') ? $('send-as').value : '';
     var asPeer = as && as !== state.me.id && state.peers.get(as);
@@ -1098,12 +1150,14 @@
 
   // Handles /role and /debug. Returns true if the text was a command (and must not be sent as chat).
   function runCommand(value) {
-    var m = /^\s*\/(role|debug|sound|whisper|w|spy)\b\s*([\s\S]*)$/i.exec(value);
+    var m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     var cmd = m[1].toLowerCase();
     if (cmd === 'sound') { soundCommand(m[2].trim()); return true; }
     if (cmd === 'whisper' || cmd === 'w') { whisperCommand(m[2]); return true; }
     if (cmd === 'spy') { spyCommand(m[2].trim()); return true; }
+    if (cmd === 'speak') { speakCommand(m[2].trim()); return true; }
+    if (cmd === 'languages' || cmd === 'language' || cmd === 'langs') { languagesCommand(m[2].trim()); return true; }
     var rest = m[2].trim().toLowerCase();
 
     if (cmd === 'role') {
@@ -1118,6 +1172,42 @@
     if (!can('debug')) { systemLine('Debug mode is for admins. Switch with /role admin.'); return true; }
     setDebug(rest ? rest === 'on' : !state.debug);
     return true;
+  }
+
+  // ------------------------------------------------------------- languages
+  // /languages                       what you understand and write in
+  // /languages add Elvish, Dwarvish  learn languages
+  // /languages remove Elvish         forget one
+  // /languages reset                 back to Default and System
+  function languagesCommand(rest) {
+    var m = /^(add|remove|forget|learn|reset)\b\s*([\s\S]*)$/i.exec(rest);
+    if (!rest) { describeLanguages(); return; }
+    if (!m) { systemLine('Use /languages add <names>, /languages remove <names> or /languages reset.'); return; }
+    var verb = m[1].toLowerCase();
+    var names = LANG.split(m[2]);
+    if (verb === 'reset') { LANG.reset(); refreshLanguages(); describeLanguages(); return; }
+    if (!names.length) { systemLine('Name the languages, e.g. /languages ' + verb + ' Elvish, Dwarvish'); return; }
+    if (verb === 'add' || verb === 'learn') LANG.add(names); else LANG.remove(names);
+    refreshLanguages();
+    describeLanguages();
+  }
+  function describeLanguages() {
+    var list = LANG.known();
+    systemLine('You understand: ' + (list.length ? list.join(', ') : 'nothing at all') + '. You write in ' + (LANG.speaking() || 'Default') +
+      '.\nChange with /languages add <names>, /languages remove <names>, /languages reset, and /speak <language>.');
+  }
+  // /speak Elvish   write your messages in Elvish (must be one you understand)
+  // /speak default  back to Default
+  function speakCommand(rest) {
+    if (!rest) { systemLine('You write in ' + (LANG.speaking() || 'Default') + '. Change with /speak <language>.'); return; }
+    var lang = LANG.cleanName(rest);
+    if (!LANG.isDefault(lang) && !LANG.understands(lang)) {
+      systemLine('You don\'t understand ' + lang + '. Add it first with /languages add ' + lang + '.');
+      return;
+    }
+    LANG.setSpeaking(LANG.isDefault(lang) ? '' : LANG.nameOf(lang)); // use your own spelling
+    refreshLanguages();
+    systemLine('You now write in ' + (LANG.speaking() || 'Default') + '.');
   }
 
   // -------------------------------------------------------------- whispers
@@ -1270,7 +1360,7 @@
     else if (msg.kind === 'effect') text = name(msg.from) + ' triggered ' + msg.name + ' for ' + (msg.to === 'all' ? 'everyone' : msg.to === me ? 'you' : nameOf(msg.to));
     else if (msg.kind === 'debug') text = name(msg.from) + ' turned debug mode ' + (msg.on ? 'on' : 'off');
     else return;
-    append(el('p', 'system audit', '🛡️ ' + text));
+    systemNotice('🛡️ ' + text, 'audit');
   }
 
   $('debug-toggle').addEventListener('change', function () { setDebug(this.checked); });
@@ -1282,12 +1372,33 @@
   function openSettings() {
     $('name').value = state.name;
     $('relay').value = state.relay;
+    fillLanguageSettings();
     var page = serverPage(state.relay);
     $('server-link-row').hidden = !page;
     if (page) $('server-link').href = page;
     renderPeople();
     if (!dialog.open) dialog.showModal();
   }
+
+  function fillLanguageSettings() {
+    $('langs').value = LANG.known().join(', ');
+    var sel = $('speak');
+    sel.textContent = '';
+    sel.appendChild(new Option('Default', ''));
+    LANG.known().filter(function (n) { return !LANG.isDefault(n); }).forEach(function (n) { sel.appendChild(new Option(n, n)); });
+    sel.value = LANG.speaking();
+    if (sel.value !== LANG.speaking()) sel.value = '';
+  }
+  // Update the "write in" choices as the list is edited.
+  $('langs').addEventListener('input', function () {
+    var keep = $('speak').value;
+    var sel = $('speak');
+    sel.textContent = '';
+    sel.appendChild(new Option('Default', ''));
+    LANG.split(this.value).filter(function (n) { return !LANG.isDefault(n); }).forEach(function (n) { sel.appendChild(new Option(n, n)); });
+    sel.value = keep;
+    if (sel.value !== keep) sel.value = '';
+  });
 
   $('open-settings').addEventListener('click', openSettings);
   $('status').addEventListener('click', openSettings);
@@ -1302,6 +1413,9 @@
       return;
     }
     if (name) save(DISPLAY ? KEY_DISPLAY_NAME : KEY_NAME, name);
+    LANG.setKnown(LANG.split($('langs').value));
+    LANG.setSpeaking($('speak').value);
+    refreshLanguages();
     if (name && name !== state.name) {
       state.name = name;
       if (state.ws && state.ws.readyState === WebSocket.OPEN && state.me) {
@@ -1369,6 +1483,7 @@
     var savedRole = load(KEY_ROLE);
     applyLayout();
     renderFavourites();
+    refreshLanguages();
     if (DISPLAY) { setRole('display', true); startDisplay(); }
     else setRole(ROLES[savedRole] && savedRole !== 'display' ? savedRole : 'member', true);
     registerServiceWorker();

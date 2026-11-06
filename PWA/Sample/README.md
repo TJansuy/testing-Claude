@@ -20,8 +20,9 @@ devices, and clearing site data resets it.
 | --- | --- |
 | `index.html` | The app page. |
 | `styles.css` | Styling (light and dark). |
-| `app.js` | Counter logic, service worker registration, status display, install button. |
-| `sw.js` | Service worker: caches the app shell so it works offline. |
+| `src/app.ts` | Counter logic, service worker registration, status display, install button (TypeScript). |
+| `src/sw.ts` | Service worker: caches the app shell so it works offline (TypeScript). |
+| `app.js`, `sw.js` | Built from `src/` by `npm run build` at the repository root. Committed so it runs without a build step. |
 | `manifest.webmanifest` | App name, colours, icons, display mode. |
 | `icons/` | SVG icon plus 192px and 512px PNGs. |
 
@@ -46,5 +47,6 @@ To test locally first, run `python3 -m http.server` from the repo root and open
 
 ## Updating
 
-When you change any cached file, bump `CACHE` in `sw.js` (e.g. `hello-pwa-v2`)
+After editing `src/`, run `npm run build` (and `npm run check`) from the repository root.
+When you change any cached file, bump `CACHE` in `src/sw.ts` (e.g. `hello-pwa-v2`)
 so returning visitors get the new version.

@@ -1,10 +1,17 @@
-FROM node:22-alpine
+# Build stage: compile the TypeScript relay.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.json ./
+RUN npm ci
+COPY src ./src
+RUN npm run check && npm run build
 
+# Run stage: just the built server and its runtime dependencies.
+FROM node:22-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
-
-COPY server.js ./
+COPY --from=build /app/dist ./dist
 RUN mkdir -p /certs && chown node:node /certs
 
 ENV NODE_ENV=production \
@@ -20,4 +27,4 @@ VOLUME ["/certs"]
 HEALTHCHECK --interval=30s --timeout=3s \
   CMD node -e "require(process.env.TLS==='off'?'http':'https').get({host:'127.0.0.1',port:process.env.PORT,path:'/health',rejectUnauthorized:false},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["node", "dist/server.js"]

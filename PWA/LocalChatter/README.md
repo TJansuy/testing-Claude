@@ -47,382 +47,56 @@ install, open LocalChatter from the Home Screen, tap the settings button and
 enter the server address shown on the setup page (e.g.
 `wss://192.168.1.50:8443/ws`). Accept the certificate in Safari first.
 
-## Effects
+## Features
 
-Send one of these as a message, or tap the ✨ button and pick one. It plays for
-everyone in the chat, including you, and shows as a line like
-"🔥 Alice set the chat on fire" instead of a text bubble.
-
-| Message | Effect |
+| Topic | |
 | --- | --- |
-| `/fire` | Flames rise from the bottom of the screen. |
-| `/earthquake` (or `/quake`) | The screen shakes and Android phones rumble. |
-| `/lightning` | Lightning strikes, with two flashes per strike. |
-| `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text, and the dashboard glitches. |
+| [Effects](docs/effects.md) | `/fire`, `/earthquake`, `/lightning`, `/zalgo`; durations, Stop buttons, favourites, rumble. |
+| [Sounds](docs/sounds.md) | Sending sounds; the admin soundboard and sound library. |
+| [Scanning](docs/scanning.md) | Sending what's in a QR code or NFC tag. |
+| [Roles, whispers and spying](docs/roles-and-whispers.md) | `/role`, admin debug mode, `/whisper`, `/spy`. |
+| [Languages and colours](docs/languages.md) | `/languages`, `/speak`, gibberish, sender and language colours. |
+| [Screens](docs/screens.md) | The dashboard and Settings, the auto-hiding header, display mode, background messages and notifications. |
+| [The relay server](docs/server.md) | Settings, endpoints, privacy and how it works. |
 
-### How long they last
+## Developing
 
-Every effect takes the same options after its name:
+The app and the relay are written in TypeScript.
 
-| Option | Example | Lasts |
+| What | Source | Built to |
 | --- | --- | --- |
-| *(none)* | `/fire` | Its usual length: a short burst for fire, earthquake and lightning; 10 seconds for zalgo. |
-| seconds or minutes | `/fire 30`, `/quake 30s`, `/lightning 2m` | That long, up to 10 minutes. |
-| `on` | `/zalgo on` | Until anyone sends the matching `off`. |
-| `off` | `/fire off` | Stops it now ("Cara put out the fire"). |
-
-Long fire keeps burning; a long earthquake shakes (and rumbles) in waves; long
-lightning strikes again every 1.2–3 seconds, so there are never more than two
-flashes in any second. Sending an effect again while it's running resets its
-timer.
-
-Effects never overlap: only one runs at a time. Starting a different effect
-replaces the current one straight away (no fading flames under the lightning),
-and the sender's Stop button for the old one goes away. Commands are case-insensitive and only count when they're the whole
-message, so "I like /fire" and "/fire banana" are sent as normal text.
-
-While the chat is corrupted by zalgo, messages that arrive are corrupted too,
-but the message box stays readable and the dashboard buttons keep working.
-When it ends, every bit of text goes back exactly as it was.
-
-If a device has **Reduce motion** turned on, it shows a soft glow for as long
-as the effect lasts instead: no shaking, no flashing, no glitching (zalgo still
-scrambles the text).
-
-### Stopping your own effects
-
-While an effect **you** sent is running, a **■ Stop** button appears in the
-corner of your screen (with the time left). It stays on top of the flames and
-flashes, isn't shaken by earthquakes and isn't scrambled by zalgo. Tapping it
-stops the effect for everyone it went to: the whole chat, the recipients of a
-whisper, or the person an admin aimed it at. It disappears when the effect
-ends, or when someone else turns it off.
-
-### Favourites
-
-Every effect line in the chat has a ☆. Tap it to keep that effect in
-**Favourites** (in the ✨ tray, or the dashboard on wide screens):
-
-- Your own effects get **Resend**; someone else's get **Echo** (labelled
-  *from Bob*). Either way it plays for everyone again, sent by you.
-- ✕ removes a favourite. Favourites are kept on the device (up to 20).
-
-### Rumble
-
-On Android, an earthquake makes the phone rumble along with the shake: a quick
-build, a main shock with random jolts, a smaller aftershock, then a fade. It's
-randomised, so each earthquake feels different. Fire and lightning give a short buzz.
-
-Phones can only switch the vibration motor on and off, not set its strength, so
-intensity is made from very short pulses: more "on" per pulse feels stronger.
-
-- Turn it off in Settings (*Vibrate for effects*). The setting only appears on
-  devices that can vibrate.
-- iPhone and iPad can't vibrate from web pages, so they only shake on screen.
-- Android only vibrates after you've tapped the page at least once, and not
-  when the phone's vibration or battery saver blocks it.
-
-## Languages
-
-Every device has a list of languages it understands, starting with **Default**
-and **System**. Messages come in one of three kinds:
-
-- **Default:** ordinary messages.
-- **System:** join, leave and rename lines, and system notices for monitors and admins.
-- **A named language,** such as Elvish: messages written by someone who's chosen to write in it.
-
-If you understand a message's language, you read it normally. If you don't, it
-shows as gibberish in that language's own style. Each language always looks the
-same (System looks like machine code). The gibberish keeps the message's shape:
-same number of words, punctuation and capitals. It's the same on every device,
-and it changes back to the real text if you learn the language later.
-
-| Command | Does |
-| --- | --- |
-| `/languages` | Shows what you understand and write in. |
-| `/languages add Elvish, Dwarvish` | Learn languages. |
-| `/languages remove Elvish` | Forget one. Removing **System** hides join/leave lines; removing **Default** hides ordinary messages. |
-| `/languages reset` | Back to Default and System. |
-| `/speak Elvish` | Write your messages in Elvish (one you understand). The message box says *Message everyone in Elvish*. |
-| `/speak default` | Back to ordinary messages. |
-
-Settings has the same: *Languages you understand* and *You write in*.
-
-- Messages in a named language get a coloured ring (each language its own
-  colour) and a *🗣 Elvish* tag. A whisper in a language has both its dashed
-  border and the ring.
-- You always read your own messages, and replies to your own commands are never
-  turned into gibberish.
-- Effects (`/fire` and so on) aren't affected by language.
-- Like whispers, the real text reaches every device and each app decides what
-  to show, so anyone inspecting the traffic could read it.
-
-## Sender colours
-
-Each person's messages have their own bubble colour, worked out from their
-name, so they look the same on every device, in light and dark mode. Your own
-messages keep the app's teal. A message an admin sent *as* someone uses that
-person's colour.
-
-## In the background
-
-While LocalChatter is open but in the background (you've switched to another
-app or tab, or the screen is off), it keeps receiving messages for as long as
-the browser lets it run:
-
-- **Notifications.** Turn on *Notify me about new messages while LocalChatter is
-  in the background* in Settings. You get one notification that updates with
-  the latest message and a count ("5 new messages — Bob: see you at 5").
-  Whispers for other people never notify, and messages in languages you don't
-  understand stay gibberish. Tapping it brings LocalChatter back.
-- **Catching up.** Messages that arrive while you're away are shown when you
-  come back. If more than 50 arrived, only the latest 50 are shown and the
-  chat says how many older ones were skipped.
-- Effects and sounds from while you were away aren't replayed: their lines
-  appear, and sounds have a ▶ to play them.
-
-How long a browser keeps a background app running is up to the browser:
-Android Chrome allows several minutes; iPhone and iPad pause it almost
-straight away. When it comes back, it reconnects and carries on, but anything
-sent while it was paused or disconnected isn't received (the relay keeps no history).
-
-iPhone and iPad web apps can only show notifications through internet push
-(Web Push via Apple's servers), which would need the relay to store
-subscriptions and an internet connection, so LocalChatter doesn't use it. The
-notification option is shown as unavailable there.
-
-## Wide screens (dashboard)
-
-On screens 16:10 or wider and at least 960 px across (laptops, and tablets in
-landscape), the ✨ tray becomes a dashboard beside the chat that stays open:
-**Effects**, the **Soundboard** (admins) and **Favourites**. Using it doesn't
-close it. Narrower screens, 4:3 tablets and portrait screens keep the normal
-layout, and it switches live when you rotate or resize. Display mode never
-shows the dashboard.
-
-## Sounds
-
-Anyone can send a sound with `/sound <name>`; `/sound` lists the sounds on
-your device. Admins also get a **soundboard** in the ✨ tray.
-
-When a sound arrives, each device plays it from the first of these that works:
-
-1. **This device's cache.** Sounds are identified by a fingerprint (hash) of
-   their audio, so a device that already has a sound plays its own copy.
-2. **The audio in the message.** If the sender included it (on by default), it
-   plays from there and is saved on the device for next time.
-3. **The sound's link,** if it came from one.
-
-If none works (for example, no copy, no audio in the message, and the link is
-unreachable offline), the chat just shows "Alice tried to play "airhorn", but
-it isn't available on this device."
-
-- Sounds received from others are saved, so you can send them on with
-  `/sound`. The 40 most recently used are kept; older ones are removed.
-- Turn sounds off in Settings (*Play sounds sent to the chat*). Sound messages
-  still appear, with a ▶ button to play them yourself.
-- Phones don't allow sound until you've tapped the page once. If a sound
-  arrives before that, it shows *Tap ▶ to play*.
-
-### Soundboard (admins)
-
-Open the ✨ tray. Tap a sound to play it for everyone (in debug mode, *Send as*
-works for sounds too). **Stop sounds** stops everything playing on your device.
-
-**Manage sounds** opens your library:
-
-- **Choose files…** adds audio files from your device (up to 10 MB each).
-- **Add from a link** downloads a sound and keeps it on the device, so it works
-  offline. If the site doesn't allow downloading from other sites, or you're
-  offline, it's saved as a link instead and needs internet to play.
-- ▶ previews a sound on your device only; ✎ renames; 🗑 deletes.
-- **Include the audio in messages** (on by default) lets devices that don't
-  have a sound play it. Turn it off to send only the name and link, which is
-  lighter but means devices without the sound can't play it.
-
-Sounds are stored in the browser's IndexedDB on each device. Nothing is stored
-on the server.
-
-Playing a sound from its link makes each device fetch that link, so the site
-hosting it can see those devices' internet addresses.
-
-## Scanning QR codes and NFC tags
-
-Tap the **Scan** button next to the message box. Whatever the QR code or tag
-holds is sent to the chat, marked *via QR code* or *via NFC tag*. A code or
-tag containing `/fire`, `/earthquake` or `/lightning` plays that effect for everyone.
-
-### QR codes (every device with a camera, including iPhone and iPad)
-
-The camera opens. Point it at a QR code; as soon as it's read, the scanner
-closes and the contents are sent. The camera is switched off when the scanner closes.
-
-Decoding uses the browser's built-in barcode reader where there is one, and
-otherwise the bundled [jsQR](https://github.com/cozmo/jsQR) library
-(`vendor/jsQR.js`, Apache-2.0). That makes it work offline and on Safari.
-The browser asks for camera permission the first time.
-
-### NFC tags (Chrome on Android)
-
-Where Web NFC exists, **Scan** offers *QR code* or *NFC tags*. Choose
-*NFC tags*, then hold tags to the back of the phone. It keeps listening, and
-the Scan button pulses, until you choose *Stop NFC*.
-
-- Text and URL records are sent as text, one per line. Smart posters, and
-  text-like MIME records such as JSON, are read too.
-- Binary data is summarised (e.g. `[image/png data, 4 B]`) rather than sent raw.
-- An empty tag sends its serial number.
-- Holding the same tag in place doesn't send it again; tap it again after a few
-  seconds to resend.
-
-Web NFC only exists in Chrome on Android. Elsewhere, Scan goes straight to the
-QR scanner. The phone's NFC must be turned on, and Chrome asks for permission
-the first time.
-
-## Roles
-
-Type `/role` to see your role and the others. Switch with `/role <name>`.
-`/role` commands are never sent to the chat. Anyone can switch to any role,
-and the app remembers your role on this device.
-
-| Role | Sees |
-| --- | --- |
-| `member` (default) | The chat. |
-| `monitor` | The chat, plus **system messages**. |
-| `spy` | The chat, plus **whispers** to or from the people they're spying on. |
-| `display` | Only effects and sounds, never messages. Opened from the `/Display` link (see below). |
-| `admin` | The chat, system messages, and who really sent a spoofed message. Has a **soundboard** and can use **debug mode**. |
-
-**System messages** are role changes ("🛡️ Bob changed role: member → monitor"),
-targeted effects ("🛡️ Alice triggered lightning for Bob") and debug mode being
-turned on or off.
-
-Roles live entirely in the app. The relay server keeps no role state and
-enforces nothing: it passes every message to everyone, and each app decides
-what to show based on its own role. So hidden things (system messages,
-"really sent by") are hidden on screen, but they're still in the data each
-device receives. Someone inspecting the traffic could see them.
-
-### Debug mode (admins)
-
-Turn it on with `/debug` (or `/debug on` / `/debug off`), or in Settings.
-
-- **Effects for anyone.** The ✨ tray gets a *For* picker: play any effect for
-  one person, or everyone. Only the people chosen play it, and they aren't told
-  who triggered it. Monitors and admins see a system message.
-- **Send as someone else.** A *Send as* picker above the message box sends
-  messages (and effects) that appear to come from another person in the room.
-  Only **admins** see the message marked *really sent by Alice*. Everyone else,
-  monitors included, sees it as genuine.
-
-## Whispers
-
-`/whisper Bob, Cara: see you at 5` (or `/w`) sends a message only Bob and Cara
-see. Names are matched case-insensitively against the people in the room. You
-can also open Settings and tap someone's name under *People here* to start a
-whisper to them.
-
-Whispers show with a dashed border and *whisper to you, Cara*. An effect
-command in a whisper (`/whisper Bob: /fire`) only plays for the recipients.
-
-Like everything else, the relay sends whispers to every device, and each app
-only shows them to the recipients. Anyone inspecting the traffic could read them.
-
-### Spying
-
-In the `spy` role:
-
-- `/spy Bob, Cara` shows whispers sent to or from Bob or Cara (including ones
-  an admin sent *as* them), marked *spied whisper*.
-- `/spy all` shows every whisper; `/spy off` stops; `/spy` says who you're spying on.
-
-Spy targets are matched by name and remembered on the device.
-
-## Display
-
-A display is a screen (a TV, tablet or spare phone) that plays the chat's
-effects and sounds, and never shows messages, whispers or system messages.
-
-- Open `<app>/Display`, e.g.
-  `https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/Display`. Note the
-  capital **D**: GitHub Pages is case-sensitive.
-- Or tap **Set up as a display** on the server's setup page, or type
-  `/role display` in the app.
-- It joins as "Display" (rename it in Settings) and keeps the screen awake
-  where the browser allows.
-- Sound needs one tap on the screen first (*Tap to turn on sound*).
-- Effects aimed at the display by an admin in debug mode, and whispered effects
-  sent to it, play too.
-- The display role isn't saved: opening the normal link on the same device
-  gives your usual role. *Exit display* in Settings goes back to the chat.
-
-## Server settings
-
-Set these as environment variables (or the `LOCALCHATTER_*` names with Docker Compose).
-
-| Compose variable | Server variable | Default | Meaning |
-| --- | --- | --- | --- |
-| `LOCALCHATTER_HOST` | `ADVERTISED_HOST` | *(empty)* | LAN address devices use to reach the server. Goes in the certificate and on the setup page. If empty, the address a device opened the setup page with is used. |
-| `LOCALCHATTER_PORT` | `ADVERTISED_PORT` | `8443` | Port devices use. |
-| `LOCALCHATTER_APP_URL` | `APP_URL` | `https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/` | Where the app is hosted. Change this if your GitHub Pages URL differs. |
-| `LOCALCHATTER_ROOM` | `ROOM_NAME` | `LocalChatter` | Room name shown in the app. |
-| `LOCALCHATTER_MAX_MB` | `MAX_MESSAGE_MB` | `25` | Largest message in MB. Files are sent base64-encoded, so the largest file is about ¾ of this. |
-| – | `MAX_PEERS` | `200` | Most people connected at once. |
-| – | `PORT` | `8443` | Port the server listens on inside the container. |
-| – | `CERT_DIR` | `/certs` | Where the TLS certificate is kept. |
-| – | `TLS` | `on` | `off` serves plain HTTP/WS. Only for use behind your own TLS proxy: the HTTPS-hosted app can't connect to a plain `ws://` address. |
-
-To use your own certificate, put `key.pem` and `cert.pem` in the `certs`
-volume. If you change `LOCALCHATTER_HOST`, run `docker compose down -v` first
-so a new certificate is made for the new address (devices will need to accept it again).
-
-### Endpoints
-
-| Path | Purpose |
-| --- | --- |
-| `/` | Setup page with the **Set up LocalChatter** button and the server address. |
-| `/ws` | WebSocket the app connects to. |
-| `/config.json` | Room name, relay address, number connected. |
-| `/health` | Returns `ok` (used by the Docker health check). |
-
-## Privacy
-
-- The server forwards each message to everyone else connected and then drops it.
-  It writes nothing to disk except its TLS certificate, and logs only how many
-  people are connected: never names or message contents.
-- The app keeps messages in memory only. Close or reload it and they're gone.
-  It saves just your name and the server address on the device.
-- Someone who joins later sees nothing sent before they arrived.
-- Traffic is encrypted between each device and the server (TLS). The server
-  itself can read messages as it passes them on, so run it on a machine you trust.
-
-## How it works
-
-```
- phone ──┐                         ┌── laptop
-         │   wss://192.168.1.50    │
- tablet ─┼──────► relay server ◄───┼── phone
-         │     (Docker, no disk)   │
+| App | `src/` (entry `src/main.ts`) | `dist/app.js`, one plain script |
+| Service worker | `src/sw.ts` | `sw.js` (it must sit at the app root) |
+| Styles | `styles/*.css` | used as they are |
+| Relay server | `server/src/` | `server/dist/server.js` (built by Docker or `npm start`) |
+
+From the repository root:
+
+```sh
+npm ci          # once: installs TypeScript and esbuild
+npm run build   # builds the app (and the Hello World sample)
+npm run check   # type-checks everything (strict mode)
+npm run watch   # rebuilds as you edit
 ```
 
-Each device opens a secure WebSocket to the relay. Text is sent as JSON;
-images and files are base64-encoded inside the same JSON message. The relay
-checks each message, keeps only the expected fields, stamps the sender's name
-and the time, and sends it to everyone else. Effects are ordinary messages
-(`/fire` etc.) that each app recognises and animates, so the server needs no
-special support for them.
+The built `dist/app.js` and `sw.js` are committed, so GitHub Pages can serve
+the app without a build step. Rebuild and commit them after changing `src/`,
+and bump `CACHE` in `src/sw.ts` when cached files change so installed copies update.
 
-## Files
+The app is bundled into a single plain script (not a module) so it also works
+when `index.html` is opened straight from disk.
 
-| File | Purpose |
+### Source layout
+
+| Folder | What's in it |
 | --- | --- |
-| `index.html`, `styles.css`, `app.js` | The app, including roles and QR/NFC scanning. |
+| `src/chat/` | The message list and bubbles: text, files, effect lines, sounds. |
+| `src/net/` | The connection to the relay, and handling what it sends. |
+| `src/ui/` | Status bar and people list, message box, dashboard, header, settings. |
+| `src/features/` | Roles and debug mode, commands, whispers, favourites, Stop buttons, soundboard, background, display. |
+| `src/effects/` | One file per effect, shared helpers, and the runner that times them. |
+| `src/sounds/` | The sound cache (IndexedDB), library and playback. |
+| `src/scan/` | The Scan button, QR codes and NFC tags. |
+| `src/languages.ts` | Languages, gibberish and colours. |
 | `vendor/jsQR.js` | QR decoder (jsQR 1.4.0, Apache-2.0), used where the browser has no built-in one. |
-| `effects.js` | Fire, earthquake and lightning animations. |
-| `sounds.js` | Sound cache (IndexedDB) and playback. |
-| `languages.js` | Languages you understand, gibberish, and sender/language colours. |
 | `Display/index.html` | Opens the app in display mode, for `<app>/Display` links. |
-| `sw.js` | Service worker: caches the app so it opens offline. Bump `CACHE` when you change files. |
-| `manifest.webmanifest`, `icons/` | Install metadata and icons. |
-| `server/server.js` | Relay server and setup page. |
-| `server/Dockerfile`, `server/docker-compose.yml` | Container build and run config. |

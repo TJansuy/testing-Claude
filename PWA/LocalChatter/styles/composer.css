@@ -1,0 +1,61 @@
+/* Message box, and the scan menu and QR scanner */
+
+/* Composer */
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  background: var(--card);
+  border-top: 1px solid var(--line);
+}
+.composer textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  max-height: 160px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--bg);
+  resize: none;
+}
+.composer textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+.send:disabled, .composer .icon-button:disabled { opacity: .4; cursor: default; }
+
+/* Scan menu and QR scanner */
+#scan.nfc-on { background: var(--accent); color: var(--on-accent); animation: nfc-pulse 1.6s ease-in-out infinite; }
+.effects-buttons button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.qr-dialog { width: min(100% - 32px, 480px); }
+.qr-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 8px 4px 20px; }
+.qr-head h2 { margin: 0; font-size: 1.1rem; }
+.qr-view {
+  position: relative;
+  margin: 8px 16px 0;
+  aspect-ratio: 3 / 4;
+  max-height: 60dvh;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+.qr-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qr-frame {
+  position: absolute;
+  inset: 18%;
+  border: 3px solid rgb(255 255 255 / .9);
+  border-radius: 16px;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / .35);
+}
+.qr-dialog .hint { margin: 12px 20px 20px; }

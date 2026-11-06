@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "LAN relay for LocalChatter. Forwards chat messages between connected devices; keeps no history.",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js"
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=cjs --packages=external --outfile=dist/server.js",
+    "check": "tsc -p .",
+    "start": "npm run build && node dist/server.js"
   },
   "engines": {
     "node": ">=20"
@@ -13,5 +15,11 @@
   "dependencies": {
     "selfsigned": "3.0.1",
     "ws": "8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "@types/ws": "8.5.13",
+    "esbuild": "0.24.0",
+    "typescript": "5.6.3"
   }
 }

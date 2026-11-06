@@ -1,0 +1,109 @@
+/* Effects: overlays, shake, zalgo glitch, reduce-motion glows and the Stop buttons */
+
+/* Effect overlays */
+.fx {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
+}
+.fx-glow { animation: fx-glow var(--fx-ms, 2s) ease-in-out forwards; opacity: 0; }
+.fx-fire-glow { --fx-ms: 2.5s; background: linear-gradient(to top, rgb(255 90 0 / .45), transparent 55%); }
+.fx-quake-glow { --fx-ms: 1.6s; background: radial-gradient(circle at 50% 100%, rgb(140 90 40 / .35), transparent 70%); }
+@keyframes fx-glow { 30% { opacity: 1; } 100% { opacity: 0; } }
+
+html:has(body.fx-shake) { overflow: hidden; }
+/* Shake everything except the sender's Stop buttons, so they stay easy to tap.
+   Each 1.6 s wave starts strong and eases; long earthquakes repeat the waves. */
+body.fx-shake > :not(.fx-dock):not(.fx):not(script) {
+  animation: fx-shake 1.6s cubic-bezier(.36, .07, .19, .97) infinite both;
+}
+@keyframes fx-shake {
+  0%   { transform: translate(0, 0) rotate(0); }
+  5%   { transform: translate(-14px, 6px) rotate(-1.2deg); }
+  10%  { transform: translate(12px, -8px) rotate(1deg); }
+  15%  { transform: translate(-16px, 4px) rotate(-1.4deg); }
+  20%  { transform: translate(14px, 8px) rotate(1.2deg); }
+  25%  { transform: translate(-12px, -6px) rotate(-1deg); }
+  30%  { transform: translate(16px, 2px) rotate(1.4deg); }
+  40%  { transform: translate(-10px, 6px) rotate(-.8deg); }
+  50%  { transform: translate(9px, -4px) rotate(.7deg); }
+  60%  { transform: translate(-7px, 3px) rotate(-.5deg); }
+  70%  { transform: translate(5px, -2px) rotate(.3deg); }
+  80%  { transform: translate(-3px, 1px) rotate(-.2deg); }
+  90%  { transform: translate(2px, 0) rotate(.1deg); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+
+/* Zalgo: corrupted chat and glitching dashboard (no brightness flashing) */
+html:has(body.fx-zalgo) { overflow-x: hidden; }
+body.fx-zalgo .messages, body.fx-zalgo .topbar { overflow-x: hidden; }
+body.fx-zalgo .msg { overflow: visible; }
+body.fx-zalgo #effects-tray {
+  text-shadow: 2px 0 rgb(255 0 60 / .7), -2px 0 rgb(0 220 255 / .7);
+  animation: zalgo-glitch 1.4s steps(6, jump-none) infinite, zalgo-hue 6s linear infinite;
+}
+body.fx-zalgo #effects-tray button { animation: zalgo-jitter .9s steps(3, jump-none) infinite; }
+body.fx-zalgo #effects-tray button:nth-child(2n) { animation-duration: 1.3s; animation-direction: reverse; }
+body.fx-zalgo #effects-tray button:nth-child(3n) { animation-duration: .7s; }
+body.fx-zalgo .topbar h1 { text-shadow: 2px 0 rgb(255 0 60 / .6), -2px 0 rgb(0 220 255 / .6); }
+@keyframes zalgo-glitch {
+  0%   { transform: none; clip-path: inset(0 0 0 0); }
+  20%  { transform: translate(-3px, 1px) skewX(-2deg); clip-path: inset(10% 0 15% 0); }
+  40%  { transform: translate(2px, -1px); clip-path: inset(0 0 0 0); }
+  60%  { transform: translate(-1px, 2px) skewX(3deg); clip-path: inset(30% 0 5% 0); }
+  80%  { transform: translate(3px, 0); clip-path: inset(0 0 0 0); }
+  100% { transform: none; clip-path: inset(0 0 0 0); }
+}
+@keyframes zalgo-jitter {
+  0%   { transform: translate(0, 0) rotate(0); }
+  33%  { transform: translate(-4px, 2px) rotate(-2deg); }
+  66%  { transform: translate(3px, -3px) rotate(1.5deg); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+@keyframes zalgo-hue { to { filter: hue-rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  body.fx-zalgo #effects-tray, body.fx-zalgo #effects-tray button { animation: none; }
+}
+
+/* Reduce-motion glow that lasts as long as the effect */
+.fx-glow-hold { animation: fx-hold-in .4s ease-out forwards; opacity: 0; }
+.fx-glow-hold.out { animation: fx-hold-out .6s ease-in forwards; }
+@keyframes fx-hold-in { to { opacity: 1; } }
+@keyframes fx-hold-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Stop buttons for effects you sent: above every effect, never shaken or corrupted */
+.fx-dock {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+.fx-dock button {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 2px solid #ffffff;
+  border-radius: 22px;
+  background: #18202b;
+  color: #ffffff;
+  font: 600 .95rem/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  text-shadow: none;
+  box-shadow: 0 4px 16px rgb(0 0 0 / .35);
+  cursor: pointer;
+  filter: none;
+  transform: none;
+  animation: none;
+}
+.fx-dock button .left { font-weight: 400; opacity: .75; font-variant-numeric: tabular-nums; }
+body.wide .fx-dock { right: calc(clamp(320px, 30vw, 440px) + 16px); bottom: 84px; }

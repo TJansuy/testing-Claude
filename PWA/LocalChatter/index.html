@@ -9,10 +9,16 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/chat.css">
+  <link rel="stylesheet" href="styles/composer.css">
+  <link rel="stylesheet" href="styles/dashboard.css">
+  <link rel="stylesheet" href="styles/panels.css">
+  <link rel="stylesheet" href="styles/effects.css">
+  <link rel="stylesheet" href="styles/display.css">
 </head>
 <body>
-  <header class="topbar">
+  <header id="topbar" class="topbar">
     <div class="title">
       <h1 id="room">LocalChatter</h1>
       <button id="status" class="status" type="button" data-state="off" aria-live="polite">Not connected</button>
@@ -21,6 +27,12 @@
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1L11 21h4l.4-2.7a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
     </button>
   </header>
+
+  <!-- On phones the header hides after a few seconds; this tab brings it back. -->
+  <button id="header-tab" class="header-tab" type="button" data-state="off" aria-label="Show the header" hidden>
+    <span class="dot" aria-hidden="true"></span>
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg>
+  </button>
 
   <div id="banner" class="banner" hidden></div>
 
@@ -36,9 +48,20 @@
     <p class="empty" id="empty">Messages appear here while you're connected. Nothing is saved: when you leave, they're gone.</p>
   </main>
 
-  <!-- On wide (16:10 and wider) screens this tray becomes the always-open dashboard. -->
-  <aside id="effects-tray" class="effects-tray" hidden aria-label="Effects and sounds">
-    <h2 class="dash-title">Effects</h2>
+  <!-- The dashboard: Effects and Settings tabs. On wide (16:10 and wider) screens it's
+       a column beside the chat that stays open; on phones it opens above the message box. -->
+  <aside id="effects-tray" class="effects-tray" hidden aria-label="Dashboard">
+    <div class="dash-head">
+      <div class="tabs" role="tablist" aria-label="Dashboard">
+        <button id="tab-effects" type="button" role="tab" aria-controls="panel-effects" aria-selected="true">✨ Effects</button>
+        <button id="tab-settings" type="button" role="tab" aria-controls="settings" aria-selected="false">⚙️ Settings</button>
+      </div>
+      <button id="dash-close" class="icon-button" type="button" aria-label="Close the dashboard">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+      </button>
+    </div>
+
+    <section id="panel-effects" class="dash-panel" role="tabpanel" aria-labelledby="tab-effects">
     <div class="effects-buttons">
       <button type="button" data-effect="fire">🔥 Fire</button>
       <button type="button" data-effect="earthquake">🌍 Earthquake</button>
@@ -62,6 +85,45 @@
       <ul id="fav-list" class="fav-list"></ul>
       <p id="fav-empty" class="hint">Tap ☆ next to an effect in the chat to keep it here.</p>
     </div>
+    </section>
+
+    <section id="settings" class="dash-panel" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <form id="settings-form">
+      <label for="name">Your name</label>
+      <input id="name" maxlength="32" required>
+
+      <label for="relay">Server address</label>
+      <input id="relay" inputmode="url" placeholder="wss://192.168.1.50:8443/ws" spellcheck="false" autocapitalize="off">
+      <p class="hint">Open the LocalChatter server's page on this device (for example <code>https://192.168.1.50:8443</code>) and tap <strong>Set up LocalChatter</strong>, or type its address here.</p>
+      <p class="hint" id="server-link-row" hidden>Can't connect? <a id="server-link" target="_blank" rel="noopener">Open the server page</a> and accept its certificate, then try again.</p>
+
+      <label class="check" id="notify-row"><input type="checkbox" id="notify-on"> Notify me about new messages while LocalChatter is in the background</label>
+      <p class="hint" id="notify-hint" hidden></p>
+      <label class="check"><input type="checkbox" id="sound-on" checked> Play sounds sent to the chat</label>
+      <label class="check" id="vibrate-row" hidden><input type="checkbox" id="vibrate-on" checked> Vibrate for effects (earthquakes rumble)</label>
+      <label class="check" id="autohide-row"><input type="checkbox" id="autohide-on" checked> On phones, hide the header after a few seconds (tap the tab at the top to bring it back)</label>
+
+      <h3>Languages</h3>
+      <label for="langs">Languages you understand</label>
+      <input id="langs" placeholder="Default, System, Elvish" spellcheck="false" autocapitalize="words">
+      <label for="speak">You write in</label>
+      <select id="speak"></select>
+      <p class="hint">Messages in languages you don't understand look like gibberish. Join and leave lines are in System. You can also use <code>/languages</code> and <code>/speak</code>.</p>
+
+      <h3>Role</h3>
+      <p class="hint" id="role-line">Your role: member. Type /role to see the others.</p>
+      <label class="check" id="debug-row" hidden><input type="checkbox" id="debug-toggle"> Debug mode: target effects at anyone and send messages as other people</label>
+
+      <h3>People here <span id="people-count"></span></h3>
+      <ul id="people" class="people"></ul>
+
+      <div class="actions">
+        <button id="exit-display" type="button" class="secondary" hidden>Exit display</button>
+        <button id="disconnect" type="button" class="secondary">Disconnect</button>
+        <button id="save" type="submit" value="save">Save &amp; connect</button>
+      </div>
+    </form>
+    </section>
   </aside>
 
   <div id="debug-bar" class="debug-bar" hidden>
@@ -94,45 +156,6 @@
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
     </button>
   </form>
-
-  <dialog id="settings">
-    <form id="settings-form" method="dialog">
-      <h2>Settings</h2>
-
-      <label for="name">Your name</label>
-      <input id="name" maxlength="32" required>
-
-      <label for="relay">Server address</label>
-      <input id="relay" inputmode="url" placeholder="wss://192.168.1.50:8443/ws" spellcheck="false" autocapitalize="off">
-      <p class="hint">Open the LocalChatter server's page on this device (for example <code>https://192.168.1.50:8443</code>) and tap <strong>Set up LocalChatter</strong>, or type its address here.</p>
-      <p class="hint" id="server-link-row" hidden>Can't connect? <a id="server-link" target="_blank" rel="noopener">Open the server page</a> and accept its certificate, then try again.</p>
-
-      <label class="check" id="notify-row"><input type="checkbox" id="notify-on"> Notify me about new messages while LocalChatter is in the background</label>
-      <p class="hint" id="notify-hint" hidden></p>
-      <label class="check"><input type="checkbox" id="sound-on" checked> Play sounds sent to the chat</label>
-      <label class="check" id="vibrate-row" hidden><input type="checkbox" id="vibrate-on" checked> Vibrate for effects (earthquakes rumble)</label>
-
-      <h3>Languages</h3>
-      <label for="langs">Languages you understand</label>
-      <input id="langs" placeholder="Default, System, Elvish" spellcheck="false" autocapitalize="words">
-      <label for="speak">You write in</label>
-      <select id="speak"></select>
-      <p class="hint">Messages in languages you don't understand look like gibberish. Join and leave lines are in System. You can also use <code>/languages</code> and <code>/speak</code>.</p>
-
-      <h3>Role</h3>
-      <p class="hint" id="role-line">Your role: member. Type /role to see the others.</p>
-      <label class="check" id="debug-row" hidden><input type="checkbox" id="debug-toggle"> Debug mode: target effects at anyone and send messages as other people</label>
-
-      <h3>People here <span id="people-count"></span></h3>
-      <ul id="people" class="people"></ul>
-
-      <div class="actions">
-        <button id="exit-display" type="button" class="secondary" hidden>Exit display</button>
-        <button id="disconnect" type="button" class="secondary">Disconnect</button>
-        <button id="save" type="submit" value="save">Save &amp; connect</button>
-      </div>
-    </form>
-  </dialog>
 
   <dialog id="sounds" aria-labelledby="sounds-title">
     <form method="dialog" id="sounds-form">
@@ -177,9 +200,7 @@
   <!-- Stop buttons for effects you sent. Kept outside everything the effects touch. -->
   <div id="fx-dock" class="fx-dock" role="group" aria-label="Stop your effects"></div>
 
-  <script src="effects.js"></script>
-  <script src="sounds.js"></script>
-  <script src="languages.js"></script>
-  <script src="app.js"></script>
+  <!-- Built from src/*.ts by `npm run build` (see README). -->
+  <script src="dist/app.js"></script>
 </body>
 </html>

@@ -68,8 +68,8 @@ function relayFor(req) {
   return { origin: `${USE_TLS ? 'https' : 'http'}://${host}`, ws: `${USE_TLS ? 'wss' : 'ws'}://${host}/ws` };
 }
 
-function setupUrl(relayWs) {
-  return `${APP_URL}#relay=${encodeURIComponent(relayWs)}`;
+function setupUrl(relayWs, display) {
+  return `${APP_URL}${display ? 'Display/' : ''}#relay=${encodeURIComponent(relayWs)}`;
 }
 
 function send(res, status, type, body, extra) {
@@ -135,6 +135,7 @@ function setupPage(r) {
   .muted { color:var(--muted); }
   code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.95em; word-break:break-all; background:var(--bg); padding:2px 6px; border-radius:6px; }
   .button { display:block; text-align:center; padding:14px 18px; border-radius:10px; background:var(--accent); color:var(--on-accent); font-weight:600; text-decoration:none; }
+  .button.secondary { background:transparent; color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
   ol { margin:0; padding-left:20px; }
   li { margin-bottom:6px; }
 </style>
@@ -148,6 +149,12 @@ function setupPage(r) {
     <h2>Set up this device</h2>
     <p>Tap the button to open LocalChatter and point it at this server.</p>
     <a class="button" href="${escapeHtml(link)}">Set up LocalChatter</a>
+  </section>
+
+  <section class="card">
+    <h2>Set up a display</h2>
+    <p>For a TV, tablet or spare screen: it plays effects and sounds from the chat, and never shows messages.</p>
+    <a class="button secondary" href="${escapeHtml(setupUrl(r.ws, true))}">Set up as a display</a>
   </section>
 
   <section class="card">
@@ -236,6 +243,16 @@ function sanitiseChat(msg, from) {
   if (msg.as && typeof msg.as === 'object') {
     const as = { id: clean(msg.as.id, 64), name: clean(msg.as.name, MAX_NAME) };
     if (as.id && as.name) out.as = as;
+  }
+  // Whisper: the people it's for. Passed through as-is; each app decides whether to
+  // show it. A whisper without valid recipients is dropped, never sent as public.
+  if (msg.to !== undefined) {
+    const to = Array.isArray(msg.to) ? msg.to.slice(0, 50)
+      .filter((t) => t && typeof t === 'object')
+      .map((t) => ({ id: clean(t.id, 64), name: clean(t.name, MAX_NAME) }))
+      .filter((t) => t.id && t.name) : [];
+    if (!to.length) return null;
+    out.to = to;
   }
   // Sound: a hash id and name, plus optionally a link and/or the audio itself.
   const snd = msg.sound;

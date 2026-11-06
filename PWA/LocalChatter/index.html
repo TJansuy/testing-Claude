@@ -24,6 +24,14 @@
 
   <div id="banner" class="banner" hidden></div>
 
+  <!-- Display mode only: effects and sounds play over this; messages are never shown. -->
+  <section id="stage" class="stage" hidden>
+    <svg viewBox="0 0 512 512" width="96" height="96" aria-hidden="true"><rect width="512" height="512" rx="112" fill="currentColor" opacity=".15"/><path d="M136 152h240a40 40 0 0 1 40 40v120a40 40 0 0 1-40 40H236l-72 56v-56h-28a40 40 0 0 1-40-40V192a40 40 0 0 1 40-40z" fill="currentColor" opacity=".5"/></svg>
+    <p class="stage-title">Display</p>
+    <p class="stage-hint">Effects and sounds from the chat play here. Messages aren't shown.</p>
+    <button id="stage-tap" class="stage-tap" type="button" hidden>Tap to turn on sound</button>
+  </section>
+
   <main id="messages" class="messages" aria-live="polite">
     <p class="empty" id="empty">Messages appear here while you're connected. Nothing is saved: when you leave, they're gone.</p>
   </main>
@@ -101,6 +109,7 @@
       <ul id="people" class="people"></ul>
 
       <div class="actions">
+        <button id="exit-display" type="button" class="secondary" hidden>Exit display</button>
         <button id="disconnect" type="button" class="secondary">Disconnect</button>
         <button id="save" type="submit" value="save">Save &amp; connect</button>
       </div>

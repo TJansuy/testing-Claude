@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LocalChatter Display</title>
+  <meta name="theme-color" content="#0f766e">
+  <style>
+    :root { --bg: #f3f5f9; --fg: #18202b; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #11161d; --fg: #e8edf3; } }
+    body { margin: 0; padding: 32px 16px; background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; text-align: center; }
+    a { color: inherit; }
+  </style>
+  <script>
+    // <app>/Display opens LocalChatter in display mode. Keeps any #relay=... setup link.
+    location.replace('../?display' + location.hash);
+  </script>
+</head>
+<body>
+  <p>Opening the LocalChatter display… <a href="../?display">Continue</a></p>
+</body>
+</html>

@@ -10,6 +10,10 @@
   var KEY_SOUND_ON = 'localchatter-sound-on';
   var KEY_EMBED = 'localchatter-sound-embed';
   var KEY_VIBRATE = 'localchatter-vibrate';
+  var KEY_DISPLAY_NAME = 'localchatter-display-name';
+  var KEY_SPY = 'localchatter-spy';
+  // Display mode: opened from <app>/Display (which forwards here with ?display).
+  var DISPLAY = new URLSearchParams(location.search).has('display');
   var SND = window.LocalChatterSounds;
   var MAX_MESSAGES = 300;
   var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
@@ -35,6 +39,8 @@
   var ROLES = {
     member: { description: 'Chat as normal.' },
     monitor: { description: 'Also sees system messages, such as role changes.', viewSystem: true },
+    spy: { description: 'Can spy on chosen people to see whispers to and from them (/spy <names>).', spy: true },
+    display: { description: 'A screen that only shows effects and plays sounds, never messages. Open the app\'s /Display link.', display: true },
     admin: {
       description: 'Sees system messages and who really sent spoofed messages, has a soundboard, and can use debug mode.',
       viewSystem: true, debug: true, impersonate: true, seeSpoofer: true, soundboard: true
@@ -106,7 +112,7 @@
     if (stick) list.scrollTop = list.scrollHeight;
   }
 
-  function systemLine(text) { append(el('p', 'system', text)); }
+  function systemLine(text) { if (!DISPLAY) append(el('p', 'system', text)); }
 
   function base64ToBlob(b64, type) {
     var bin = atob(b64);
@@ -127,6 +133,7 @@
     var notes = [];
     if (msg.via === 'nfc') notes.push('NFC tag');
     if (msg.via === 'qr') notes.push('QR code');
+    if (msg.to) notes.push('whisper');
     var spoofer = spoofedBy(msg);
     if (spoofer) notes.push('really sent by ' + spoofer.name);
     systemLine(line[0] + ' ' + who + ' ' + line[1] + (notes.length ? ' (' + notes.join(', ') + ')' : ''));
@@ -148,8 +155,14 @@
   function renderMessage(msg, mine) {
     var shown = msg.as || msg.from;
     var who = mine ? (msg.as ? 'You (as ' + msg.as.name + ')' : 'You') : (shown && shown.name) || 'Someone';
+    var effect = !msg.file && !msg.sound && window.LocalChatterFX && window.LocalChatterFX.parse(msg.text);
+    if (DISPLAY) {
+      // A display only plays effects and sounds; it never shows messages.
+      if (effect) window.LocalChatterFX.play(effect);
+      else if (msg.sound) displaySound(msg.sound);
+      return null;
+    }
     if (msg.sound) return renderSound(msg, mine, who);
-    var effect = !msg.file && window.LocalChatterFX && window.LocalChatterFX.parse(msg.text);
     if (effect) { renderEffect(effect, msg, who); return null; }
 
     var box = el('article', 'msg' + (mine ? ' mine' : ''));
@@ -160,6 +173,11 @@
     // Only people who can see system messages are told who really sent a spoofed message.
     var spoofer = !mine && spoofedBy(msg);
     if (spoofer) meta.appendChild(el('span', 'spoof', 'really sent by ' + spoofer.name));
+    if (msg.to) {
+      box.classList.add('whisper');
+      if (msg.spied) box.classList.add('spied');
+      meta.appendChild(el('span', 'whisper-to', (msg.spied ? '\uD83D\uDD75\uFE0F spied whisper to ' : '\uD83E\uDD2B whisper to ') + whisperNames(msg.to)));
+    }
     meta.appendChild(el('time', null, formatTime(msg.at || Date.now())));
     box.appendChild(meta);
 
@@ -307,7 +325,21 @@
     }
     $('people-count').textContent = '(' + (state.peers.size + 1) + ')';
     ul.appendChild(el('li', null, state.me.name + ' (you)'));
-    state.peers.forEach(function (p) { ul.appendChild(el('li', null, p.name)); });
+    state.peers.forEach(function (p) {
+      var li = el('li');
+      if (DISPLAY) { li.textContent = p.name; ul.appendChild(li); return; }
+      var b = el('button', 'link-button', p.name);
+      b.type = 'button';
+      b.title = 'Whisper to ' + p.name;
+      b.addEventListener('click', function () {
+        dialog.close();
+        text.value = '/whisper ' + p.name + ': ';
+        text.focus();
+        autosize();
+      });
+      li.appendChild(b);
+      ul.appendChild(li);
+    });
     setStatus('on', onlineText());
     refreshPeerSelects();
   }
@@ -430,6 +462,13 @@
         if (old) systemLine(old.name + ' is now ' + msg.peer.name);
         break;
       case 'chat':
+        // Whispers reach every device; each app only shows them to their recipients
+        // (and to spies watching those people).
+        if (msg.to) {
+          var seen = whisperVisibility(msg);
+          if (!seen) break;
+          if (seen === 'spy') msg.spied = true;
+        }
         renderMessage(msg, false);
         break;
     }
@@ -851,7 +890,7 @@
   function setRole(role, quiet) {
     var old = state.role;
     state.role = role;
-    save(KEY_ROLE, role);
+    if (role !== 'display') save(KEY_ROLE, role); // display comes from the link, not a saved choice
     if (!can('debug') && state.debug) setDebug(false, true);
     $('role-line').textContent = 'Your role: ' + role + '. Type /role to see the others.';
     $('debug-row').hidden = !can('debug');
@@ -873,15 +912,18 @@
 
   // Handles /role and /debug. Returns true if the text was a command (and must not be sent as chat).
   function runCommand(value) {
-    var m = /^\s*\/(role|debug|sound)\b\s*([\s\S]*)$/i.exec(value);
+    var m = /^\s*\/(role|debug|sound|whisper|w|spy)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     var cmd = m[1].toLowerCase();
     if (cmd === 'sound') { soundCommand(m[2].trim()); return true; }
+    if (cmd === 'whisper' || cmd === 'w') { whisperCommand(m[2]); return true; }
+    if (cmd === 'spy') { spyCommand(m[2].trim()); return true; }
     var rest = m[2].trim().toLowerCase();
 
     if (cmd === 'role') {
       if (!rest) { describeRoles(); return true; }
       if (!ROLES[rest]) { systemLine('There\'s no "' + rest + '" role. Type /role to see the roles.'); return true; }
+      if (rest === 'display') { location.assign('Display/'); return true; }
       setRole(rest);
       return true;
     }
@@ -890,6 +932,90 @@
     if (!can('debug')) { systemLine('Debug mode is for admins. Switch with /role admin.'); return true; }
     setDebug(rest ? rest === 'on' : !state.debug);
     return true;
+  }
+
+  // -------------------------------------------------------------- whispers
+  // /whisper Bob, Cara: message   (or /w). Only Bob and Cara's apps show it.
+  function whisperNames(to) {
+    return to.map(function (t) { return state.me && t.id === state.me.id ? 'you' : t.name; }).join(', ');
+  }
+
+  function whisperCommand(rest) {
+    var m = /^([^:]+):\s*([\s\S]*\S[\s\S]*)$/.exec(rest);
+    if (!m) { systemLine('Whisper with /whisper <names>: <message>, e.g. /whisper Bob, Cara: see you at 5'); return; }
+    var wanted = m[1].split(',').map(function (n) { return n.trim().replace(/^@/, ''); }).filter(Boolean);
+    var to = [], missing = [];
+    wanted.forEach(function (n) {
+      var found = null;
+      state.peers.forEach(function (p) { if (!found && p.name.toLowerCase() === n.toLowerCase()) found = p; });
+      if (found) { if (to.indexOf(found) < 0) to.push(found); } else missing.push(n);
+    });
+    if (missing.length) { systemLine('No one called ' + missing.map(function (n) { return '"' + n + '"'; }).join(', ') + ' is here. Whisper not sent.'); return; }
+    if (!sendChat({ text: m[2].trim(), to: to.map(function (p) { return { id: p.id, name: p.name }; }) })) {
+      systemLine('Not connected: whisper not sent');
+    }
+  }
+
+  function spyTargets() {
+    try { return JSON.parse(load(KEY_SPY) || '[]'); } catch (e) { return []; }
+  }
+
+  // Returns true for a recipient, 'spy' for a spy watching anyone involved, else false.
+  function whisperVisibility(msg) {
+    var me = state.me && state.me.id;
+    if (msg.to.some(function (t) { return t.id === me; })) return true;
+    if (!can('spy')) return false;
+    var targets = spyTargets();
+    if (targets.indexOf('*') >= 0) return 'spy';
+    var involved = msg.to.map(function (t) { return t.name; });
+    if (msg.from) involved.push(msg.from.name);
+    if (msg.as) involved.push(msg.as.name);
+    return involved.some(function (n) { return targets.indexOf(n.toLowerCase()) >= 0; }) ? 'spy' : false;
+  }
+
+  // /spy               who you're spying on
+  // /spy Bob, Cara     spy on whispers to or from Bob and Cara
+  // /spy all | off
+  function spyCommand(rest) {
+    if (!can('spy')) { systemLine('Spying is for the spy role. Switch with /role spy.'); return; }
+    var lower = rest.toLowerCase();
+    if (!rest) {
+      var t = spyTargets();
+      systemLine(t.length ? 'Spying on ' + (t[0] === '*' ? 'everyone' : t.join(', ')) + '. Change with /spy <names>, /spy all or /spy off.'
+        : 'Not spying on anyone. Use /spy <names> or /spy all.');
+      return;
+    }
+    var list = lower === 'off' ? [] : lower === 'all' ? ['*']
+      : rest.split(',').map(function (n) { return n.trim().replace(/^@/, '').toLowerCase(); }).filter(Boolean);
+    save(KEY_SPY, JSON.stringify(list));
+    systemLine(!list.length ? 'Stopped spying.' : 'Spying on ' + (list[0] === '*' ? 'everyone' : rest.split(',').map(function (n) { return n.trim(); }).join(', ')) + '. You\'ll see their whispers.');
+  }
+
+  // ---------------------------------------------------------- display mode
+  function displaySound(sound) {
+    SND.resolve(sound).then(function (r) {
+      if (!r.play || !soundOn) return;
+      r.play().then(function () { soundEvent(sound.name, r.source, true); }, function (err) {
+        if (err && err.name === 'NotAllowedError') $('stage-tap').hidden = false;
+        soundEvent(sound.name, r.source, false, err && err.name === 'NotAllowedError' ? 'blocked' : 'error');
+      });
+    });
+  }
+
+  function keepScreenOn() {
+    if (!('wakeLock' in navigator)) return;
+    navigator.wakeLock.request('screen').catch(function () { /* not allowed right now */ });
+  }
+
+  function startDisplay() {
+    document.body.classList.add('display-mode');
+    $('stage').hidden = false;
+    $('stage-tap').hidden = SND.unlocked();
+    $('stage-tap').addEventListener('click', function () { SND.unlock(); this.hidden = true; });
+    $('exit-display').hidden = false;
+    $('exit-display').addEventListener('click', function () { location.assign('./'); });
+    keepScreenOn();
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) keepScreenOn(); });
   }
 
   // /sound lists the sounds on this device; /sound <name> plays one for everyone.
@@ -989,7 +1115,7 @@
       $('relay').reportValidity();
       return;
     }
-    if (name) save(KEY_NAME, name);
+    if (name) save(DISPLAY ? KEY_DISPLAY_NAME : KEY_NAME, name);
     if (name && name !== state.name) {
       state.name = name;
       if (state.ws && state.ws.readyState === WebSocket.OPEN && state.me) {
@@ -1044,7 +1170,7 @@
   function start() {
     readSetupLink();
     state.relay = load(KEY_RELAY);
-    state.name = load(KEY_NAME);
+    state.name = load(DISPLAY ? KEY_DISPLAY_NAME : KEY_NAME) || (DISPLAY ? 'Display' : '');
     var firstRun = !state.name;
     if (firstRun) state.name = 'Guest ' + Math.floor(1000 + Math.random() * 9000);
     // Vibration only exists on Android browsers; the setting is hidden elsewhere.
@@ -1055,7 +1181,8 @@
     soundOn = load(KEY_SOUND_ON) !== 'off';
     $('sound-on').checked = soundOn;
     var savedRole = load(KEY_ROLE);
-    setRole(ROLES[savedRole] ? savedRole : 'member', true);
+    if (DISPLAY) { setRole('display', true); startDisplay(); }
+    else setRole(ROLES[savedRole] && savedRole !== 'display' ? savedRole : 'member', true);
     registerServiceWorker();
     if (state.relay && !firstRun) {
       connect();

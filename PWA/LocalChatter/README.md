@@ -170,6 +170,8 @@ and the app remembers your role on this device.
 | --- | --- |
 | `member` (default) | The chat. |
 | `monitor` | The chat, plus **system messages**. |
+| `spy` | The chat, plus **whispers** to or from the people they're spying on. |
+| `display` | Only effects and sounds, never messages. Opened from the `/Display` link (see below). |
 | `admin` | The chat, system messages, and who really sent a spoofed message. Has a **soundboard** and can use **debug mode**. |
 
 **System messages** are role changes ("🛡️ Bob changed role: member → monitor"),
@@ -193,6 +195,47 @@ Turn it on with `/debug` (or `/debug on` / `/debug off`), or in Settings.
   messages (and effects) that appear to come from another person in the room.
   Only **admins** see the message marked *really sent by Alice*. Everyone else,
   monitors included, sees it as genuine.
+
+## Whispers
+
+`/whisper Bob, Cara: see you at 5` (or `/w`) sends a message only Bob and Cara
+see. Names are matched case-insensitively against the people in the room. You
+can also open Settings and tap someone's name under *People here* to start a
+whisper to them.
+
+Whispers show with a dashed border and *whisper to you, Cara*. An effect
+command in a whisper (`/whisper Bob: /fire`) only plays for the recipients.
+
+Like everything else, the relay sends whispers to every device, and each app
+only shows them to the recipients. Anyone inspecting the traffic could read them.
+
+### Spying
+
+In the `spy` role:
+
+- `/spy Bob, Cara` shows whispers sent to or from Bob or Cara (including ones
+  an admin sent *as* them), marked *spied whisper*.
+- `/spy all` shows every whisper; `/spy off` stops; `/spy` says who you're spying on.
+
+Spy targets are matched by name and remembered on the device.
+
+## Display
+
+A display is a screen (a TV, tablet or spare phone) that plays the chat's
+effects and sounds, and never shows messages, whispers or system messages.
+
+- Open `<app>/Display`, e.g.
+  `https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/Display`. Note the
+  capital **D**: GitHub Pages is case-sensitive.
+- Or tap **Set up as a display** on the server's setup page, or type
+  `/role display` in the app.
+- It joins as "Display" (rename it in Settings) and keeps the screen awake
+  where the browser allows.
+- Sound needs one tap on the screen first (*Tap to turn on sound*).
+- Effects aimed at the display by an admin in debug mode, and whispered effects
+  sent to it, play too.
+- The display role isn't saved: opening the normal link on the same device
+  gives your usual role. *Exit display* in Settings goes back to the chat.
 
 ## Server settings
 
@@ -258,6 +301,7 @@ special support for them.
 | `vendor/jsQR.js` | QR decoder (jsQR 1.4.0, Apache-2.0), used where the browser has no built-in one. |
 | `effects.js` | Fire, earthquake and lightning animations. |
 | `sounds.js` | Sound cache (IndexedDB) and playback. |
+| `Display/index.html` | Opens the app in display mode, for `<app>/Display` links. |
 | `sw.js` | Service worker: caches the app so it opens offline. Bump `CACHE` when you change files. |
 | `manifest.webmanifest`, `icons/` | Install metadata and icons. |
 | `server/server.js` | Relay server and setup page. |

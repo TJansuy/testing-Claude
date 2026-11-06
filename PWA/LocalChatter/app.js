@@ -130,12 +130,22 @@
     zalgo: ['👹', 'corrupted the chat']
   };
 
-  // The emoji and wording for an effect line, e.g. "corrupted the chat for 30 s".
+  var EFFECT_OFF = {
+    fire: ['\uD83E\uDDEF', 'put out the fire'],
+    earthquake: ['\uD83C\uDF0D', 'stopped the earthquake'],
+    lightning: ['\u26A1', 'stopped the lightning'],
+    zalgo: ['\u2728', 'restored the chat']
+  };
+  var EFFECT_TITLES = { fire: 'Fire', earthquake: 'Earthquake', lightning: 'Lightning', zalgo: 'Zalgo' };
+
+  // The emoji and wording for an effect line, e.g. "set the chat on fire for 30 s".
   function effectPhrase(fx) {
-    if (fx.name !== 'zalgo') return EFFECT_LINES[fx.name];
-    if (fx.arg === 'off') return ['✨', 'restored the chat'];
-    if (fx.arg === 'on') return [EFFECT_LINES.zalgo[0], 'corrupted the chat until someone sends /zalgo off'];
-    return [EFFECT_LINES.zalgo[0], 'corrupted the chat for ' + formatDuration(fx.arg)];
+    var line = EFFECT_LINES[fx.name];
+    if (fx.arg === 'off') return EFFECT_OFF[fx.name];
+    if (fx.arg === 'on') return [line[0], line[1] + ' until someone sends /' + fx.name + ' off'];
+    if (typeof fx.arg === 'number') return [line[0], line[1] + ' for ' + formatDuration(fx.arg)];
+    if (fx.name === 'zalgo') return [line[0], line[1] + ' for ' + formatDuration(window.LocalChatterFX.defaultMs.zalgo / 1000)];
+    return line;
   }
   function formatDuration(s) {
     return s >= 60 && s % 60 === 0 ? (s / 60) + ' min' : s + ' s';
@@ -164,6 +174,9 @@
     append(p);
     paintStars();
     window.LocalChatterFX.play(name, fx.arg);
+    // A Stop button for the sender; anyone's "off" removes it.
+    if (fx.arg === 'off') removeStop(name);
+    else if (who.indexOf('You') === 0) addStop(name, fx.arg, { to: msg.to || null });
   }
 
   function nameOf(id) {
@@ -470,6 +483,10 @@
         var forMe = msg.to === 'all' || (state.me && msg.to === state.me.id);
         var tfx = window.LocalChatterFX && window.LocalChatterFX.parseFull('/' + msg.name);
         if (forMe && tfx) window.LocalChatterFX.play(tfx.name, tfx.arg);
+        if (tfx && msg.from && state.me && msg.from.id === state.me.id) {
+          if (tfx.arg === 'off') removeStop(tfx.name);
+          else addStop(tfx.name, tfx.arg, { target: msg.to });
+        }
         renderSystem({ kind: 'effect', from: msg.from, name: msg.name, to: msg.to });
         break;
       case 'join':
@@ -626,6 +643,70 @@
     closeEffects();
   });
 
+  // ------------------------------------------------------------ stop dock
+  // While an effect you sent is running, a Stop button sits in a corner above all
+  // the effects (not shaken, not corrupted). It stops the effect for everyone it
+  // was sent to: the whole chat, a whisper's recipients, or an admin's target.
+  var stops = {}; // name -> { arg, how, endsAt, timer, button }
+  var dock = $('fx-dock');
+
+  function addStop(name, arg, how) {
+    if (DISPLAY) return;
+    removeStop(name);
+    var ms = arg === 'on' ? Infinity : typeof arg === 'number' ? arg * 1000 : window.LocalChatterFX.defaultMs[name];
+    var entry = { arg: arg, how: how, endsAt: Date.now() + ms, timer: null };
+    var b = el('button');
+    b.type = 'button';
+    b.dataset.stop = name;
+    b.appendChild(el('span', null, '\u25A0 Stop ' + EFFECT_LINES[name][0] + ' ' + EFFECT_TITLES[name]));
+    entry.left = el('span', 'left');
+    b.appendChild(entry.left);
+    b.addEventListener('click', function () { sendStop(name); });
+    entry.button = b;
+    dock.appendChild(b);
+    if (ms !== Infinity) entry.timer = setTimeout(function () { removeStop(name); }, ms);
+    stops[name] = entry;
+    tickStops();
+  }
+
+  function removeStop(name) {
+    var e = stops[name];
+    if (!e) return;
+    clearTimeout(e.timer);
+    e.button.remove();
+    delete stops[name];
+  }
+
+  function sendStop(name) {
+    var e = stops[name];
+    if (!e) return;
+    removeStop(name);
+    if (e.how.target) {
+      var fx = { type: 'effect', name: name + ' off', to: e.how.target };
+      if (sendRaw(fx)) handle(Object.assign({ from: state.me }, fx));
+    } else if (e.how.to) {
+      sendChat({ text: '/' + name + ' off', to: e.how.to });
+    } else {
+      sendChat({ text: '/' + name + ' off' });
+    }
+  }
+
+  // Shows the time left on longer effects.
+  function tickStops() {
+    Object.keys(stops).forEach(function (name) {
+      var e = stops[name];
+      var left = Math.ceil((e.endsAt - Date.now()) / 1000);
+      e.left.textContent = e.endsAt === Infinity ? '\u00b7 on' : left > 2 ? '\u00b7 ' + formatDuration(left) : '';
+    });
+  }
+  setInterval(tickStops, 1000);
+
+  // If an effect that was running here ends some other way, drop its button too.
+  document.addEventListener('localchatter:fx', function (ev) {
+    var e = stops[ev.detail.name];
+    if (!ev.detail.active && e && !e.how.target && e.endsAt - Date.now() > 300) removeStop(ev.detail.name);
+  });
+
   // ------------------------------------------------------------ favourites
   // Stored on this device: { effect, from } where from is null for your own.
   function favKey(f) { return f.effect + (f.arg ? ' ' + f.arg : '') + '|' + (f.from || '').toLowerCase(); }
@@ -664,7 +745,7 @@
       var line = effectPhrase(fx);
       var li = el('li');
       var label = el('span', 'fav-label');
-      var title = f.effect.charAt(0).toUpperCase() + f.effect.slice(1) + (f.arg ? ' ' + f.arg : '');
+      var title = EFFECT_TITLES[f.effect] + (f.arg ? ' ' + f.arg : '');
       label.appendChild(el('span', 'fav-name', line[0] + ' ' + title));
       label.appendChild(el('span', 'fav-from', f.from ? 'from ' + f.from : 'yours'));
       li.appendChild(label);

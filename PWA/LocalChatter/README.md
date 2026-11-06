@@ -49,31 +49,50 @@ enter the server address shown on the setup page (e.g.
 
 ## Effects
 
-Send one of these on its own as a message, or tap the ✨ button and pick one.
-It plays for everyone in the chat, including you, and shows as a line like
+Send one of these as a message, or tap the ✨ button and pick one. It plays for
+everyone in the chat, including you, and shows as a line like
 "🔥 Alice set the chat on fire" instead of a text bubble.
 
 | Message | Effect |
 | --- | --- |
 | `/fire` | Flames rise from the bottom of the screen. |
 | `/earthquake` (or `/quake`) | The screen shakes and Android phones rumble. |
-| `/lightning` | A lightning bolt strikes, with two flashes. |
-| `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text, and the dashboard glitches. Lasts 10 seconds. |
-| `/zalgo 30` (or `30s`, `2m`) | The same, for that long (up to 10 minutes). |
-| `/zalgo on` / `/zalgo off` | Corrupts the chat until anyone sends `/zalgo off`, which restores it straight away. |
+| `/lightning` | Lightning strikes, with two flashes per strike. |
+| `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text, and the dashboard glitches. |
 
-Commands are case-insensitive. They only count when they're the whole message,
-so "I like /fire" is sent as normal text.
+### How long they last
 
-While the chat is corrupted, messages that arrive are corrupted too, but the
-message box stays readable and the dashboard buttons keep working (✨ Restore
-in the tray sends `/zalgo off`). When it ends, every bit of text goes back
-exactly as it was. Sending `/zalgo` again while it's active resets the timer.
-`/zalgo` with anything else after it (e.g. `/zalgo banana`) is just text.
+Every effect takes the same options after its name:
 
-If a device has **Reduce motion** turned on, it shows a soft glow instead:
-no shaking and no flashing. Lightning flashes twice, which stays under the
-three-flashes-a-second limit in accessibility guidelines.
+| Option | Example | Lasts |
+| --- | --- | --- |
+| *(none)* | `/fire` | Its usual length: a short burst for fire, earthquake and lightning; 10 seconds for zalgo. |
+| seconds or minutes | `/fire 30`, `/quake 30s`, `/lightning 2m` | That long, up to 10 minutes. |
+| `on` | `/zalgo on` | Until anyone sends the matching `off`. |
+| `off` | `/fire off` | Stops it now ("Cara put out the fire"). |
+
+Long fire keeps burning; a long earthquake shakes (and rumbles) in waves; long
+lightning strikes again every 1.2–3 seconds, so there are never more than two
+flashes in any second. Sending an effect again while it's running resets its
+timer. Commands are case-insensitive and only count when they're the whole
+message, so "I like /fire" and "/fire banana" are sent as normal text.
+
+While the chat is corrupted by zalgo, messages that arrive are corrupted too,
+but the message box stays readable and the dashboard buttons keep working.
+When it ends, every bit of text goes back exactly as it was.
+
+If a device has **Reduce motion** turned on, it shows a soft glow for as long
+as the effect lasts instead: no shaking, no flashing, no glitching (zalgo still
+scrambles the text).
+
+### Stopping your own effects
+
+While an effect **you** sent is running, a **■ Stop** button appears in the
+corner of your screen (with the time left). It stays on top of the flames and
+flashes, isn't shaken by earthquakes and isn't scrambled by zalgo. Tapping it
+stops the effect for everyone it went to: the whole chat, the recipients of a
+whisper, or the person an admin aimed it at. It disappears when the effect
+ends, or when someone else turns it off.
 
 ### Favourites
 

@@ -1,7 +1,7 @@
 // Caches the app shell so LocalChatter opens with no internet connection.
 // Chat traffic goes over a WebSocket to the local server and is never cached.
 // Bump the version whenever cached files change so clients pick up the update.
-var CACHE = 'localchatter-v9';
+var CACHE = 'localchatter-v10';
 var ASSETS = [
   './',
   'index.html',

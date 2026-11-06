@@ -279,7 +279,11 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
 @keyframes fx-glow { 30% { opacity: 1; } 100% { opacity: 0; } }
 
 html:has(body.fx-shake) { overflow: hidden; }
-body.fx-shake { animation: fx-shake 1.6s cubic-bezier(.36, .07, .19, .97) both; }
+/* Shake everything except the sender's Stop buttons, so they stay easy to tap.
+   Each 1.6 s wave starts strong and eases; long earthquakes repeat the waves. */
+body.fx-shake > :not(.fx-dock):not(.fx):not(script) {
+  animation: fx-shake 1.6s cubic-bezier(.36, .07, .19, .97) infinite both;
+}
 @keyframes fx-shake {
   0%   { transform: translate(0, 0) rotate(0); }
   5%   { transform: translate(-14px, 6px) rotate(-1.2deg); }
@@ -508,3 +512,43 @@ body.fx-zalgo .topbar h1 { text-shadow: 2px 0 rgb(255 0 60 / .6), -2px 0 rgb(0 2
 @media (prefers-reduced-motion: reduce) {
   body.fx-zalgo #effects-tray, body.fx-zalgo #effects-tray button { animation: none; }
 }
+
+/* Reduce-motion glow that lasts as long as the effect */
+.fx-glow-hold { animation: fx-hold-in .4s ease-out forwards; opacity: 0; }
+.fx-glow-hold.out { animation: fx-hold-out .6s ease-in forwards; }
+@keyframes fx-hold-in { to { opacity: 1; } }
+@keyframes fx-hold-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Stop buttons for effects you sent: above every effect, never shaken or corrupted */
+.fx-dock {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+.fx-dock button {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 2px solid #ffffff;
+  border-radius: 22px;
+  background: #18202b;
+  color: #ffffff;
+  font: 600 .95rem/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  text-shadow: none;
+  box-shadow: 0 4px 16px rgb(0 0 0 / .35);
+  cursor: pointer;
+  filter: none;
+  transform: none;
+  animation: none;
+}
+.fx-dock button .left { font-weight: 400; opacity: .75; font-variant-numeric: tabular-nums; }
+body.wide .fx-dock { right: calc(clamp(320px, 30vw, 440px) + 16px); bottom: 84px; }

@@ -1,5 +1,6 @@
-// LocalChatter chat effects: fire, earthquake and lightning.
-// Triggered by the messages /fire, /earthquake (or /quake) and /lightning.
+// LocalChatter chat effects: fire, earthquake, lightning and zalgo.
+// Triggered by the messages /fire, /earthquake (or /quake), /lightning and /zalgo,
+// each optionally followed by a duration, "on" or "off".
 // Respects "reduce motion": no shaking, no flashing, just a gentle glow instead.
 (function () {
   'use strict';
@@ -11,7 +12,6 @@
     lightning: 'lightning',
     zalgo: 'zalgo'
   };
-  var playing = {};
 
   function reducedMotion() {
     return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -61,33 +61,37 @@
     return rumblePattern(out);
   }
 
+  // --------------------------------------------------------------- commands
+  // Every effect takes the same options:
+  //   /fire              its usual length (a short burst; zalgo lasts 10 seconds)
+  //   /fire 30, 30s, 2m  that long (up to 10 minutes)
+  //   /fire on           until someone sends /fire off
+  //   /fire off          stop it now
+  // Sending it again while it's running resets the timer.
+  var MAX_S = 600;
+  var DEFAULT_MS = { fire: 2200, earthquake: 1600, lightning: 1100, zalgo: 10000 };
+
   // Returns the effect name for a message like "/fire", or null.
   function parse(text) {
     var fx = parseFull(text);
     return fx ? fx.name : null;
   }
 
-  // Like parse, but also reads an argument. Only /zalgo takes one:
-  //   /zalgo          10 seconds        /zalgo 30, 30s, 2m   that long (max 10 min)
-  //   /zalgo on       until /zalgo off  /zalgo off           stop now
-  // Returns { name, arg, argText } or null. Anything else after a command means
-  // it's ordinary text, not an effect.
-  var ZALGO_DEFAULT_S = 10;
-  var ZALGO_MAX_S = 600;
+  // Returns { name, arg, argText } or null. arg is null (usual length), a number
+  // of seconds, 'on' or 'off'. Anything else after the command means it's ordinary text.
   function parseFull(text) {
     var m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text || ''));
     if (!m) return null;
     var name = COMMANDS[m[1].toLowerCase()];
     if (!name) return null;
     var raw = m[2];
-    if (!raw) return { name: name, arg: name === 'zalgo' ? ZALGO_DEFAULT_S : null, argText: '' };
-    if (name !== 'zalgo') return null;
+    if (!raw) return { name: name, arg: null, argText: '' };
     var a = raw.toLowerCase();
     if (a === 'off' || a === 'stop') return { name: name, arg: 'off', argText: 'off' };
     if (a === 'on' || a === 'forever') return { name: name, arg: 'on', argText: 'on' };
     var d = /^(\d{1,4})(s|m)?$/.exec(a);
     if (!d) return null;
-    var secs = Math.min(ZALGO_MAX_S, parseInt(d[1], 10) * (d[2] === 'm' ? 60 : 1));
+    var secs = Math.min(MAX_S, parseInt(d[1], 10) * (d[2] === 'm' ? 60 : 1));
     if (!secs) return null;
     return { name: name, arg: secs, argText: a };
   }
@@ -104,12 +108,19 @@
     return { canvas: c, ctx: c.getContext('2d'), dpr: dpr, w: c.width, h: c.height };
   }
 
-  function glow(cls, ms) {
+  // A soft full-screen glow used instead of motion when "reduce motion" is on.
+  // Stays until stopped, then fades out.
+  function holdGlow(cls) {
     var d = document.createElement('div');
-    d.className = 'fx fx-glow ' + cls;
+    d.className = 'fx fx-glow-hold ' + cls;
     d.setAttribute('aria-hidden', 'true');
     document.body.appendChild(d);
-    setTimeout(function () { d.remove(); }, ms);
+    return {
+      stop: function () {
+        d.classList.add('out');
+        setTimeout(function () { d.remove(); }, 700);
+      }
+    };
   }
 
   // ------------------------------------------------------------------ fire
@@ -130,21 +141,23 @@
     return s;
   }
 
-  function fire(done) {
+  // Flames keep rising until stopped, then die down over about a second.
+  function startFire() {
     vibrate([60, 40, 60]);
-    if (reducedMotion()) { glow('fx-fire-glow', 2500); return setTimeout(done, 2500); }
+    if (reducedMotion()) return holdGlow('fx-fire-glow');
 
     var o = overlayCanvas('fx-fire');
     var ctx = o.ctx, w = o.w, h = o.h, dpr = o.dpr;
     var sprite = getFlameSprite();
     var parts = [];
-    var EMIT_MS = 2200, END_MS = 3400;
+    var FADE_MS = 1200;
     var start = performance.now();
+    var stoppedAt = 0;
     var perFrame = Math.max(8, Math.round(w / (28 * dpr)));
 
     function frame(now) {
       var t = now - start;
-      if (t < EMIT_MS) {
+      if (!stoppedAt) {
         for (var i = 0; i < perFrame; i++) {
           parts.push({
             x: Math.random() * w,
@@ -158,8 +171,8 @@
         }
       }
       ctx.clearRect(0, 0, w, h);
-      // Warm glow along the bottom, fading out at the end.
-      var fade = t < EMIT_MS ? Math.min(1, t / 300) : Math.max(0, 1 - (t - EMIT_MS) / (END_MS - EMIT_MS));
+      // Warm glow along the bottom, fading out once stopped.
+      var fade = !stoppedAt ? Math.min(1, t / 300) : Math.max(0, 1 - (now - stoppedAt) / FADE_MS);
       var base = ctx.createLinearGradient(0, h, 0, h * 0.55);
       base.addColorStop(0, 'rgba(255, 90, 0, ' + 0.45 * fade + ')');
       base.addColorStop(1, 'rgba(255, 90, 0, 0)');
@@ -179,21 +192,36 @@
         ctx.globalAlpha = p.life * 0.8;
         ctx.drawImage(sprite, p.x - s / 2, p.y - s / 2, s, s);
       }
-      if (t < END_MS || parts.length) requestAnimationFrame(frame);
-      else { o.canvas.remove(); done(); }
+      if (!stoppedAt || parts.length || fade > 0) requestAnimationFrame(frame);
+      else o.canvas.remove();
     }
     requestAnimationFrame(frame);
+    return { stop: function () { if (!stoppedAt) stoppedAt = performance.now(); } };
   }
 
   // ------------------------------------------------------------ earthquake
-  function earthquake(done) {
-    vibrate(quakeRumble());
-    if (reducedMotion()) { glow('fx-quake-glow', 1600); return setTimeout(done, 1600); }
+  // Shakes in 1.6 s waves (each strong, then easing) and rumbles each wave, until stopped.
+  function startQuake() {
+    var next = null;
+    function rumbleWave() { vibrate(quakeRumble()); }
+    rumbleWave();
+    // The next wave's rumble starts just after 1.6 s, so a single quake rumbles once.
+    next = setTimeout(function loop() { rumbleWave(); next = setTimeout(loop, 1600); }, 1650);
+    if (reducedMotion()) {
+      var g = holdGlow('fx-quake-glow');
+      return { stop: function (early) { clearTimeout(next); if (early) vibrate(0); g.stop(); } };
+    }
     var root = document.body;
     root.classList.remove('fx-shake');
     void root.offsetWidth; // restart the animation
     root.classList.add('fx-shake');
-    setTimeout(function () { root.classList.remove('fx-shake'); done(); }, 1600);
+    return {
+      stop: function (early) {
+        clearTimeout(next);
+        if (early) vibrate(0);
+        root.classList.remove('fx-shake');
+      }
+    };
   }
 
   // ------------------------------------------------------------- lightning
@@ -213,13 +241,13 @@
     return out;
   }
 
-  function lightning(done) {
+  // One strike: a bolt with two flashes 380 ms apart. Removes itself when done.
+  function strike() {
     vibrate([40, 80, 40]);
     var calm = reducedMotion();
     var o = overlayCanvas('fx-lightning');
     var ctx = o.ctx, w = o.w, h = o.h, dpr = o.dpr;
     var bolts = boltPath(w * (0.25 + Math.random() * 0.5), 0, h * 0.85, (Math.random() - 0.5) * 0.3, 40 * dpr, 2, []);
-    // Two strikes, well under the 3-flashes-per-second safety limit.
     var strikes = calm ? [0] : [0, 380];
     var END_MS = calm ? 1400 : 1100;
     var start = performance.now();
@@ -247,7 +275,6 @@
     function frame(now) {
       var t = now - start;
       ctx.clearRect(0, 0, w, h);
-      // Brightness of the most recent strike.
       var a = 0;
       strikes.forEach(function (s) { if (t >= s) a = Math.max(a, 1 - (t - s) / (calm ? 1400 : 650)); });
       a = Math.max(0, a);
@@ -257,9 +284,22 @@
       }
       if (a > 0) drawBolt(calm ? a * 0.8 : a);
       if (t < END_MS) requestAnimationFrame(frame);
-      else { o.canvas.remove(); done(); }
+      else o.canvas.remove();
     }
     requestAnimationFrame(frame);
+  }
+
+  // Strikes now, then again every 1.2-3 s until stopped. Strikes are at least
+  // 1.2 s apart, so there are never more than two flashes in any second.
+  function startLightning() {
+    var stopped = false;
+    var next = null;
+    (function loop() {
+      if (stopped) return;
+      strike();
+      next = setTimeout(loop, 1200 + Math.random() * 1800);
+    })();
+    return { stop: function () { stopped = true; clearTimeout(next); } };
   }
 
   // ------------------------------------------------------------------ zalgo
@@ -267,7 +307,7 @@
   // timer runs out or "/zalgo off" arrives. Text typed in the message box stays
   // readable. Every original is remembered and put back exactly.
   var ZALGO_TARGETS = ['.topbar', '#messages', '#effects-tray', '#stage', '#banner'];
-  var zalgo = { active: false, timer: null, observer: null, nodes: new Map(), until: 0 };
+  var zalgo = { active: false, observer: null, nodes: new Map() };
 
   function randomMark() {
     var c;
@@ -286,7 +326,7 @@
   }
   function skip(node) {
     var p = node.parentElement;
-    return !p || !!p.closest('textarea, input, select, script, style, dialog');
+    return !p || !!p.closest('textarea, input, select, script, style, dialog, .fx-dock');
   }
   function corrupt(node) {
     if (skip(node) || !node.nodeValue.trim()) return;
@@ -326,9 +366,6 @@
   }
 
   function stopZalgo() {
-    clearTimeout(zalgo.timer);
-    zalgo.timer = null;
-    zalgo.until = 0;
     if (!zalgo.active) return;
     zalgo.active = false;
     if (zalgo.observer) zalgo.observer.disconnect();
@@ -341,33 +378,49 @@
     document.body.classList.remove('fx-zalgo');
   }
 
-  // arg: seconds, 'on' (until /zalgo off) or 'off'. Sending it again resets the timer.
-  function zalgoEffect(arg) {
-    if (arg === 'off') { stopZalgo(); return; }
+  function startZalgoEffect() {
     vibrate([30, 30, 30, 30, 30]);
     startZalgo();
-    clearTimeout(zalgo.timer);
-    zalgo.timer = null;
-    if (arg === 'on') { zalgo.until = Infinity; return; }
-    var secs = typeof arg === 'number' ? arg : ZALGO_DEFAULT_S;
-    zalgo.until = Date.now() + secs * 1000;
-    zalgo.timer = setTimeout(stopZalgo, secs * 1000);
+    return { stop: stopZalgo };
   }
 
-  var EFFECTS = { fire: fire, earthquake: earthquake, lightning: lightning };
+  // ------------------------------------------------------------- runner
+  // One place handles durations for every effect: start it if it isn't running,
+  // (re)set its timer, or stop it. Each starter returns { stop(early) }.
+  var STARTERS = { fire: startFire, earthquake: startQuake, lightning: startLightning, zalgo: startZalgoEffect };
+  var active = {}; // name -> { ctrl, timer, until }
 
-  // Plays an effect; a second request for one that's already playing is ignored.
+  function announce(name, on) {
+    document.dispatchEvent(new CustomEvent('localchatter:fx', { detail: { name: name, active: on } }));
+  }
+
+  function stopEffect(name, early) {
+    var a = active[name];
+    if (!a) return;
+    clearTimeout(a.timer);
+    delete active[name];
+    try { a.ctrl.stop(early); } catch (e) { /* already gone */ }
+    announce(name, false);
+  }
+
+  // arg: null (usual length), seconds, 'on' or 'off'.
   function play(name, arg) {
-    if (name === 'zalgo') { zalgoEffect(arg === undefined ? ZALGO_DEFAULT_S : arg); return true; }
-    var fn = EFFECTS[name];
-    if (!fn || playing[name]) return false;
-    playing[name] = true;
-    try {
-      fn(function () { playing[name] = false; });
-    } catch (e) {
-      playing[name] = false;
-      return false;
+    var starter = STARTERS[name];
+    if (!starter) return false;
+    if (arg === 'off') { stopEffect(name, true); return true; }
+    var a = active[name];
+    if (!a) {
+      var ctrl;
+      try { ctrl = starter(); } catch (e) { return false; }
+      a = active[name] = { ctrl: ctrl, timer: null, until: 0 };
+      announce(name, true);
     }
+    clearTimeout(a.timer);
+    a.timer = null;
+    if (arg === 'on') { a.until = Infinity; return true; }
+    var ms = typeof arg === 'number' ? arg * 1000 : DEFAULT_MS[name];
+    a.until = Date.now() + ms;
+    a.timer = setTimeout(function () { stopEffect(name, false); }, ms);
     return true;
   }
 
@@ -375,7 +428,9 @@
     parse: parse,
     parseFull: parseFull,
     play: play,
-    names: Object.keys(EFFECTS).concat('zalgo'),
+    names: Object.keys(STARTERS),
+    defaultMs: DEFAULT_MS,
+    isActive: function (name) { return !!active[name]; },
     zalgoActive: function () { return zalgo.active; },
     setVibration: function (on) { vibrationOn = !!on; if (!on) vibrate(0); },
     canVibrate: 'vibrate' in navigator,

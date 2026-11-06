@@ -231,6 +231,7 @@ function sanitiseChat(msg, from) {
   const out = { type: 'chat', id: clean(msg.id, 64) || crypto.randomUUID(), from: publicPeer(from), at: Date.now() };
   const text = typeof msg.text === 'string' ? msg.text.slice(0, MAX_TEXT) : '';
   if (text.trim()) out.text = text;
+  if (msg.via === 'nfc') out.via = 'nfc'; // sent by scanning an NFC tag
   const f = msg.file;
   if (f && typeof f === 'object' && typeof f.data === 'string' && /^[A-Za-z0-9+/=]*$/.test(f.data)) {
     out.file = {

@@ -47,6 +47,43 @@ install, open LocalChatter from the Home Screen, tap the settings button and
 enter the server address shown on the setup page (e.g.
 `wss://192.168.1.50:8443/ws`). Accept the certificate in Safari first.
 
+## Effects
+
+Send one of these on its own as a message, or tap the ✨ button and pick one.
+It plays for everyone in the chat, including you, and shows as a line like
+"🔥 Alice set the chat on fire" instead of a text bubble.
+
+| Message | Effect |
+| --- | --- |
+| `/fire` | Flames rise from the bottom of the screen. |
+| `/earthquake` (or `/quake`) | The screen shakes. Phones also vibrate. |
+| `/lightning` | A lightning bolt strikes, with two flashes. |
+
+Commands are case-insensitive. They only count when they're the whole message,
+so "I like /fire" is sent as normal text.
+
+If a device has **Reduce motion** turned on, it shows a soft glow instead:
+no shaking and no flashing. Lightning flashes twice, which stays under the
+three-flashes-a-second limit in accessibility guidelines.
+
+## NFC tags
+
+On **Chrome for Android**, an NFC button appears next to the message box. Tap it
+to start scanning, then hold a tag to the back of the phone: the tag's contents
+are sent to the chat as a message marked *via NFC tag*. Tap the button again to stop.
+
+- Text and URL records are sent as text, one per line. Smart posters, and
+  text-like MIME records such as JSON, are read too.
+- Binary data is summarised (e.g. `[image/png data, 4 B]`) rather than sent raw.
+- An empty tag sends its serial number.
+- Holding the same tag in place doesn't send it again; tap it again after a few
+  seconds to resend.
+- A tag that contains `/fire`, `/earthquake` or `/lightning` plays that effect for everyone.
+
+Web NFC only exists in Chrome on Android, so the button doesn't appear on
+iPhone, iPad, desktop or other browsers. The phone's NFC must be turned on, and
+Chrome asks for permission the first time.
+
 ## Server settings
 
 Set these as environment variables (or the `LOCALCHATTER_*` names with Docker Compose).
@@ -99,13 +136,16 @@ so a new certificate is made for the new address (devices will need to accept it
 Each device opens a secure WebSocket to the relay. Text is sent as JSON;
 images and files are base64-encoded inside the same JSON message. The relay
 checks each message, keeps only the expected fields, stamps the sender's name
-and the time, and sends it to everyone else.
+and the time, and sends it to everyone else. Effects are ordinary messages
+(`/fire` etc.) that each app recognises and animates, so the server needs no
+special support for them.
 
 ## Files
 
 | File | Purpose |
 | --- | --- |
-| `index.html`, `styles.css`, `app.js` | The app. |
+| `index.html`, `styles.css`, `app.js` | The app, including NFC scanning. |
+| `effects.js` | Fire, earthquake and lightning animations. |
 | `sw.js` | Service worker: caches the app so it opens offline. Bump `CACHE` when you change files. |
 | `manifest.webmanifest`, `icons/` | Install metadata and icons. |
 | `server/server.js` | Relay server and setup page. |

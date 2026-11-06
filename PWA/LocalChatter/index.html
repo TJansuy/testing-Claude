@@ -28,10 +28,25 @@
     <p class="empty" id="empty">Messages appear here while you're connected. Nothing is saved: when you leave, they're gone.</p>
   </main>
 
+  <div id="effects-tray" class="effects-tray" hidden>
+    <div class="effects-buttons">
+      <button type="button" data-effect="fire">🔥 Fire</button>
+      <button type="button" data-effect="earthquake">🌍 Earthquake</button>
+      <button type="button" data-effect="lightning">⚡ Lightning</button>
+    </div>
+    <p class="hint">Everyone in the chat sees it. You can also type <code>/fire</code>, <code>/earthquake</code> or <code>/lightning</code>.</p>
+  </div>
+
   <form id="composer" class="composer" autocomplete="off">
     <input id="file" type="file" multiple hidden>
     <button id="attach" class="icon-button" type="button" aria-label="Send image or file">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.5 6.5v10a4.5 4.5 0 0 1-9 0V5a3 3 0 0 1 6 0v10.5a1.5 1.5 0 0 1-3 0V6.5H9v9a3 3 0 0 0 6 0V5a4.5 4.5 0 0 0-9 0v11.5a6 6 0 0 0 12 0v-10z"/></svg>
+    </button>
+    <button id="effects" class="icon-button" type="button" aria-label="Effects" aria-expanded="false" aria-controls="effects-tray">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9zM5 15l.7 1.8 1.8.7-1.8.7L5 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>
+    </button>
+    <button id="nfc" class="icon-button" type="button" aria-label="Scan NFC tags" aria-pressed="false" hidden>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M20 2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 18H4V4h16zM18 6h-5a2 2 0 0 0-2 2v2.3a2 2 0 1 0 2 0V8h3v8H8V8h2V6H6v12h12z"/></svg>
     </button>
     <textarea id="text" rows="1" placeholder="Message everyone" aria-label="Message" maxlength="4000"></textarea>
     <button id="send" class="send" type="submit" aria-label="Send">
@@ -61,6 +76,7 @@
     </form>
   </dialog>
 
+  <script src="effects.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

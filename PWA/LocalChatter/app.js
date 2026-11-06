@@ -96,10 +96,28 @@
     return new Blob([bytes], { type: type });
   }
 
+  var EFFECT_LINES = {
+    fire: ['🔥', 'set the chat on fire'],
+    earthquake: ['🌍', 'started an earthquake'],
+    lightning: ['⚡', 'called down lightning']
+  };
+
+  // "/fire", "/earthquake" and "/lightning" play an effect for everyone instead of showing as text.
+  function renderEffect(name, msg, mine) {
+    var line = EFFECT_LINES[name];
+    var who = mine ? 'You' : (msg.from && msg.from.name) || 'Someone';
+    systemLine(line[0] + ' ' + who + ' ' + line[1] + (msg.via === 'nfc' ? ' (NFC tag)' : ''));
+    window.LocalChatterFX.play(name);
+  }
+
   function renderMessage(msg, mine) {
+    var effect = !msg.file && window.LocalChatterFX && window.LocalChatterFX.parse(msg.text);
+    if (effect) { renderEffect(effect, msg, mine); return null; }
+
     var box = el('article', 'msg' + (mine ? ' mine' : ''));
     var meta = el('div', 'meta');
     meta.appendChild(el('span', 'who', mine ? 'You' : (msg.from && msg.from.name) || 'Someone'));
+    if (msg.via === 'nfc') meta.appendChild(el('span', 'via', 'via NFC tag'));
     meta.appendChild(el('time', null, formatTime(msg.at || Date.now())));
     box.appendChild(meta);
 
@@ -150,6 +168,11 @@
     var connected = kind === 'on';
     $('send').disabled = !connected;
     $('attach').disabled = !connected;
+    $('effects').disabled = !connected;
+    $('nfc').disabled = !connected;
+    if (!connected) closeEffects();
+    // Keep scanning through brief reconnects; stop only when the user disconnects.
+    if (kind === 'off') stopNfc();
   }
 
   function onlineText() {
@@ -355,6 +378,112 @@
     reader.onerror = function () { systemLine('Couldn\'t read "' + file.name + '"'); };
     reader.readAsDataURL(file);
   }
+
+  // --------------------------------------------------------------- effects
+  var tray = $('effects-tray');
+
+  function closeEffects() {
+    tray.hidden = true;
+    $('effects').setAttribute('aria-expanded', 'false');
+  }
+  $('effects').addEventListener('click', function () {
+    var open = tray.hidden;
+    tray.hidden = !open;
+    this.setAttribute('aria-expanded', String(open));
+  });
+  tray.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-effect]');
+    if (!b) return;
+    sendChat({ text: '/' + b.dataset.effect });
+    closeEffects();
+  });
+
+  // ------------------------------------------------------------------- NFC
+  // Web NFC is only available in Chrome on Android (over https). The button
+  // stays hidden everywhere else.
+  var nfc = { supported: 'NDEFReader' in window, reader: null, abort: null, last: '', lastAt: 0 };
+  if (nfc.supported) $('nfc').hidden = false;
+
+  function decodeRecord(record) {
+    var data = record.data;
+    var text = function (enc) {
+      try { return new TextDecoder(enc || 'utf-8').decode(data); } catch (e) { return new TextDecoder().decode(data); }
+    };
+    switch (record.recordType) {
+      case 'empty':
+        return '';
+      case 'text':
+        return text(record.encoding);
+      case 'url':
+      case 'absolute-url':
+        return text();
+      case 'smart-poster':
+        try { return (record.toRecords() || []).map(decodeRecord).filter(Boolean).join('\n'); } catch (e) { return ''; }
+      case 'mime':
+        if (/^text\/|json|xml|vcard/i.test(record.mediaType || '')) return text();
+        return '[' + (record.mediaType || 'binary') + ' data, ' + formatSize(data ? data.byteLength : 0) + ']';
+      default:
+        if (!data) return '';
+        var s = text();
+        // Only show it if it decodes to readable text.
+        return /[\u0000-\u0008\u000e-\u001f�]/.test(s) ? '[' + record.recordType + ' record]' : s;
+    }
+  }
+
+  function tagMessage(event) {
+    var parts = (event.message && event.message.records ? Array.prototype.map.call(event.message.records, decodeRecord) : [])
+      .map(function (s) { return s.trim(); })
+      .filter(Boolean);
+    if (parts.length) return parts.join('\n');
+    return 'Empty NFC tag' + (event.serialNumber ? ' (' + event.serialNumber + ')' : '');
+  }
+
+  function onTag(event) {
+    var text = tagMessage(event).slice(0, 4000);
+    // Phones report a tag repeatedly while it's held against them; send each tag once.
+    var key = (event.serialNumber || '') + '|' + text;
+    var now = Date.now();
+    if (key === nfc.last && now - nfc.lastAt < 4000) return;
+    nfc.last = key;
+    nfc.lastAt = now;
+    vibrate(50);
+    if (!sendChat({ text: text, via: 'nfc' })) systemLine('Not connected: NFC tag wasn\'t sent');
+  }
+
+  function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* not allowed */ } }
+
+  function stopNfc() {
+    if (nfc.abort) nfc.abort.abort();
+    nfc.abort = null;
+    $('nfc').setAttribute('aria-pressed', 'false');
+    $('nfc').setAttribute('aria-label', 'Scan NFC tags');
+  }
+
+  function startNfc() {
+    var reader = new window.NDEFReader();
+    var ctrl = new AbortController();
+    nfc.abort = ctrl;
+    reader.onreading = onTag;
+    reader.onreadingerror = function () { systemLine('Couldn\'t read that NFC tag. Try holding it still.'); };
+    reader.scan({ signal: ctrl.signal }).then(function () {
+      if (nfc.abort !== ctrl) return;
+      $('nfc').setAttribute('aria-pressed', 'true');
+      $('nfc').setAttribute('aria-label', 'Stop scanning NFC tags');
+      systemLine('Scanning for NFC tags. Hold a tag to the back of your phone.');
+    }).catch(function (err) {
+      if (nfc.abort === ctrl) nfc.abort = null;
+      if (err && err.name === 'AbortError') return;
+      var why = err && err.name === 'NotAllowedError' ? 'NFC permission was denied.'
+        : err && err.name === 'NotReadableError' ? 'NFC is turned off. Turn it on in your phone\'s settings.'
+        : 'NFC isn\'t available on this device.';
+      systemLine(why);
+    });
+  }
+
+  $('nfc').addEventListener('click', function () {
+    if (nfc.abort) { stopNfc(); systemLine('Stopped scanning for NFC tags.'); }
+    else startNfc();
+  });
 
   // -------------------------------------------------------------- settings
   var dialog = $('settings');

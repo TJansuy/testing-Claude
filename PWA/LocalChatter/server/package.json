@@ -1,0 +1,17 @@
+{
+  "name": "localchatter-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LAN relay for LocalChatter. Forwards chat messages between connected devices; keeps no history.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "selfsigned": "3.0.1",
+    "ws": "8.18.3"
+  }
+}

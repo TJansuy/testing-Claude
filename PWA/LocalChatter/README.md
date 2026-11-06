@@ -71,9 +71,8 @@ three-flashes-a-second limit in accessibility guidelines.
 Every effect line in the chat has a ☆. Tap it to keep that effect in
 **Favourites** (in the ✨ tray, or the dashboard on wide screens):
 
-- Your own effects get **Resend**, which sends them to everyone again.
-- Someone else's get **Echo to Bob**, which whispers the effect back to Bob so it
-  plays just for him. If Bob has left, it says so instead.
+- Your own effects get **Resend**; someone else's get **Echo** (labelled
+  *from Bob*). Either way it plays for everyone again, sent by you.
 - ✕ removes a favourite. Favourites are kept on the device (up to 20).
 
 ### Rumble

@@ -640,12 +640,6 @@
     });
   }
 
-  function findPeerByName(name) {
-    var found = null;
-    state.peers.forEach(function (p) { if (!found && p.name.toLowerCase() === String(name).toLowerCase()) found = p; });
-    return found;
-  }
-
   function renderFavourites() {
     var list = favourites();
     var ul = $('fav-list');
@@ -658,9 +652,9 @@
       label.appendChild(el('span', 'fav-name', line[0] + ' ' + f.effect.charAt(0).toUpperCase() + f.effect.slice(1)));
       label.appendChild(el('span', 'fav-from', f.from ? 'from ' + f.from : 'yours'));
       li.appendChild(label);
-      var go = el('button', 'fav-go', f.from ? 'Echo to ' + f.from : 'Resend');
+      var go = el('button', 'fav-go', f.from ? 'Echo' : 'Resend');
       go.type = 'button';
-      go.title = f.from ? 'Whisper it back to ' + f.from + ': it plays just for them' : 'Send it to everyone again';
+      go.title = f.from ? 'Play ' + f.from + '\'s effect for everyone again' : 'Send it to everyone again';
       go.addEventListener('click', function () { useFavourite(f); });
       li.appendChild(go);
       var rm = el('button', 'fav-remove', '\u2715');
@@ -674,12 +668,9 @@
     paintStars();
   }
 
-  // Resend your own; echo someone else's back to them as a whisper (it plays just for them).
+  // Resend your own, or echo someone else's: either way it plays for everyone.
   function useFavourite(f) {
-    if (!f.from) { sendChat({ text: '/' + f.effect }); return; }
-    var p = findPeerByName(f.from);
-    if (!p) { systemLine(f.from + ' isn\'t here right now, so it can\'t be echoed back.'); return; }
-    sendChat({ text: '/' + f.effect, to: [{ id: p.id, name: p.name }] });
+    sendChat({ text: '/' + f.effect });
   }
 
   // ------------------------------------------------------- soundboard (admin)

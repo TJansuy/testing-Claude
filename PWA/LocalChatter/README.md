@@ -56,7 +56,7 @@ It plays for everyone in the chat, including you, and shows as a line like
 | Message | Effect |
 | --- | --- |
 | `/fire` | Flames rise from the bottom of the screen. |
-| `/earthquake` (or `/quake`) | The screen shakes. Phones also vibrate. |
+| `/earthquake` (or `/quake`) | The screen shakes and Android phones rumble. |
 | `/lightning` | A lightning bolt strikes, with two flashes. |
 
 Commands are case-insensitive. They only count when they're the whole message,
@@ -65,6 +65,21 @@ so "I like /fire" is sent as normal text.
 If a device has **Reduce motion** turned on, it shows a soft glow instead:
 no shaking and no flashing. Lightning flashes twice, which stays under the
 three-flashes-a-second limit in accessibility guidelines.
+
+### Rumble
+
+On Android, an earthquake makes the phone rumble along with the shake: a quick
+build, a main shock with random jolts, a smaller aftershock, then a fade. It's
+randomised, so each earthquake feels different. Fire and lightning give a short buzz.
+
+Phones can only switch the vibration motor on and off, not set its strength, so
+intensity is made from very short pulses: more "on" per pulse feels stronger.
+
+- Turn it off in Settings (*Vibrate for effects*). The setting only appears on
+  devices that can vibrate.
+- iPhone and iPad can't vibrate from web pages, so they only shake on screen.
+- Android only vibrates after you've tapped the page at least once, and not
+  when the phone's vibration or battery saver blocks it.
 
 ## Sounds
 

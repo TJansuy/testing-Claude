@@ -9,6 +9,7 @@
   var KEY_ROLE = 'localchatter-role';
   var KEY_SOUND_ON = 'localchatter-sound-on';
   var KEY_EMBED = 'localchatter-sound-embed';
+  var KEY_VIBRATE = 'localchatter-vibrate';
   var SND = window.LocalChatterSounds;
   var MAX_MESSAGES = 300;
   var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
@@ -1002,6 +1003,10 @@
     if (changed || !state.ws) { banner(null); state.retry = 0; connect(); }
   });
   $('relay').addEventListener('input', function () { this.setCustomValidity(''); });
+  $('vibrate-on').addEventListener('change', function () {
+    save(KEY_VIBRATE, this.checked ? 'on' : 'off');
+    window.LocalChatterFX.setVibration(this.checked);
+  });
   $('sound-on').addEventListener('change', function () {
     soundOn = this.checked;
     save(KEY_SOUND_ON, soundOn ? 'on' : 'off');
@@ -1042,6 +1047,11 @@
     state.name = load(KEY_NAME);
     var firstRun = !state.name;
     if (firstRun) state.name = 'Guest ' + Math.floor(1000 + Math.random() * 9000);
+    // Vibration only exists on Android browsers; the setting is hidden elsewhere.
+    var vib = load(KEY_VIBRATE) !== 'off';
+    $('vibrate-row').hidden = !window.LocalChatterFX.canVibrate;
+    $('vibrate-on').checked = vib;
+    window.LocalChatterFX.setVibration(vib);
     soundOn = load(KEY_SOUND_ON) !== 'off';
     $('sound-on').checked = soundOn;
     var savedRole = load(KEY_ROLE);

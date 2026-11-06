@@ -15,8 +15,49 @@
   function reducedMotion() {
     return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
+  // Vibration (Android browsers; iPhone/iPad Safari has none). The app can turn it off.
+  var vibrationOn = true;
   function vibrate(pattern) {
+    if (!vibrationOn) return;
     try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* not allowed */ }
+  }
+
+  // Phones can only switch the motor on and off, not set its strength. Short pulses
+  // with more "on" per pulse feel stronger, so intensity (0-1) becomes the share of
+  // each pulse the motor is on. Chrome accepts at most 99 steps, which sets the length.
+  var PULSE_MS = 40;
+  var MAX_STEPS = 98;
+  function rumblePattern(intensities) {
+    var pattern = [];
+    var rest = 0;
+    for (var i = 0; i < intensities.length && pattern.length < MAX_STEPS - 1; i++) {
+      var k = Math.max(0, Math.min(1, intensities[i]));
+      var on = Math.round(PULSE_MS * k);
+      if (on < 6) { rest += PULSE_MS; continue; } // too short to feel: treat as a pause
+      if (pattern.length === 0 && rest) pattern.push(0); // patterns start with "on"
+      if (rest) pattern.push(rest);
+      pattern.push(on);
+      rest = PULSE_MS - on;
+    }
+    return pattern;
+  }
+
+  // An earthquake: a quick build, a main shock with random jolts, then fading
+  // aftershocks. Randomised, so no two quakes feel the same. Matches the 1.6 s shake.
+  function quakeRumble() {
+    var steps = Math.round(1600 / PULSE_MS);
+    var peakAt = 0.12 + Math.random() * 0.1;
+    var aftershock = 0.55 + Math.random() * 0.2;
+    var out = [];
+    for (var i = 0; i < steps; i++) {
+      var t = i / steps;
+      var envelope = t < peakAt ? t / peakAt : Math.pow(1 - (t - peakAt) / (1 - peakAt), 1.6);
+      // A smaller second wave partway through.
+      envelope += 0.35 * Math.exp(-Math.pow((t - aftershock) / 0.06, 2));
+      var jolt = 0.65 + Math.random() * 0.35;
+      out.push(Math.min(1, envelope * jolt));
+    }
+    return rumblePattern(out);
   }
 
   // Returns the effect name for a message like "/fire", or null.
@@ -120,7 +161,7 @@
 
   // ------------------------------------------------------------ earthquake
   function earthquake(done) {
-    vibrate([120, 60, 180, 60, 240]);
+    vibrate(quakeRumble());
     if (reducedMotion()) { glow('fx-quake-glow', 1600); return setTimeout(done, 1600); }
     var root = document.body;
     root.classList.remove('fx-shake');
@@ -211,5 +252,12 @@
     return true;
   }
 
-  window.LocalChatterFX = { parse: parse, play: play, names: Object.keys(EFFECTS) };
+  window.LocalChatterFX = {
+    parse: parse,
+    play: play,
+    names: Object.keys(EFFECTS),
+    setVibration: function (on) { vibrationOn = !!on; if (!on) vibrate(0); },
+    canVibrate: 'vibrate' in navigator,
+    quakeRumble: quakeRumble
+  };
 })();

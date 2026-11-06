@@ -423,3 +423,57 @@ body.display-mode .debug-bar { display: none !important; }
 .msg.spied { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--theirs)); }
 .msg .whisper-to { font-style: italic; }
 .people .link-button { padding: 2px 0; font-size: 1rem; }
+
+/* Favourites */
+.dash-title { display: none; margin: 0 0 10px; font-size: 1rem; }
+.favs { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.fav-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fav-list li { display: flex; align-items: center; gap: 8px; }
+.fav-label { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fav-name { font-weight: 600; }
+.fav-from { color: var(--muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav-go {
+  min-height: 36px; padding: 6px 12px; border: 0; border-radius: 18px;
+  background: var(--accent); color: var(--on-accent); font: inherit; font-size: .9rem; cursor: pointer; white-space: nowrap;
+}
+.fav-remove { width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.fav-remove:hover { background: var(--bg); }
+.effect-line { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.effect-line .star {
+  display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 1.1rem; cursor: pointer;
+}
+.effect-line .star[aria-pressed="true"] { color: #e0a100; }
+.effects-tray.offline { opacity: .5; pointer-events: none; }
+
+/* Wide screens (16:10 and wider): chat on the left, dashboard on the right */
+body.wide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 30vw, 440px);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    "top    top"
+    "banner banner"
+    "msgs   dash"
+    "debug  dash"
+    "scan   dash"
+    "comp   dash";
+}
+body.wide .topbar { grid-area: top; }
+body.wide #banner { grid-area: banner; }
+body.wide #messages { grid-area: msgs; }
+body.wide #debug-bar { grid-area: debug; }
+body.wide #scan-menu { grid-area: scan; }
+body.wide #composer { grid-area: comp; }
+body.wide #effects-tray {
+  grid-area: dash;
+  overflow-y: auto;
+  padding: 16px;
+  border-top: 0;
+  border-left: 1px solid var(--line);
+}
+body.wide .dash-title { display: block; }
+body.wide .messages { padding: 20px 24px; }
+body.wide .msg { max-width: min(70%, 560px); }
+body.wide .effects-buttons button { flex: 1 1 calc(50% - 8px); }
+body.wide #sb-buttons button { flex: 1 1 calc(50% - 8px); }

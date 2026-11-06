@@ -36,13 +36,16 @@
     <p class="empty" id="empty">Messages appear here while you're connected. Nothing is saved: when you leave, they're gone.</p>
   </main>
 
-  <div id="effects-tray" class="effects-tray" hidden>
+  <!-- On wide (16:10 and wider) screens this tray becomes the always-open dashboard. -->
+  <aside id="effects-tray" class="effects-tray" hidden aria-label="Effects and sounds">
+    <h2 class="dash-title">Effects</h2>
     <div class="effects-buttons">
       <button type="button" data-effect="fire">🔥 Fire</button>
       <button type="button" data-effect="earthquake">🌍 Earthquake</button>
       <button type="button" data-effect="lightning">⚡ Lightning</button>
     </div>
     <label id="fx-target" class="fx-target" hidden>For <select id="fx-to" aria-label="Who sees the effect"></select></label>
+    <p class="hint" id="fx-hint">Everyone in the chat sees it. You can also type <code>/fire</code>, <code>/earthquake</code> or <code>/lightning</code>.</p>
     <div id="soundboard" class="soundboard" hidden>
       <div class="sb-head">
         <strong>Soundboard</strong>
@@ -52,8 +55,12 @@
       <div id="sb-buttons" class="effects-buttons"></div>
       <p id="sb-empty" class="hint">No sounds yet. Tap <strong>Manage sounds</strong> to add some.</p>
     </div>
-    <p class="hint" id="fx-hint">Everyone in the chat sees it. You can also type <code>/fire</code>, <code>/earthquake</code> or <code>/lightning</code>.</p>
-  </div>
+    <div id="favs" class="favs">
+      <div class="sb-head"><strong>Favourites</strong></div>
+      <ul id="fav-list" class="fav-list"></ul>
+      <p id="fav-empty" class="hint">Tap ☆ next to an effect in the chat to keep it here.</p>
+    </div>
+  </aside>
 
   <div id="debug-bar" class="debug-bar" hidden>
     <strong>Debug mode</strong>

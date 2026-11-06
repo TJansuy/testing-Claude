@@ -12,6 +12,8 @@
   var KEY_VIBRATE = 'localchatter-vibrate';
   var KEY_DISPLAY_NAME = 'localchatter-display-name';
   var KEY_SPY = 'localchatter-spy';
+  var KEY_FAVS = 'localchatter-favourites';
+  var MAX_FAVS = 20;
   // Display mode: opened from <app>/Display (which forwards here with ?display).
   var DISPLAY = new URLSearchParams(location.search).has('display');
   var SND = window.LocalChatterSounds;
@@ -136,7 +138,18 @@
     if (msg.to) notes.push('whisper');
     var spoofer = spoofedBy(msg);
     if (spoofer) notes.push('really sent by ' + spoofer.name);
-    systemLine(line[0] + ' ' + who + ' ' + line[1] + (notes.length ? ' (' + notes.join(', ') + ')' : ''));
+    var p = el('p', 'system effect-line');
+    p.appendChild(el('span', null, line[0] + ' ' + who + ' ' + line[1] + (notes.length ? ' (' + notes.join(', ') + ')' : '')));
+    // Favourite it: yours can be resent, someone else's can be echoed back to them.
+    var shown = msg.as || msg.from;
+    var fav = { effect: name, from: who.indexOf('You') === 0 || !shown ? null : shown.name };
+    var star = el('button', 'star');
+    star.type = 'button';
+    star.dataset.favKey = favKey(fav);
+    star.addEventListener('click', function () { toggleFavourite(fav); });
+    p.appendChild(star);
+    append(p);
+    paintStars();
     window.LocalChatterFX.play(name);
   }
 
@@ -306,6 +319,7 @@
     $('effects').disabled = !connected;
     $('scan').disabled = !connected;
     if (!connected) { closeEffects(); closeScanMenu(); }
+    tray.classList.toggle('offline', !connected);
     // Keep scanning through brief reconnects; stop only when the user disconnects.
     if (kind === 'off') stopNfc();
   }
@@ -563,7 +577,21 @@
   // --------------------------------------------------------------- effects
   var tray = $('effects-tray');
 
+  // Wide screens (16:10 or wider, at least 960px): the tray is a permanent dashboard.
+  var wideQuery = window.matchMedia('(min-aspect-ratio: 16/10) and (min-width: 960px)');
+  function isWide() { return wideQuery.matches && !DISPLAY; }
+  function applyLayout() {
+    var wide = isWide();
+    document.body.classList.toggle('wide', wide);
+    $('effects').hidden = wide;
+    tray.hidden = !wide;
+    $('effects').setAttribute('aria-expanded', 'false');
+  }
+  if (wideQuery.addEventListener) wideQuery.addEventListener('change', applyLayout);
+  else if (wideQuery.addListener) wideQuery.addListener(applyLayout);
+
   function closeEffects() {
+    if (isWide()) return; // the dashboard stays open
     tray.hidden = true;
     $('effects').setAttribute('aria-expanded', 'false');
   }
@@ -583,6 +611,76 @@
     }
     closeEffects();
   });
+
+  // ------------------------------------------------------------ favourites
+  // Stored on this device: { effect, from } where from is null for your own.
+  function favKey(f) { return f.effect + '|' + (f.from || '').toLowerCase(); }
+  function favourites() {
+    try { return JSON.parse(load(KEY_FAVS) || '[]'); } catch (e) { return []; }
+  }
+  function saveFavourites(list) { save(KEY_FAVS, JSON.stringify(list.slice(0, MAX_FAVS))); }
+
+  function toggleFavourite(fav) {
+    var list = favourites();
+    var key = favKey(fav);
+    var i = list.findIndex(function (f) { return favKey(f) === key; });
+    if (i >= 0) list.splice(i, 1);
+    else list.unshift({ effect: fav.effect, from: fav.from });
+    saveFavourites(list);
+    renderFavourites();
+  }
+
+  function paintStars() {
+    var keys = favourites().map(favKey);
+    document.querySelectorAll('.star[data-fav-key]').forEach(function (b) {
+      var on = keys.indexOf(b.dataset.favKey) >= 0;
+      b.textContent = on ? '\u2605' : '\u2606';
+      b.setAttribute('aria-pressed', String(on));
+      b.setAttribute('aria-label', on ? 'Remove from favourites' : 'Add to favourites');
+    });
+  }
+
+  function findPeerByName(name) {
+    var found = null;
+    state.peers.forEach(function (p) { if (!found && p.name.toLowerCase() === String(name).toLowerCase()) found = p; });
+    return found;
+  }
+
+  function renderFavourites() {
+    var list = favourites();
+    var ul = $('fav-list');
+    ul.textContent = '';
+    list.forEach(function (f) {
+      var line = EFFECT_LINES[f.effect];
+      if (!line) return;
+      var li = el('li');
+      var label = el('span', 'fav-label');
+      label.appendChild(el('span', 'fav-name', line[0] + ' ' + f.effect.charAt(0).toUpperCase() + f.effect.slice(1)));
+      label.appendChild(el('span', 'fav-from', f.from ? 'from ' + f.from : 'yours'));
+      li.appendChild(label);
+      var go = el('button', 'fav-go', f.from ? 'Echo to ' + f.from : 'Resend');
+      go.type = 'button';
+      go.title = f.from ? 'Whisper it back to ' + f.from + ': it plays just for them' : 'Send it to everyone again';
+      go.addEventListener('click', function () { useFavourite(f); });
+      li.appendChild(go);
+      var rm = el('button', 'fav-remove', '\u2715');
+      rm.type = 'button';
+      rm.setAttribute('aria-label', 'Remove from favourites');
+      rm.addEventListener('click', function () { toggleFavourite(f); });
+      li.appendChild(rm);
+      ul.appendChild(li);
+    });
+    $('fav-empty').hidden = list.length > 0;
+    paintStars();
+  }
+
+  // Resend your own; echo someone else's back to them as a whisper (it plays just for them).
+  function useFavourite(f) {
+    if (!f.from) { sendChat({ text: '/' + f.effect }); return; }
+    var p = findPeerByName(f.from);
+    if (!p) { systemLine(f.from + ' isn\'t here right now, so it can\'t be echoed back.'); return; }
+    sendChat({ text: '/' + f.effect, to: [{ id: p.id, name: p.name }] });
+  }
 
   // ------------------------------------------------------- soundboard (admin)
   function refreshSoundboard() {
@@ -1181,6 +1279,8 @@
     soundOn = load(KEY_SOUND_ON) !== 'off';
     $('sound-on').checked = soundOn;
     var savedRole = load(KEY_ROLE);
+    applyLayout();
+    renderFavourites();
     if (DISPLAY) { setRole('display', true); startDisplay(); }
     else setRole(ROLES[savedRole] && savedRole !== 'display' ? savedRole : 'member', true);
     registerServiceWorker();

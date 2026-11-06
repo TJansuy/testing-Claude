@@ -66,6 +66,16 @@ If a device has **Reduce motion** turned on, it shows a soft glow instead:
 no shaking and no flashing. Lightning flashes twice, which stays under the
 three-flashes-a-second limit in accessibility guidelines.
 
+### Favourites
+
+Every effect line in the chat has a ☆. Tap it to keep that effect in
+**Favourites** (in the ✨ tray, or the dashboard on wide screens):
+
+- Your own effects get **Resend**, which sends them to everyone again.
+- Someone else's get **Echo to Bob**, which whispers the effect back to Bob so it
+  plays just for him. If Bob has left, it says so instead.
+- ✕ removes a favourite. Favourites are kept on the device (up to 20).
+
 ### Rumble
 
 On Android, an earthquake makes the phone rumble along with the shake: a quick
@@ -80,6 +90,15 @@ intensity is made from very short pulses: more "on" per pulse feels stronger.
 - iPhone and iPad can't vibrate from web pages, so they only shake on screen.
 - Android only vibrates after you've tapped the page at least once, and not
   when the phone's vibration or battery saver blocks it.
+
+## Wide screens (dashboard)
+
+On screens 16:10 or wider and at least 960 px across (laptops, and tablets in
+landscape), the ✨ tray becomes a dashboard beside the chat that stays open:
+**Effects**, the **Soundboard** (admins) and **Favourites**. Using it doesn't
+close it. Narrower screens, 4:3 tablets and portrait screens keep the normal
+layout, and it switches live when you rotate or resize. Display mode never
+shows the dashboard.
 
 ## Sounds
 

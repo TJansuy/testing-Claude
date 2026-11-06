@@ -126,12 +126,25 @@
   var EFFECT_LINES = {
     fire: ['🔥', 'set the chat on fire'],
     earthquake: ['🌍', 'started an earthquake'],
-    lightning: ['⚡', 'called down lightning']
+    lightning: ['⚡', 'called down lightning'],
+    zalgo: ['👹', 'corrupted the chat']
   };
 
+  // The emoji and wording for an effect line, e.g. "corrupted the chat for 30 s".
+  function effectPhrase(fx) {
+    if (fx.name !== 'zalgo') return EFFECT_LINES[fx.name];
+    if (fx.arg === 'off') return ['✨', 'restored the chat'];
+    if (fx.arg === 'on') return [EFFECT_LINES.zalgo[0], 'corrupted the chat until someone sends /zalgo off'];
+    return [EFFECT_LINES.zalgo[0], 'corrupted the chat for ' + formatDuration(fx.arg)];
+  }
+  function formatDuration(s) {
+    return s >= 60 && s % 60 === 0 ? (s / 60) + ' min' : s + ' s';
+  }
+
   // "/fire", "/earthquake" and "/lightning" play an effect for everyone instead of showing as text.
-  function renderEffect(name, msg, who) {
-    var line = EFFECT_LINES[name];
+  function renderEffect(fx, msg, who) {
+    var name = fx.name;
+    var line = effectPhrase(fx);
     var notes = [];
     if (msg.via === 'nfc') notes.push('NFC tag');
     if (msg.via === 'qr') notes.push('QR code');
@@ -142,7 +155,7 @@
     p.appendChild(el('span', null, line[0] + ' ' + who + ' ' + line[1] + (notes.length ? ' (' + notes.join(', ') + ')' : '')));
     // Favourite it: yours can be resent, someone else's can be echoed back to them.
     var shown = msg.as || msg.from;
-    var fav = { effect: name, from: who.indexOf('You') === 0 || !shown ? null : shown.name };
+    var fav = { effect: name, arg: fx.argText || '', from: who.indexOf('You') === 0 || !shown ? null : shown.name };
     var star = el('button', 'star');
     star.type = 'button';
     star.dataset.favKey = favKey(fav);
@@ -150,7 +163,7 @@
     p.appendChild(star);
     append(p);
     paintStars();
-    window.LocalChatterFX.play(name);
+    window.LocalChatterFX.play(name, fx.arg);
   }
 
   function nameOf(id) {
@@ -168,10 +181,10 @@
   function renderMessage(msg, mine) {
     var shown = msg.as || msg.from;
     var who = mine ? (msg.as ? 'You (as ' + msg.as.name + ')' : 'You') : (shown && shown.name) || 'Someone';
-    var effect = !msg.file && !msg.sound && window.LocalChatterFX && window.LocalChatterFX.parse(msg.text);
+    var effect = !msg.file && !msg.sound && window.LocalChatterFX && window.LocalChatterFX.parseFull(msg.text);
     if (DISPLAY) {
       // A display only plays effects and sounds; it never shows messages.
-      if (effect) window.LocalChatterFX.play(effect);
+      if (effect) window.LocalChatterFX.play(effect.name, effect.arg);
       else if (msg.sound) displaySound(msg.sound);
       return null;
     }
@@ -455,7 +468,8 @@
       case 'effect':
         // Targeted effect from someone in debug mode: everyone receives it, only the target plays it.
         var forMe = msg.to === 'all' || (state.me && msg.to === state.me.id);
-        if (forMe && window.LocalChatterFX) window.LocalChatterFX.play(msg.name);
+        var tfx = window.LocalChatterFX && window.LocalChatterFX.parseFull('/' + msg.name);
+        if (forMe && tfx) window.LocalChatterFX.play(tfx.name, tfx.arg);
         renderSystem({ kind: 'effect', from: msg.from, name: msg.name, to: msg.to });
         break;
       case 'join':
@@ -614,7 +628,7 @@
 
   // ------------------------------------------------------------ favourites
   // Stored on this device: { effect, from } where from is null for your own.
-  function favKey(f) { return f.effect + '|' + (f.from || '').toLowerCase(); }
+  function favKey(f) { return f.effect + (f.arg ? ' ' + f.arg : '') + '|' + (f.from || '').toLowerCase(); }
   function favourites() {
     try { return JSON.parse(load(KEY_FAVS) || '[]'); } catch (e) { return []; }
   }
@@ -625,7 +639,7 @@
     var key = favKey(fav);
     var i = list.findIndex(function (f) { return favKey(f) === key; });
     if (i >= 0) list.splice(i, 1);
-    else list.unshift({ effect: fav.effect, from: fav.from });
+    else list.unshift({ effect: fav.effect, arg: fav.arg || '', from: fav.from });
     saveFavourites(list);
     renderFavourites();
   }
@@ -645,11 +659,13 @@
     var ul = $('fav-list');
     ul.textContent = '';
     list.forEach(function (f) {
-      var line = EFFECT_LINES[f.effect];
-      if (!line) return;
+      var fx = window.LocalChatterFX.parseFull('/' + f.effect + (f.arg ? ' ' + f.arg : ''));
+      if (!fx) return;
+      var line = effectPhrase(fx);
       var li = el('li');
       var label = el('span', 'fav-label');
-      label.appendChild(el('span', 'fav-name', line[0] + ' ' + f.effect.charAt(0).toUpperCase() + f.effect.slice(1)));
+      var title = f.effect.charAt(0).toUpperCase() + f.effect.slice(1) + (f.arg ? ' ' + f.arg : '');
+      label.appendChild(el('span', 'fav-name', line[0] + ' ' + title));
       label.appendChild(el('span', 'fav-from', f.from ? 'from ' + f.from : 'yours'));
       li.appendChild(label);
       var go = el('button', 'fav-go', f.from ? 'Echo' : 'Resend');
@@ -670,7 +686,7 @@
 
   // Resend your own, or echo someone else's: either way it plays for everyone.
   function useFavourite(f) {
-    sendChat({ text: '/' + f.effect });
+    sendChat({ text: '/' + f.effect + (f.arg ? ' ' + f.arg : '') });
   }
 
   // ------------------------------------------------------- soundboard (admin)

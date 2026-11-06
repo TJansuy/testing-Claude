@@ -477,3 +477,34 @@ body.wide .messages { padding: 20px 24px; }
 body.wide .msg { max-width: min(70%, 560px); }
 body.wide .effects-buttons button { flex: 1 1 calc(50% - 8px); }
 body.wide #sb-buttons button { flex: 1 1 calc(50% - 8px); }
+
+/* Zalgo: corrupted chat and glitching dashboard (no brightness flashing) */
+html:has(body.fx-zalgo) { overflow-x: hidden; }
+body.fx-zalgo .messages, body.fx-zalgo .topbar { overflow-x: hidden; }
+body.fx-zalgo .msg { overflow: visible; }
+body.fx-zalgo #effects-tray {
+  text-shadow: 2px 0 rgb(255 0 60 / .7), -2px 0 rgb(0 220 255 / .7);
+  animation: zalgo-glitch 1.4s steps(6, jump-none) infinite, zalgo-hue 6s linear infinite;
+}
+body.fx-zalgo #effects-tray button { animation: zalgo-jitter .9s steps(3, jump-none) infinite; }
+body.fx-zalgo #effects-tray button:nth-child(2n) { animation-duration: 1.3s; animation-direction: reverse; }
+body.fx-zalgo #effects-tray button:nth-child(3n) { animation-duration: .7s; }
+body.fx-zalgo .topbar h1 { text-shadow: 2px 0 rgb(255 0 60 / .6), -2px 0 rgb(0 220 255 / .6); }
+@keyframes zalgo-glitch {
+  0%   { transform: none; clip-path: inset(0 0 0 0); }
+  20%  { transform: translate(-3px, 1px) skewX(-2deg); clip-path: inset(10% 0 15% 0); }
+  40%  { transform: translate(2px, -1px); clip-path: inset(0 0 0 0); }
+  60%  { transform: translate(-1px, 2px) skewX(3deg); clip-path: inset(30% 0 5% 0); }
+  80%  { transform: translate(3px, 0); clip-path: inset(0 0 0 0); }
+  100% { transform: none; clip-path: inset(0 0 0 0); }
+}
+@keyframes zalgo-jitter {
+  0%   { transform: translate(0, 0) rotate(0); }
+  33%  { transform: translate(-4px, 2px) rotate(-2deg); }
+  66%  { transform: translate(3px, -3px) rotate(1.5deg); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+@keyframes zalgo-hue { to { filter: hue-rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  body.fx-zalgo #effects-tray, body.fx-zalgo #effects-tray button { animation: none; }
+}

@@ -8,7 +8,8 @@
     fire: 'fire',
     earthquake: 'earthquake',
     quake: 'earthquake',
-    lightning: 'lightning'
+    lightning: 'lightning',
+    zalgo: 'zalgo'
   };
   var playing = {};
 
@@ -62,8 +63,33 @@
 
   // Returns the effect name for a message like "/fire", or null.
   function parse(text) {
-    var m = /^\s*\/([a-z]+)\s*$/i.exec(String(text || ''));
-    return m ? COMMANDS[m[1].toLowerCase()] || null : null;
+    var fx = parseFull(text);
+    return fx ? fx.name : null;
+  }
+
+  // Like parse, but also reads an argument. Only /zalgo takes one:
+  //   /zalgo          10 seconds        /zalgo 30, 30s, 2m   that long (max 10 min)
+  //   /zalgo on       until /zalgo off  /zalgo off           stop now
+  // Returns { name, arg, argText } or null. Anything else after a command means
+  // it's ordinary text, not an effect.
+  var ZALGO_DEFAULT_S = 10;
+  var ZALGO_MAX_S = 600;
+  function parseFull(text) {
+    var m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text || ''));
+    if (!m) return null;
+    var name = COMMANDS[m[1].toLowerCase()];
+    if (!name) return null;
+    var raw = m[2];
+    if (!raw) return { name: name, arg: name === 'zalgo' ? ZALGO_DEFAULT_S : null, argText: '' };
+    if (name !== 'zalgo') return null;
+    var a = raw.toLowerCase();
+    if (a === 'off' || a === 'stop') return { name: name, arg: 'off', argText: 'off' };
+    if (a === 'on' || a === 'forever') return { name: name, arg: 'on', argText: 'on' };
+    var d = /^(\d{1,4})(s|m)?$/.exec(a);
+    if (!d) return null;
+    var secs = Math.min(ZALGO_MAX_S, parseInt(d[1], 10) * (d[2] === 'm' ? 60 : 1));
+    if (!secs) return null;
+    return { name: name, arg: secs, argText: a };
   }
 
   // Full-screen canvas sized for the device pixel ratio, removed when done.
@@ -236,10 +262,103 @@
     requestAnimationFrame(frame);
   }
 
+  // ------------------------------------------------------------------ zalgo
+  // Turns all the chat's text into zalgo text and glitches the dashboard, until a
+  // timer runs out or "/zalgo off" arrives. Text typed in the message box stays
+  // readable. Every original is remembered and put back exactly.
+  var ZALGO_TARGETS = ['.topbar', '#messages', '#effects-tray', '#stage', '#banner'];
+  var zalgo = { active: false, timer: null, observer: null, nodes: new Map(), until: 0 };
+
+  function randomMark() {
+    var c;
+    do { c = 0x300 + Math.floor(Math.random() * 0x70); } while (c === 0x34F); // skip the invisible joiner
+    return String.fromCharCode(c);
+  }
+  function zalgoify(text, strength) {
+    var out = '';
+    Array.from(text).forEach(function (ch) {
+      out += ch;
+      if (/\s/.test(ch)) return;
+      var n = 1 + Math.floor(Math.random() * strength);
+      for (var i = 0; i < n; i++) out += randomMark();
+    });
+    return out;
+  }
+  function skip(node) {
+    var p = node.parentElement;
+    return !p || !!p.closest('textarea, input, select, script, style, dialog');
+  }
+  function corrupt(node) {
+    if (skip(node) || !node.nodeValue.trim()) return;
+    var rec = zalgo.nodes.get(node);
+    if (rec && node.nodeValue === rec.mangled) return; // our own change
+    var strength = node.parentElement.closest('#effects-tray') ? 8 : 5;
+    rec = { orig: node.nodeValue, mangled: zalgoify(node.nodeValue, strength) };
+    zalgo.nodes.set(node, rec);
+    node.nodeValue = rec.mangled;
+  }
+  function corruptTree(root) {
+    if (root.nodeType === 3) { corrupt(root); return; }
+    if (root.nodeType !== 1) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    var list = [];
+    while (walker.nextNode()) list.push(walker.currentNode);
+    list.forEach(corrupt);
+  }
+
+  function startZalgo() {
+    if (zalgo.active) return;
+    zalgo.active = true;
+    document.body.classList.add('fx-zalgo');
+    ZALGO_TARGETS.forEach(function (sel) { document.querySelectorAll(sel).forEach(corruptTree); });
+    // Keep corrupting anything new: incoming messages, status updates and so on.
+    zalgo.observer = new MutationObserver(function (records) {
+      records.forEach(function (r) {
+        if (r.type === 'characterData') corrupt(r.target);
+        else r.addedNodes.forEach(corruptTree);
+      });
+    });
+    ZALGO_TARGETS.forEach(function (sel) {
+      document.querySelectorAll(sel).forEach(function (el) {
+        zalgo.observer.observe(el, { childList: true, subtree: true, characterData: true });
+      });
+    });
+  }
+
+  function stopZalgo() {
+    clearTimeout(zalgo.timer);
+    zalgo.timer = null;
+    zalgo.until = 0;
+    if (!zalgo.active) return;
+    zalgo.active = false;
+    if (zalgo.observer) zalgo.observer.disconnect();
+    zalgo.observer = null;
+    zalgo.nodes.forEach(function (rec, node) {
+      // Only restore text we changed; if the app has since replaced it, leave that alone.
+      if (node.isConnected && node.nodeValue === rec.mangled) node.nodeValue = rec.orig;
+    });
+    zalgo.nodes.clear();
+    document.body.classList.remove('fx-zalgo');
+  }
+
+  // arg: seconds, 'on' (until /zalgo off) or 'off'. Sending it again resets the timer.
+  function zalgoEffect(arg) {
+    if (arg === 'off') { stopZalgo(); return; }
+    vibrate([30, 30, 30, 30, 30]);
+    startZalgo();
+    clearTimeout(zalgo.timer);
+    zalgo.timer = null;
+    if (arg === 'on') { zalgo.until = Infinity; return; }
+    var secs = typeof arg === 'number' ? arg : ZALGO_DEFAULT_S;
+    zalgo.until = Date.now() + secs * 1000;
+    zalgo.timer = setTimeout(stopZalgo, secs * 1000);
+  }
+
   var EFFECTS = { fire: fire, earthquake: earthquake, lightning: lightning };
 
   // Plays an effect; a second request for one that's already playing is ignored.
-  function play(name) {
+  function play(name, arg) {
+    if (name === 'zalgo') { zalgoEffect(arg === undefined ? ZALGO_DEFAULT_S : arg); return true; }
     var fn = EFFECTS[name];
     if (!fn || playing[name]) return false;
     playing[name] = true;
@@ -254,8 +373,10 @@
 
   window.LocalChatterFX = {
     parse: parse,
+    parseFull: parseFull,
     play: play,
-    names: Object.keys(EFFECTS),
+    names: Object.keys(EFFECTS).concat('zalgo'),
+    zalgoActive: function () { return zalgo.active; },
     setVibration: function (on) { vibrationOn = !!on; if (!on) vibrate(0); },
     canVibrate: 'vibrate' in navigator,
     quakeRumble: quakeRumble

@@ -58,9 +58,18 @@ It plays for everyone in the chat, including you, and shows as a line like
 | `/fire` | Flames rise from the bottom of the screen. |
 | `/earthquake` (or `/quake`) | The screen shakes and Android phones rumble. |
 | `/lightning` | A lightning bolt strikes, with two flashes. |
+| `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text, and the dashboard glitches. Lasts 10 seconds. |
+| `/zalgo 30` (or `30s`, `2m`) | The same, for that long (up to 10 minutes). |
+| `/zalgo on` / `/zalgo off` | Corrupts the chat until anyone sends `/zalgo off`, which restores it straight away. |
 
 Commands are case-insensitive. They only count when they're the whole message,
 so "I like /fire" is sent as normal text.
+
+While the chat is corrupted, messages that arrive are corrupted too, but the
+message box stays readable and the dashboard buttons keep working (✨ Restore
+in the tray sends `/zalgo off`). When it ends, every bit of text goes back
+exactly as it was. Sending `/zalgo` again while it's active resets the timer.
+`/zalgo` with anything else after it (e.g. `/zalgo banana`) is just text.
 
 If a device has **Reduce motion** turned on, it shows a soft glow instead:
 no shaking and no flashing. Lightning flashes twice, which stays under the

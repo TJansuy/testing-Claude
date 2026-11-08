@@ -193,6 +193,10 @@
   function systemNotice(text4, cls) {
     append(langText("p", "system" + (cls ? " " + cls : ""), text4, "system", text4 + "|" + Date.now()));
   }
+  function showLanguage(box2, tag, known2) {
+    box2.classList.toggle("in-lang", known2);
+    if (tag) tag.hidden = !known2;
+  }
   function refreshLanguages() {
     document.querySelectorAll(".lc").forEach((n) => {
       const info = original.get(n);
@@ -202,6 +206,9 @@
       n.title = known2 ? "" : notUnderstood(info.lang);
       const bubble = n.closest(".msg");
       if (bubble) bubble.classList.toggle("foreign", !known2);
+    });
+    document.querySelectorAll(".msg[data-lang]").forEach((box2) => {
+      showLanguage(box2, box2.querySelector(".lang-tag"), "mine" in box2.dataset || understands(box2.dataset.lang));
     });
     const sp = speaking();
     const t = $("text");
@@ -273,6 +280,162 @@
         }
         d.classList.add("out");
         setTimeout(() => d.remove(), 700);
+      }
+    };
+  }
+
+  // PWA/LocalChatter/src/effects/blackhole.ts
+  var SWALLOW_MS = 1800;
+  function centre() {
+    const list3 = document.getElementById("messages");
+    const r = list3 && list3.offsetParent ? list3.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+  function swallow(el2, calm) {
+    const r = el2.getBoundingClientRect();
+    const ghost = el2.cloneNode(true);
+    el2.remove();
+    ghost.classList.add("fx-ghost");
+    Object.assign(ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", maxWidth: "none", margin: "0" });
+    document.body.appendChild(ghost);
+    let anim2;
+    if (calm) {
+      anim2 = ghost.animate([{ opacity: 1 }, { opacity: 0, transform: "scale(.6)" }], { duration: 900, fill: "forwards" });
+    } else {
+      const c = centre();
+      const ex = r.left + r.width / 2;
+      const ey = r.top + r.height / 2;
+      const dist = Math.hypot(c.x - ex, c.y - ey) || 1;
+      const start2 = Math.atan2(ey - c.y, ex - c.x);
+      const turn = (Math.random() < 0.5 ? -1 : 1) * Math.PI * (2 + Math.random());
+      const frames = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const rad = dist * Math.pow(1 - t, 1.3);
+        const a = start2 + turn * t;
+        frames.push({
+          transform: `translate(${c.x + Math.cos(a) * rad - ex}px, ${c.y + Math.sin(a) * rad - ey}px) rotate(${turn * t * 57.3}deg) scale(${1 - 0.97 * t})`,
+          opacity: t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25,
+          offset: t
+        });
+      }
+      anim2 = ghost.animate(frames, { duration: SWALLOW_MS, easing: "cubic-bezier(.45, 0, .85, .55)", fill: "forwards" });
+    }
+    anim2.finished.then(() => ghost.remove(), () => ghost.remove());
+  }
+  function startBlackhole() {
+    vibrate([80, 40, 120, 40, 200]);
+    const calm = reducedMotion();
+    const body = document.body;
+    body.classList.remove("fx-blackhole-out");
+    body.classList.add("fx-blackhole");
+    const list3 = document.getElementById("messages");
+    const observer = new MutationObserver((recs) => recs.forEach((rec2) => rec2.addedNodes.forEach((n) => {
+      if (n instanceof HTMLElement && !n.classList.contains("effect-line") && (n.classList.contains("msg") || n.classList.contains("system"))) swallow(n, calm);
+    })));
+    if (list3) observer.observe(list3, { childList: true });
+    const o = overlayCanvas("fx-blackhole-vortex");
+    const { ctx: ctx2, w, h, dpr } = o;
+    const R = Math.min(w, h) * 0.24;
+    const motes = [];
+    const spawn = (outer) => ({
+      a: Math.random() * Math.PI * 2,
+      r: R * (outer ? 0.95 + Math.random() * 0.1 : 0.25 + Math.random() * 0.8),
+      speed: 0.6 + Math.random() * 0.9,
+      size: (0.6 + Math.random() * 1.6) * dpr,
+      hue: 20 + Math.random() * 260
+    });
+    for (let i = 0; i < 220; i++) motes.push(spawn(false));
+    const start2 = performance.now();
+    let stoppedAt = 0;
+    let last = start2;
+    function frame(now) {
+      if (!o.canvas.isConnected) return;
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
+      last = now;
+      const fade = stoppedAt ? Math.max(0, 1 - (now - stoppedAt) / 900) : Math.min(1, (now - start2) / 800);
+      const c = centre();
+      const cx = c.x * dpr;
+      const cy = c.y * dpr;
+      ctx2.clearRect(0, 0, w, h);
+      ctx2.globalAlpha = fade;
+      const halo = ctx2.createRadialGradient(cx, cy, R * 0.15, cx, cy, R * 1.25);
+      halo.addColorStop(0, "rgba(120, 60, 200, .55)");
+      halo.addColorStop(0.45, "rgba(255, 120, 40, .18)");
+      halo.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx2.fillStyle = halo;
+      ctx2.fillRect(0, 0, w, h);
+      ctx2.globalCompositeOperation = "lighter";
+      motes.forEach((m, i) => {
+        if (!calm) {
+          m.a += m.speed * (R / Math.max(m.r, R * 0.1)) * dt * 1.4;
+          m.r -= R * 0.08 * m.speed * dt;
+          if (m.r < R * 0.16) motes[i] = spawn(true);
+        }
+        ctx2.fillStyle = `hsla(${m.hue}, 90%, ${55 + 25 * (1 - m.r / R)}%, .85)`;
+        ctx2.beginPath();
+        ctx2.ellipse(cx + Math.cos(m.a) * m.r, cy + Math.sin(m.a) * m.r * 0.55, m.size, m.size, 0, 0, Math.PI * 2);
+        ctx2.fill();
+      });
+      ctx2.globalCompositeOperation = "source-over";
+      const core = ctx2.createRadialGradient(cx, cy, 0, cx, cy, R * 0.3);
+      core.addColorStop(0, "rgba(0, 0, 0, 1)");
+      core.addColorStop(0.75, "rgba(0, 0, 0, 1)");
+      core.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx2.fillStyle = core;
+      ctx2.beginPath();
+      ctx2.arc(cx, cy, R * 0.3, 0, Math.PI * 2);
+      ctx2.fill();
+      ctx2.globalAlpha = 1;
+      if (!stoppedAt || fade > 0) requestAnimationFrame(frame);
+      else o.canvas.remove();
+    }
+    requestAnimationFrame(frame);
+    return {
+      stop(_early, hard) {
+        observer.disconnect();
+        if (hard) {
+          o.canvas.remove();
+          body.classList.remove("fx-blackhole", "fx-blackhole-out");
+          return;
+        }
+        stoppedAt = performance.now();
+        body.classList.add("fx-blackhole-out");
+        body.classList.remove("fx-blackhole");
+        setTimeout(() => body.classList.remove("fx-blackhole-out"), 1e3);
+      }
+    };
+  }
+
+  // PWA/LocalChatter/src/effects/blur.ts
+  function startBlur() {
+    vibrate(30);
+    const body = document.body;
+    const fog = document.createElement("div");
+    fog.className = "fx fx-fog";
+    fog.setAttribute("aria-hidden", "true");
+    body.appendChild(fog);
+    body.classList.remove("fx-blur-out");
+    void body.offsetWidth;
+    body.classList.add("fx-blur");
+    requestAnimationFrame(() => fog.classList.add("on"));
+    let done;
+    return {
+      stop(_early, hard) {
+        clearTimeout(done);
+        if (hard) {
+          body.classList.remove("fx-blur", "fx-blur-out");
+          fog.remove();
+          return;
+        }
+        body.classList.add("fx-blur-out");
+        body.classList.remove("fx-blur");
+        fog.classList.add("out");
+        fog.classList.remove("on");
+        done = setTimeout(() => {
+          body.classList.remove("fx-blur-out");
+          fog.remove();
+        }, 1700);
       }
     };
   }
@@ -590,6 +753,134 @@
     };
   }
 
+  // PWA/LocalChatter/src/effects/rain.ts
+  var MAX_LEVEL = 46;
+  var DRAIN_PER_S = 34;
+  function startRain() {
+    vibrate(20);
+    const calm = reducedMotion();
+    const o = overlayCanvas("fx-rain");
+    const { ctx: ctx2, w, h, dpr } = o;
+    const drops = [];
+    const bits = [];
+    const ripples = [];
+    let ledges = [];
+    let level = 0;
+    let stoppedAt = 0;
+    let last = performance.now();
+    let ledgeAt = 0;
+    const perSecond = Math.max(40, Math.round(w / dpr / 4));
+    function readLedges() {
+      ledges = Array.from(document.querySelectorAll("#messages .msg")).map((m) => m.getBoundingClientRect()).filter((r) => r.height > 0 && r.bottom > 0 && r.top < innerHeight).map((r) => ({ left: r.left * dpr, right: r.right * dpr, top: r.top * dpr }));
+    }
+    function floor() {
+      const bar = document.getElementById("composer");
+      const r = bar && bar.offsetParent ? bar.getBoundingClientRect() : null;
+      return (r ? r.top : innerHeight) * dpr;
+    }
+    function frame(now) {
+      if (!o.canvas.isConnected) return;
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
+      last = now;
+      if (now - ledgeAt > 250) {
+        readLedges();
+        ledgeAt = now;
+      }
+      const surface = floor() - level;
+      if (!stoppedAt && !calm) {
+        let n = perSecond * dt;
+        while (n > 0) {
+          if (n >= 1 || Math.random() < n) drops.push({ x: Math.random() * w, y: -20 * dpr, vy: (700 + Math.random() * 400) * dpr, len: (10 + Math.random() * 12) * dpr });
+          n -= 1;
+        }
+      }
+      if (!stoppedAt && calm) level = Math.min(MAX_LEVEL * dpr, level + 4 * dpr * dt);
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const d = drops[i];
+        const prev = d.y;
+        d.y += d.vy * dt;
+        const hit = ledges.find((l) => d.x >= l.left && d.x <= l.right && prev < l.top && d.y >= l.top);
+        if (hit) {
+          for (let k = 0; k < 4; k++) bits.push({ x: d.x, y: hit.top, vx: (Math.random() - 0.5) * 160 * dpr, vy: -(60 + Math.random() * 120) * dpr, life: 1 });
+          drops.splice(i, 1);
+        } else if (d.y >= surface) {
+          ripples.push({ x: d.x, r: 2 * dpr, life: 1 });
+          if (!stoppedAt) level = Math.min(MAX_LEVEL * dpr, level + 0.09 * dpr);
+          drops.splice(i, 1);
+        }
+      }
+      for (let i = bits.length - 1; i >= 0; i--) {
+        const b = bits[i];
+        b.vy += 900 * dpr * dt;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life -= dt * 2.2;
+        if (b.life <= 0) bits.splice(i, 1);
+      }
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        ripples[i].r += 40 * dpr * dt;
+        ripples[i].life -= dt * 2;
+        if (ripples[i].life <= 0) ripples.splice(i, 1);
+      }
+      if (stoppedAt) level = Math.max(0, level - DRAIN_PER_S * dpr * dt);
+      ctx2.clearRect(0, 0, w, h);
+      ctx2.strokeStyle = "rgba(150, 190, 255, .55)";
+      ctx2.lineWidth = 1.2 * dpr;
+      ctx2.beginPath();
+      drops.forEach((d) => {
+        ctx2.moveTo(d.x, d.y);
+        ctx2.lineTo(d.x - 1.5 * dpr, d.y - d.len);
+      });
+      ctx2.stroke();
+      ctx2.fillStyle = "rgba(170, 205, 255, .8)";
+      bits.forEach((b) => {
+        ctx2.globalAlpha = Math.max(0, b.life);
+        ctx2.fillRect(b.x, b.y, 2 * dpr, 2 * dpr);
+      });
+      ctx2.globalAlpha = 1;
+      if (level > 0.5) {
+        const base = floor();
+        const top = base - level;
+        const wave = calm ? 0 : 2.2 * dpr;
+        const g = ctx2.createLinearGradient(0, top, 0, base);
+        g.addColorStop(0, "rgba(110, 165, 235, .45)");
+        g.addColorStop(1, "rgba(45, 95, 185, .65)");
+        ctx2.fillStyle = g;
+        ctx2.beginPath();
+        ctx2.moveTo(0, base);
+        for (let x = 0; x <= w; x += 8 * dpr) ctx2.lineTo(x, top + Math.sin(x / (26 * dpr) + now / 260) * wave);
+        ctx2.lineTo(w, base);
+        ctx2.closePath();
+        ctx2.fill();
+        ctx2.strokeStyle = "rgba(220, 238, 255, .7)";
+        ctx2.lineWidth = 1.5 * dpr;
+        ctx2.beginPath();
+        for (let x = 0; x <= w; x += 8 * dpr) ctx2[x ? "lineTo" : "moveTo"](x, top + Math.sin(x / (26 * dpr) + now / 260) * wave);
+        ctx2.stroke();
+        ctx2.strokeStyle = "rgba(220, 238, 255, .5)";
+        ripples.forEach((rp) => {
+          ctx2.globalAlpha = rp.life;
+          ctx2.beginPath();
+          ctx2.ellipse(rp.x, top, rp.r, rp.r * 0.3, 0, 0, Math.PI * 2);
+          ctx2.stroke();
+        });
+        ctx2.globalAlpha = 1;
+      }
+      if (!stoppedAt || drops.length || bits.length || level > 0) requestAnimationFrame(frame);
+      else o.canvas.remove();
+    }
+    requestAnimationFrame(frame);
+    return {
+      stop(_early, hard) {
+        if (hard) {
+          o.canvas.remove();
+          return;
+        }
+        if (!stoppedAt) stoppedAt = performance.now();
+      }
+    };
+  }
+
   // PWA/LocalChatter/src/effects/zalgo.ts
   var TARGETS = [".topbar", "#messages", "#effects-tray", "#banner"];
   var zalgo = {
@@ -716,15 +1007,29 @@
     earthquake: "earthquake",
     quake: "earthquake",
     lightning: "lightning",
-    zalgo: "zalgo"
+    zalgo: "zalgo",
+    blackhole: "blackhole",
+    blur: "blur",
+    rain: "rain"
   };
   var MAX_S = 600;
-  var DEFAULT_MS = { fire: 2200, earthquake: 1600, lightning: 1100, zalgo: 1e4 };
+  var DEFAULT_MS = {
+    fire: 2200,
+    earthquake: 1600,
+    lightning: 1100,
+    zalgo: 1e4,
+    blackhole: 1e4,
+    blur: 1e4,
+    rain: 12e3
+  };
   var STARTERS = {
     fire: startFire,
     earthquake: startQuake,
     lightning: startLightning,
-    zalgo: startZalgoEffect
+    zalgo: startZalgoEffect,
+    blackhole: startBlackhole,
+    blur: startBlur,
+    rain: startRain
   };
   function parseEffect(text4) {
     const m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text4 || ""));
@@ -1422,10 +1727,13 @@
     meta.appendChild(el("span", "who", who));
     const inLang = !isDefault(msg.lang) ? msg.lang : "";
     if (inLang) {
-      box2.classList.add("in-lang");
+      box2.dataset.lang = inLang;
+      if (mine) box2.dataset.mine = "";
       box2.style.setProperty("--lang-hue", String(hue(inLang)));
+      const tag = el("span", "lang-tag", "🗣 " + nameOf(inLang));
+      meta.appendChild(tag);
+      showLanguage(box2, tag, mine || understands(inLang));
       if (!mine && !understands(inLang)) box2.classList.add("foreign");
-      meta.appendChild(el("span", "lang-tag", "🗣 " + nameOf(inLang)));
     }
     if (msg.via === "nfc") meta.appendChild(el("span", "via", "via NFC tag"));
     if (msg.via === "qr") meta.appendChild(el("span", "via", "via QR code"));
@@ -2337,6 +2645,9 @@
     { name: "earthquake", aliases: ["quake"], args: "[30 | 2m | on | off]", hint: "Shake everyone's screen", standalone: true },
     { name: "lightning", args: "[30 | 2m | on | off]", hint: "Lightning strikes the chat", standalone: true },
     { name: "zalgo", args: "[30 | 2m | on | off]", hint: "Corrupt the chat (10 s unless you say)", standalone: true },
+    { name: "blackhole", args: "[30 | 2m | on | off]", hint: "Everything that arrives gets sucked into a black hole (and is gone)", standalone: true },
+    { name: "blur", args: "[30 | 2m | on | off]", hint: "Everything slowly fades into a fuzzy cloud", standalone: true },
+    { name: "rain", args: "[30 | 2m | on | off]", hint: "Rain on the chat, puddling on the message bar", standalone: true },
     { name: "banner", args: "[slow | fast | 40px] <text> | off", hint: "Put a banner across the top of the displays", standalone: false },
     { name: "sound", args: "[name]", hint: "Play a sound for everyone, or list the ones you have", standalone: true },
     { name: "speak", args: "<language | default>", hint: "Write your messages in a language", standalone: true },
@@ -2894,21 +3205,35 @@
     fire: ["🔥", "set the chat on fire"],
     earthquake: ["🌍", "started an earthquake"],
     lightning: ["⚡", "called down lightning"],
-    zalgo: ["👹", "corrupted the chat"]
+    zalgo: ["👹", "corrupted the chat"],
+    blackhole: ["🕳️", "opened a black hole"],
+    blur: ["🌫️", "blurred everything"],
+    rain: ["🌧️", "made it rain"]
   };
   var EFFECT_OFF = {
     fire: ["🧯", "put out the fire"],
     earthquake: ["🌍", "stopped the earthquake"],
     lightning: ["⚡", "stopped the lightning"],
-    zalgo: ["✨", "restored the chat"]
+    zalgo: ["✨", "restored the chat"],
+    blackhole: ["🕳️", "closed the black hole"],
+    blur: ["👓", "cleared the fog"],
+    rain: ["🌤️", "stopped the rain"]
   };
-  var EFFECT_TITLES = { fire: "Fire", earthquake: "Earthquake", lightning: "Lightning", zalgo: "Zalgo" };
+  var EFFECT_TITLES = {
+    fire: "Fire",
+    earthquake: "Earthquake",
+    lightning: "Lightning",
+    zalgo: "Zalgo",
+    blackhole: "Black hole",
+    blur: "Blur",
+    rain: "Rain"
+  };
   function effectPhrase(fx) {
     const line = EFFECT_LINES[fx.name];
     if (fx.arg === "off") return EFFECT_OFF[fx.name];
     if (fx.arg === "on") return [line[0], line[1] + " until someone sends /" + fx.name + " off"];
     if (typeof fx.arg === "number") return [line[0], line[1] + " for " + formatDuration(fx.arg)];
-    if (fx.name === "zalgo") return [line[0], line[1] + " for " + formatDuration(DEFAULT_MS.zalgo / 1e3)];
+    if (fx.name === "zalgo" || fx.name === "blackhole" || fx.name === "blur" || fx.name === "rain") return [line[0], line[1] + " for " + formatDuration(DEFAULT_MS[fx.name] / 1e3)];
     return line;
   }
   function renderEffect(fx, msg, who) {
@@ -3061,7 +3386,7 @@
   }
 
   // PWA/LocalChatter/src/features/updates.ts
-  var BUILD_TIME = "2026-11-08T07:34:20.204Z";
+  var BUILD_TIME = "2026-11-08T07:48:47.778Z";
   var CHECK_EVERY_MS = 30 * 1e3;
   var status = (text4) => {
     $("update-status").textContent = text4;

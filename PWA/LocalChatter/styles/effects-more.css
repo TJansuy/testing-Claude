@@ -1,0 +1,30 @@
+/* Black hole, blur and rain */
+
+/* Black hole: the chat goes black while the vortex swallows new messages */
+.messages { transition: background-color .9s ease; }
+body.fx-blackhole .messages { background-color: #05030a; }
+body.fx-blackhole .messages .system { color: #a59ab8; }
+body.fx-blackhole-out .messages { background-color: transparent; }
+.fx-ghost { position: fixed; z-index: 19; pointer-events: none; will-change: transform, opacity; }
+
+/* Blur: drifts slowly out of focus; clears faster. The Stop buttons stay sharp. */
+body.fx-blur > :not(.fx-dock):not(.fx):not(script):not(dialog) { filter: blur(9px) saturate(.75); transition: filter 6s ease-in; }
+body.fx-blur-out > :not(.fx-dock):not(.fx):not(script):not(dialog) { filter: none; transition: filter 1.5s ease-out; }
+.fx-fog {
+  background:
+    radial-gradient(40% 30% at 20% 30%, rgb(255 255 255 / .9), transparent 70%),
+    radial-gradient(35% 28% at 75% 25%, rgb(240 244 250 / .85), transparent 70%),
+    radial-gradient(45% 35% at 55% 70%, rgb(250 250 255 / .9), transparent 70%),
+    radial-gradient(30% 25% at 15% 80%, rgb(235 240 248 / .8), transparent 70%);
+  background-size: 140% 140%;
+  opacity: 0;
+  transition: opacity 6s ease-in;
+  animation: fog-drift 18s ease-in-out infinite alternate;
+}
+.fx-fog.on { opacity: .62; }
+.fx-fog.out { transition: opacity 1.5s ease-out; }
+@media (prefers-color-scheme: dark) {
+  .fx-fog { filter: brightness(.45); }
+}
+@keyframes fog-drift { from { background-position: 0% 0%; } to { background-position: 100% 60%; } }
+@media (prefers-reduced-motion: reduce) { .fx-fog { animation: none; } }

@@ -51,7 +51,7 @@ enter the server address shown on the setup page (e.g.
 
 | Topic | |
 | --- | --- |
-| [Effects](docs/effects.md) | `/fire`, `/earthquake`, `/lightning`, `/zalgo`; durations, Stop buttons, favourites, rumble. |
+| [Effects](docs/effects.md) | `/fire`, `/earthquake`, `/lightning`, `/zalgo`, `/blackhole`, `/blur`, `/rain`; durations, Stop buttons, favourites, rumble. |
 | [Sounds](docs/sounds.md) | Sending sounds; the admin soundboard and sound library. |
 | [Scanning](docs/scanning.md) | Sending what's in a QR code or NFC tag. |
 | [Roles, whispers and spying](docs/roles-and-whispers.md) | `/role`, admin debug mode, `/whisper`, `/spy`. |

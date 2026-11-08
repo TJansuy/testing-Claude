@@ -47,6 +47,12 @@ export function systemNotice(text: string, cls?: string): void {
   append(langText('p', 'system' + (cls ? ' ' + cls : ''), text, 'system', text + '|' + Date.now()));
 }
 
+/** Shows or hides which language a bubble is in (its tag and coloured ring). */
+export function showLanguage(box: HTMLElement, tag: HTMLElement | null, known: boolean): void {
+  box.classList.toggle('in-lang', known);
+  if (tag) tag.hidden = !known;
+}
+
 /** Re-renders language text after the viewer's languages change. */
 export function refreshLanguages(): void {
   document.querySelectorAll<HTMLElement>('.lc').forEach((n) => {
@@ -57,6 +63,10 @@ export function refreshLanguages(): void {
     n.title = known ? '' : notUnderstood(info.lang);
     const bubble = n.closest('.msg');
     if (bubble) bubble.classList.toggle('foreign', !known);
+  });
+  // Bubbles in a language: tagged only for people who now understand it.
+  document.querySelectorAll<HTMLElement>('.msg[data-lang]').forEach((box) => {
+    showLanguage(box, box.querySelector<HTMLElement>('.lang-tag'), 'mine' in box.dataset || LANG.understands(box.dataset.lang));
   });
   const sp = LANG.speaking();
   const t = $<HTMLTextAreaElement>('text');

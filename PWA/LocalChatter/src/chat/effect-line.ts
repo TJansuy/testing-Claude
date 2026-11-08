@@ -14,14 +14,22 @@ export const EFFECT_LINES: Record<FX.EffectName, [string, string]> = {
   earthquake: ['🌍', 'started an earthquake'],
   lightning: ['⚡', 'called down lightning'],
   zalgo: ['👹', 'corrupted the chat'],
+  blackhole: ['🕳️', 'opened a black hole'],
+  blur: ['🌫️', 'blurred everything'],
+  rain: ['🌧️', 'made it rain'],
 };
 const EFFECT_OFF: Record<FX.EffectName, [string, string]> = {
   fire: ['🧯', 'put out the fire'],
   earthquake: ['🌍', 'stopped the earthquake'],
   lightning: ['⚡', 'stopped the lightning'],
   zalgo: ['✨', 'restored the chat'],
+  blackhole: ['🕳️', 'closed the black hole'],
+  blur: ['👓', 'cleared the fog'],
+  rain: ['🌤️', 'stopped the rain'],
 };
-export const EFFECT_TITLES: Record<FX.EffectName, string> = { fire: 'Fire', earthquake: 'Earthquake', lightning: 'Lightning', zalgo: 'Zalgo' };
+export const EFFECT_TITLES: Record<FX.EffectName, string> = {
+  fire: 'Fire', earthquake: 'Earthquake', lightning: 'Lightning', zalgo: 'Zalgo', blackhole: 'Black hole', blur: 'Blur', rain: 'Rain',
+};
 
 /** The emoji and wording for an effect line, e.g. "set the chat on fire for 30 s". */
 export function effectPhrase(fx: FX.ParsedEffect): [string, string] {
@@ -29,7 +37,7 @@ export function effectPhrase(fx: FX.ParsedEffect): [string, string] {
   if (fx.arg === 'off') return EFFECT_OFF[fx.name];
   if (fx.arg === 'on') return [line[0], line[1] + ' until someone sends /' + fx.name + ' off'];
   if (typeof fx.arg === 'number') return [line[0], line[1] + ' for ' + formatDuration(fx.arg)];
-  if (fx.name === 'zalgo') return [line[0], line[1] + ' for ' + formatDuration(FX.DEFAULT_MS.zalgo / 1000)];
+  if (fx.name === 'zalgo' || fx.name === 'blackhole' || fx.name === 'blur' || fx.name === 'rain') return [line[0], line[1] + ' for ' + formatDuration(FX.DEFAULT_MS[fx.name] / 1000)];
   return line;
 }
 

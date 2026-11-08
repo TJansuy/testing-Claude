@@ -9,7 +9,7 @@ import { can, DISPLAY } from '../state';
 import type { ChatMessage, Peer } from '../types';
 import { base64ToBlob, formatSize, formatTime } from '../util';
 import { renderEffect } from './effect-line';
-import { append, colourBubble, langText } from './list';
+import { append, colourBubble, langText, showLanguage } from './list';
 import { renderSound } from './sound-message';
 
 const INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
@@ -40,10 +40,15 @@ export function renderMessage(msg: ChatMessage, mine: boolean): HTMLElement | nu
   meta.appendChild(el('span', 'who', who));
   const inLang = !LANG.isDefault(msg.lang) ? msg.lang as string : '';
   if (inLang) {
-    box.classList.add('in-lang');
+    // Only people who understand the language see which one it is (the tag and
+    // its coloured ring); to everyone else it's just gibberish.
+    box.dataset.lang = inLang;
+    if (mine) box.dataset.mine = '';
     box.style.setProperty('--lang-hue', String(LANG.hue(inLang)));
+    const tag = el('span', 'lang-tag', '🗣 ' + LANG.nameOf(inLang));
+    meta.appendChild(tag);
+    showLanguage(box, tag, mine || LANG.understands(inLang));
     if (!mine && !LANG.understands(inLang)) box.classList.add('foreign');
-    meta.appendChild(el('span', 'lang-tag', '🗣 ' + LANG.nameOf(inLang)));
   }
   if (msg.via === 'nfc') meta.appendChild(el('span', 'via', 'via NFC tag'));
   if (msg.via === 'qr') meta.appendChild(el('span', 'via', 'via QR code'));

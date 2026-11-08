@@ -29,8 +29,10 @@ and it changes back to the real text if you learn the language later.
 Settings has the same: *Languages you understand* and *You write in*. Changes there apply straight away; you don't need to press Save.
 
 - Messages in a named language get a coloured ring (each language its own
-  colour) and a *🗣 Elvish* tag. A whisper in a language has both its dashed
-  border and the ring.
+  colour) and a *🗣 Elvish* tag, but only for people who understand it (and
+  the sender). Everyone else just sees a bubble of gibberish, with no hint of
+  which language it is; if they learn the language later, the tag and ring
+  appear. A whisper in a language has both its dashed border and the ring.
 - You always read your own messages, and replies to your own commands are never
   turned into gibberish.
 - Effects (`/fire` and so on) aren't affected by language.

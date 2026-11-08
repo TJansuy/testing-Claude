@@ -14,6 +14,9 @@ everyone in the chat, including you, and shows as a line like
 | `/earthquake` (or `/quake`) | The screen shakes and Android phones rumble. |
 | `/lightning` | Lightning strikes down through the chat, hitting some messages at random (they flash and jolt) and passing beside others, with two flashes per strike. |
 | `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text that keeps boiling (re-scrambled several times a second), and the dashboard glitches. |
+| `/blackhole` | The chat goes black and a black hole opens in the middle. Every message that arrives (yours too) is pulled in, swirling and shrinking until it's gone. Swallowed messages are discarded: they don't come back when it ends. Messages already on screen stay. |
+| `/blur` | Everything slowly fades into a fuzzy cloud of fog, then clears again. |
+| `/rain` | Rain falls from the top of the screen, splashes off the message bubbles on the way down and collects in a puddle on top of the message bar. When it stops, the last drops land and the puddle drains away. |
 
 ### How long they last
 
@@ -21,7 +24,7 @@ Every effect takes the same options after its name:
 
 | Option | Example | Lasts |
 | --- | --- | --- |
-| *(none)* | `/fire` | Its usual length: a short burst for fire, earthquake and lightning; 10 seconds for zalgo. |
+| *(none)* | `/fire` | Its usual length: a short burst for fire, earthquake and lightning; 10 seconds for zalgo, the black hole and blur; 12 seconds for rain. |
 | seconds or minutes | `/fire 30`, `/quake 30s`, `/lightning 2m` | That long, up to 10 minutes. |
 | `on` | `/zalgo on` | Until anyone sends the matching `off`. |
 | `off` | `/fire off` | Stops it now ("Cara put out the fire"). |
@@ -42,7 +45,9 @@ When it ends, every bit of text goes back exactly as it was.
 
 If a device has **Reduce motion** turned on, it shows a soft glow for as long
 as the effect lasts instead: no shaking, no flashing, no glitching (zalgo still
-scrambles the text, once, and then holds it still).
+scrambles the text, once, and then holds it still). The black hole still
+swallows messages, but they fade out instead of swirling; blur doesn't drift;
+rain shows no falling drops, just a puddle that slowly rises and drains.
 
 While zalgo is boiling, screen-reader announcements for the chat pause, so the
 constantly changing text isn't read out over and over; they resume when it ends.

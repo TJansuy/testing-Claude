@@ -6,23 +6,30 @@
 //   off                stop it now
 // Sending it again while it's running resets the timer. Only one effect runs at
 // a time: starting a different one replaces it. Respects "reduce motion".
+import { startBlackhole } from './blackhole';
+import { startBlur } from './blur';
 import { startFire } from './fire';
 import { startLightning } from './lightning';
 import { quakeRumble, startQuake } from './quake';
+import { startRain } from './rain';
 import { EffectControl, setVibration } from './shared';
 import { startZalgoEffect, zalgoActive } from './zalgo';
 
-export type EffectName = 'fire' | 'earthquake' | 'lightning' | 'zalgo';
+export type EffectName = 'fire' | 'earthquake' | 'lightning' | 'zalgo' | 'blackhole' | 'blur' | 'rain';
 export type EffectArg = number | 'on' | 'off' | null;
 export interface ParsedEffect { name: EffectName; arg: EffectArg; argText: string }
 
 const COMMANDS: Record<string, EffectName> = {
   fire: 'fire', earthquake: 'earthquake', quake: 'earthquake', lightning: 'lightning', zalgo: 'zalgo',
+  blackhole: 'blackhole', blur: 'blur', rain: 'rain',
 };
 const MAX_S = 600;
-export const DEFAULT_MS: Record<EffectName, number> = { fire: 2200, earthquake: 1600, lightning: 1100, zalgo: 10000 };
+export const DEFAULT_MS: Record<EffectName, number> = {
+  fire: 2200, earthquake: 1600, lightning: 1100, zalgo: 10000, blackhole: 10000, blur: 10000, rain: 12000,
+};
 const STARTERS: Record<EffectName, () => EffectControl> = {
   fire: startFire, earthquake: startQuake, lightning: startLightning, zalgo: startZalgoEffect,
+  blackhole: startBlackhole, blur: startBlur, rain: startRain,
 };
 
 /** Reads "/fire 30" etc. Anything else after the command means it's ordinary text. */

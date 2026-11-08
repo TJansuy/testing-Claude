@@ -3,7 +3,11 @@
 // it. After a number of hits (3 to 50, the same on every device: it comes from
 // the /wall message itself) it shatters and the pieces fall away, ending the
 // game. Turned off early, it rises back up off the screen instead.
+// Each wall secretly follows one of the rules in wall-rules.ts; a message that
+// doesn't meet them bounces off without doing any damage.
+import { rawText } from '../chat/raw';
 import { EffectControl, overlayCanvas, reducedMotion, vibrate } from './shared';
+import { referee, wallStrength, wallVariant } from './wall-rules';
 
 interface Shard { sx: number; sy: number; sw: number; sh: number; x: number; y: number; vx: number; vy: number; rot: number; vr: number }
 interface Dust { x: number; y: number; vx: number; vy: number; life: number }
@@ -13,13 +17,6 @@ const KNOCK_BACK = 70;
 const RISE_PER_S = 220;
 const BRICK_H = 26;
 const BRICK_W = 62;
-
-/** The number of hits it takes, from the message's id: 3 to 50. */
-export function wallStrength(seed: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return 3 + ((h >>> 0) % 48);
-}
 
 /** Messages that count: everyone's ordinary chat (not whispers, polls or games). */
 const counts = (n: Node): n is HTMLElement => n instanceof HTMLElement && n.classList.contains('msg') &&
@@ -75,6 +72,9 @@ export function startWall(seed: string, done: () => void): EffectControl {
   vibrate([40, 30, 40]);
   const calm = reducedMotion();
   const strength = wallStrength(seed);
+  const variant = wallVariant(seed);
+  const judge = referee(variant, strength);
+  let planned = 0; // damaging messages so far, counting those still in the air
   const o = overlayCanvas('fx-wall');
   const { ctx, w, h, dpr } = o;
   const wallH = Math.round(Math.min(170, Math.max(110, innerHeight * 0.2)));
@@ -95,7 +95,7 @@ export function startWall(seed: string, done: () => void): EffectControl {
     mode = 'broken';
     observer.disconnect();
     vibrate([120, 40, 200]);
-    document.dispatchEvent(new CustomEvent('localchatter:game', { detail: { game: 'wall', result: 'broken', hits, by } }));
+    document.dispatchEvent(new CustomEvent('localchatter:game', { detail: { game: 'wall', result: 'broken', hits, by, variant, sent } }));
     if (calm) { o.canvas.classList.add('fx-fade'); setTimeout(end, 700); return; }
     const top = (bottom - wallH) * dpr;
     for (let y = 0; y < tex.height; y += BRICK_H * dpr) {
@@ -124,25 +124,47 @@ export function startWall(seed: string, done: () => void): EffectControl {
     vibrate(25);
   }
 
-  /** A copy of the new message flies up and hits the wall's lower edge. */
+  /** A message that doesn't meet the wall's rules: a little jolt, no damage. */
+  function bounce(): void {
+    if (mode !== 'up') return;
+    if (!calm) shake = Math.max(shake, 0.25);
+  }
+
+  /** A copy of the new message flies up and hits the wall's lower edge
+   *  (and bounces back off if it doesn't meet the rules). Judged as it's sent,
+   *  so the order is the same on every device. */
+  let sent = 0;
   function launch(box: HTMLElement): void {
+    if (mode !== 'up' || planned >= strength) return; // already on its way down
+    sent++;
     const who = (box.querySelector('.who') || { textContent: '' }).textContent || 'Someone';
+    const hurts = judge(rawText(box), planned);
+    if (hurts) planned++;
     const r = box.getBoundingClientRect();
     const x = r.left + r.width / 2;
-    if (calm || !r.height) { impact(x, who); return; }
+    if (calm || !r.height) { if (hurts) impact(x, who); else bounce(); return; }
     const ghost = box.cloneNode(true) as HTMLElement;
     ghost.classList.add('fx-ghost');
     Object.assign(ghost.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', maxWidth: 'none', margin: '0' });
     document.body.appendChild(ghost);
     ghosts.add(ghost);
     const rise = Math.max(0, r.top - bottom);
-    const anim = ghost.animate([
+    if (!hurts) ghost.classList.add('fx-dud');
+    const tilt = (Math.random() - 0.5) * 16;
+    const frames: Keyframe[] = hurts ? [
       { transform: 'translateY(0) scale(1)' },
-      { transform: `translateY(${-rise}px) scale(.85) rotate(${(Math.random() - 0.5) * 16}deg)`, offset: 0.92 },
+      { transform: `translateY(${-rise}px) scale(.85) rotate(${tilt}deg)`, offset: 0.92 },
       { transform: `translateY(${-rise + 6}px) scale(.6)`, opacity: 0 },
-    ], { duration: 320 + rise * 0.9, easing: 'cubic-bezier(.5, 0, .9, .6)', fill: 'forwards' });
+    ] : [
+      // Bounces off: up, a clink, then tumbles back down and fades.
+      { transform: 'translateY(0) scale(1)' },
+      { transform: `translateY(${-rise}px) scale(.85) rotate(${tilt}deg)`, offset: 0.55 },
+      { transform: `translateY(${-rise * 0.55}px) scale(.7) rotate(${-tilt * 3}deg)`, opacity: 0 },
+    ];
+    const anim = ghost.animate(frames, { duration: hurts ? 320 + rise * 0.9 : 520 + rise * 1.4, easing: hurts ? 'cubic-bezier(.5, 0, .9, .6)' : 'ease-in-out', fill: 'forwards' });
+    if (!hurts) setTimeout(bounce, (520 + rise * 1.4) * 0.55);
     const land = (): void => { ghost.remove(); ghosts.delete(ghost); };
-    anim.finished.then(() => { land(); impact(x, who); }, land);
+    anim.finished.then(() => { land(); if (hurts) impact(x, who); }, land);
   }
 
   const list = document.getElementById('messages');
@@ -190,6 +212,7 @@ export function startWall(seed: string, done: () => void): EffectControl {
       observer.disconnect();
       ghosts.forEach((g) => g.remove());
       if (hard || mode === 'broken') { if (hard) { mode = 'gone'; o.canvas.remove(); } return; }
+      document.dispatchEvent(new CustomEvent('localchatter:game', { detail: { game: 'wall', result: 'stopped', hits, variant, sent } }));
       if (calm) { o.canvas.classList.add('fx-fade'); setTimeout(() => { mode = 'gone'; o.canvas.remove(); }, 700); return; }
       mode = 'rising'; // goes back up off the top of the screen
     },

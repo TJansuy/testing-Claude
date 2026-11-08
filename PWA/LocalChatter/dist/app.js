@@ -935,20 +935,62 @@
     };
   }
 
+  // PWA/LocalChatter/src/chat/raw.ts
+  var raw = /* @__PURE__ */ new WeakMap();
+  var setRawText = (box2, text4) => {
+    raw.set(box2, text4);
+  };
+  var rawText = (box2) => raw.get(box2) || "";
+
+  // PWA/LocalChatter/src/effects/wall-rules.ts
+  var VARIANTS = ["any", "unique", "long"];
+  function hash2(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  var wallStrength = (seed) => 3 + hash2(seed) % 48;
+  var wallVariant = (seed) => VARIANTS[hash2(seed + "|variant") % VARIANTS.length];
+  function words(text4) {
+    return text4.toLowerCase().normalize("NFKC").split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean);
+  }
+  function lengthNeeded(level) {
+    if (level <= 0) return { chars: 0, word: 0 };
+    return { chars: Math.round(8 + level * 62), word: Math.round(4 + level * 9) };
+  }
+  var DESCRIBE = {
+    any: "an ordinary wall: every message did damage",
+    unique: "a unique-words wall: only messages with a word nobody had used yet did damage",
+    long: "a long-messages wall: the more broken it got, the longer a message (or one of its words) had to be"
+  };
+  function referee(variant, strength) {
+    const used = /* @__PURE__ */ new Set();
+    return (text4, planned) => {
+      const ws = words(text4);
+      if (variant === "unique") {
+        const fresh = ws.some((w) => !used.has(w));
+        ws.forEach((w) => used.add(w));
+        return fresh;
+      }
+      if (variant === "long") {
+        const need = lengthNeeded(planned / strength);
+        const chars = ws.join("").length;
+        const longest = ws.reduce((m, w) => Math.max(m, w.length), 0);
+        return chars >= need.chars || need.word > 0 && longest >= need.word;
+      }
+      return true;
+    };
+  }
+
   // PWA/LocalChatter/src/effects/wall.ts
   var DESCEND_PER_S = 11;
   var KNOCK_BACK = 70;
   var RISE_PER_S = 220;
   var BRICK_H = 26;
   var BRICK_W = 62;
-  function wallStrength(seed) {
-    let h = 2166136261;
-    for (let i = 0; i < seed.length; i++) {
-      h ^= seed.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return 3 + (h >>> 0) % 48;
-  }
   var counts = (n) => n instanceof HTMLElement && n.classList.contains("msg") && !n.classList.contains("whisper") && !n.classList.contains("poll-msg") && !n.classList.contains("game-msg");
   function bricks(w, h, dpr) {
     const c = document.createElement("canvas");
@@ -997,6 +1039,9 @@
     vibrate([40, 30, 40]);
     const calm = reducedMotion();
     const strength = wallStrength(seed);
+    const variant = wallVariant(seed);
+    const judge = referee(variant, strength);
+    let planned = 0;
     const o = overlayCanvas("fx-wall");
     const { ctx: ctx2, w, h, dpr } = o;
     const wallH = Math.round(Math.min(170, Math.max(110, innerHeight * 0.2)));
@@ -1016,7 +1061,7 @@
       mode = "broken";
       observer.disconnect();
       vibrate([120, 40, 200]);
-      document.dispatchEvent(new CustomEvent("localchatter:game", { detail: { game: "wall", result: "broken", hits, by: by2 } }));
+      document.dispatchEvent(new CustomEvent("localchatter:game", { detail: { game: "wall", result: "broken", hits, by: by2, variant, sent } }));
       if (calm) {
         o.canvas.classList.add("fx-fade");
         setTimeout(end, 700);
@@ -1050,12 +1095,22 @@
       }
       vibrate(25);
     }
+    function bounce() {
+      if (mode !== "up") return;
+      if (!calm) shake = Math.max(shake, 0.25);
+    }
+    let sent = 0;
     function launch(box2) {
+      if (mode !== "up" || planned >= strength) return;
+      sent++;
       const who = (box2.querySelector(".who") || { textContent: "" }).textContent || "Someone";
+      const hurts = judge(rawText(box2), planned);
+      if (hurts) planned++;
       const r = box2.getBoundingClientRect();
       const x = r.left + r.width / 2;
       if (calm || !r.height) {
-        impact(x, who);
+        if (hurts) impact(x, who);
+        else bounce();
         return;
       }
       const ghost = box2.cloneNode(true);
@@ -1064,18 +1119,27 @@
       document.body.appendChild(ghost);
       ghosts.add(ghost);
       const rise = Math.max(0, r.top - bottom);
-      const anim2 = ghost.animate([
+      if (!hurts) ghost.classList.add("fx-dud");
+      const tilt = (Math.random() - 0.5) * 16;
+      const frames = hurts ? [
         { transform: "translateY(0) scale(1)" },
-        { transform: `translateY(${-rise}px) scale(.85) rotate(${(Math.random() - 0.5) * 16}deg)`, offset: 0.92 },
+        { transform: `translateY(${-rise}px) scale(.85) rotate(${tilt}deg)`, offset: 0.92 },
         { transform: `translateY(${-rise + 6}px) scale(.6)`, opacity: 0 }
-      ], { duration: 320 + rise * 0.9, easing: "cubic-bezier(.5, 0, .9, .6)", fill: "forwards" });
+      ] : [
+        // Bounces off: up, a clink, then tumbles back down and fades.
+        { transform: "translateY(0) scale(1)" },
+        { transform: `translateY(${-rise}px) scale(.85) rotate(${tilt}deg)`, offset: 0.55 },
+        { transform: `translateY(${-rise * 0.55}px) scale(.7) rotate(${-tilt * 3}deg)`, opacity: 0 }
+      ];
+      const anim2 = ghost.animate(frames, { duration: hurts ? 320 + rise * 0.9 : 520 + rise * 1.4, easing: hurts ? "cubic-bezier(.5, 0, .9, .6)" : "ease-in-out", fill: "forwards" });
+      if (!hurts) setTimeout(bounce, (520 + rise * 1.4) * 0.55);
       const land = () => {
         ghost.remove();
         ghosts.delete(ghost);
       };
       anim2.finished.then(() => {
         land();
-        impact(x, who);
+        if (hurts) impact(x, who);
       }, land);
     }
     const list3 = document.getElementById("messages");
@@ -1144,6 +1208,7 @@
           }
           return;
         }
+        document.dispatchEvent(new CustomEvent("localchatter:game", { detail: { game: "wall", result: "stopped", hits, variant, sent } }));
         if (calm) {
           o.canvas.classList.add("fx-fade");
           setTimeout(() => {
@@ -1316,9 +1381,9 @@
     if (!m) return null;
     const name = COMMANDS[m[1].toLowerCase()];
     if (!name) return null;
-    const raw = m[2];
-    if (!raw) return { name, arg: null, argText: "" };
-    const a = raw.toLowerCase();
+    const raw2 = m[2];
+    if (!raw2) return { name, arg: null, argText: "" };
+    const a = raw2.toLowerCase();
     if (a === "off" || a === "stop") return { name, arg: "off", argText: "off" };
     if (a === "on" || a === "forever") return { name, arg: "on", argText: "on" };
     const d = /^(\d{1,4})(s|m)?$/.exec(a);
@@ -2040,6 +2105,7 @@
       if (!mine2 && !inLang && !understands("default")) box2.classList.add("foreign");
     }
     if (msg.file) box2.appendChild(fileView(msg.file.name, msg.file.type, msg.file.size, msg.file.data));
+    setRawText(box2, msg.text || "");
     append(box2);
     return box2;
   }
@@ -2514,7 +2580,11 @@
   }
   document.addEventListener("localchatter:game", (ev) => {
     const d = ev.detail;
-    if (d.game === "wall" && d.result === "broken") systemLine("💥 The wall broke after " + d.hits + " message" + (d.hits === 1 ? "" : "s") + "! " + d.by + " landed the final blow.");
+    if (d.game !== "wall") return;
+    const plural2 = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+    const tally2 = d.sent > d.hits ? " (" + plural2(d.sent, "message") + " thrown at it, " + d.hits + " did damage)" : "";
+    if (d.result === "broken") systemLine("💥 The wall broke after " + plural2(d.hits, "hit") + tally2 + "! " + d.by + " landed the final blow. It was " + DESCRIBE[d.variant] + ".");
+    else systemLine("🧱 The wall went back up after " + plural2(d.hits, "hit") + tally2 + ". It was " + DESCRIBE[d.variant] + ".");
   });
   var dialog = $("hangman-dialog");
   button("hangman-new").addEventListener("click", () => {
@@ -3507,8 +3577,8 @@
     const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll|quiz|hangman)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     const cmd = m[1].toLowerCase();
-    const raw = m[2];
-    const rest = raw.trim();
+    const raw2 = m[2];
+    const rest = raw2.trim();
     switch (cmd) {
       case "sound":
         soundCommand(rest);
@@ -3527,7 +3597,7 @@
         return true;
       case "whisper":
       case "w":
-        whisperCommand(raw);
+        whisperCommand(raw2);
         return true;
       case "spy":
         spyCommand(rest);
@@ -4549,7 +4619,7 @@
   }
 
   // PWA/LocalChatter/src/features/updates.ts
-  var BUILD_TIME = "2026-11-08T08:21:07.201Z";
+  var BUILD_TIME = "2026-11-08T08:41:58.944Z";
   var CHECK_EVERY_MS = 30 * 1e3;
   var status2 = (text4) => {
     $("update-status").textContent = text4;
@@ -4658,9 +4728,9 @@
   // PWA/LocalChatter/src/main.ts
   window.LocalChatterFX = effects_exports;
   function readSetupLink() {
-    const hash2 = location.hash.slice(1);
-    if (!hash2) return;
-    const relay = normaliseRelay(new URLSearchParams(hash2).get("relay"));
+    const hash3 = location.hash.slice(1);
+    if (!hash3) return;
+    const relay = normaliseRelay(new URLSearchParams(hash3).get("relay"));
     if (relay) save(KEY.relay, relay);
     history.replaceState(null, "", location.pathname + location.search);
   }

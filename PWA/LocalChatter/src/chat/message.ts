@@ -10,6 +10,7 @@ import type { ChatMessage, Peer } from '../types';
 import { base64ToBlob, formatSize, formatTime } from '../util';
 import { renderEffect } from './effect-line';
 import { append, colourBubble, langText, showLanguage } from './list';
+import { setRawText } from './raw';
 import { renderSound } from './sound-message';
 
 const INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
@@ -69,6 +70,7 @@ export function renderMessage(msg: ChatMessage, mine: boolean): HTMLElement | nu
     if (!mine && !inLang && !LANG.understands('default')) box.classList.add('foreign');
   }
   if (msg.file) box.appendChild(fileView(msg.file.name, msg.file.type, msg.file.size, msg.file.data));
+  setRawText(box, msg.text || '');
   append(box);
   return box;
 }

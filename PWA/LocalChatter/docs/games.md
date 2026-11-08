@@ -10,10 +10,24 @@ Games are a kind of effect. Start them from **Games** in the ✨ tray, or by typ
 top of the screen. Every message anyone sends flies up and hits it, knocking it
 back up and cracking it. It takes somewhere between 3 and 50 hits to break; the
 number is set by the `/wall` message, so it's the same on every screen. When it
-breaks, the bricks tumble off the bottom of the screen and the game ends:
-"💥 The wall broke after 17 messages! Bob landed the final blow."
+breaks, the bricks tumble off the bottom of the screen and the game ends.
 
 - Only ordinary messages count, not whispers, polls or games.
+- **Every wall secretly follows one of three rules**, picked at random (the same
+  on every screen) and not told to anyone until the game ends. Working out which
+  one it is is part of the game. A message that doesn't meet the rule bounces off,
+  greyed out, without doing any damage.
+
+  | Rule | What does damage |
+  | --- | --- |
+  | Ordinary | Every message. |
+  | Unique words | Only a message with at least one word nobody has used yet since the wall came in. Capitals and punctuation don't matter: "Don't stop!" and "dont STOP" use the same words. |
+  | Long messages | While the wall is unbroken, any message. The more broken it gets, the longer a message has to be, or the longer one of its words: just after the first hit, about 18 letters or a 6-letter word; when it's nearly broken, about 70 letters or a 13-letter word. |
+
+  When it ends, a line says which it was: "💥 The wall broke after 4 hits (7
+  messages thrown at it, 4 did damage)! Cara landed the final blow. It was a
+  unique-words wall: …". The rules read what was actually written, so languages
+  and zalgo don't change what counts.
 - `/wall off`, or the sender's **■ Stop** button, ends it early: the wall rises
   back up off the screen instead of breaking.
 - `/wall 2m` gives it a time limit; with no time it lasts until it breaks.

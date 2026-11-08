@@ -12,6 +12,7 @@ import { device } from '../polls/model';
 import { connected, DISPLAY, state } from '../state';
 import type { ChatMessage, GameMessage, Peer, WireGame } from '../types';
 import { randomId } from '../util';
+import { DESCRIBE, WallVariant } from '../effects/wall-rules';
 import { explode, gameCard, refreshGame, setClear } from './card';
 import { games, guess, guessIn, Hangman, isLetter, mergeGame, open, shown, toWire } from './hangman';
 
@@ -150,9 +151,14 @@ export function remindAboutGames(peer: Peer): void {
 }
 
 // ---- The wall: a line when it breaks.
+// When it's over, say which hidden rule it was following.
 document.addEventListener('localchatter:game', (ev) => {
-  const d = (ev as CustomEvent<{ game: string; result: string; hits: number; by: string }>).detail;
-  if (d.game === 'wall' && d.result === 'broken') systemLine('💥 The wall broke after ' + d.hits + ' message' + (d.hits === 1 ? '' : 's') + '! ' + d.by + ' landed the final blow.');
+  const d = (ev as CustomEvent<{ game: string; result: string; hits: number; by?: string; variant: WallVariant; sent: number }>).detail;
+  if (d.game !== 'wall') return;
+  const plural = (n: number, w: string): string => n + ' ' + w + (n === 1 ? '' : 's');
+  const tally = d.sent > d.hits ? ' (' + plural(d.sent, 'message') + ' thrown at it, ' + d.hits + ' did damage)' : '';
+  if (d.result === 'broken') systemLine('💥 The wall broke after ' + plural(d.hits, 'hit') + tally + '! ' + d.by + ' landed the final blow. It was ' + DESCRIBE[d.variant] + '.');
+  else systemLine('🧱 The wall went back up after ' + plural(d.hits, 'hit') + tally + '. It was ' + DESCRIBE[d.variant] + '.');
 });
 
 // ---- The New hangman form

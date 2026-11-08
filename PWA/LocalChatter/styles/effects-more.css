@@ -74,3 +74,5 @@ body.fx-blur-out > :not(.fx-dock):not(.fx):not(script):not(dialog) { filter: non
 
 /* Game: the wall (a canvas), fading out with reduce motion */
 .fx.fx-fade { opacity: 0; transition: opacity .6s ease-out; }
+/* A message that bounces off the wall without doing damage */
+.fx-ghost.fx-dud { filter: grayscale(.7) brightness(.95); }

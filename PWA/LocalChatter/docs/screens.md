@@ -63,6 +63,26 @@ chat in large text, plays effects and sounds, and has no message box.
 - The display role isn't saved: opening the normal link on the same device
   gives your usual role.
 
+### Banners
+
+`/banner` puts a banner across the top of every display, in large text. Only
+displays show it; the sender gets a confirmation line and nobody else's chat
+changes.
+
+| Command | Does |
+| --- | --- |
+| `/banner Doors open at 7pm` | Shows the banner. Sending another replaces it. |
+| `/banner fast Doors open at 7pm` | Sets how fast long text scrolls: `slow`, `normal` (the default) or `fast`. |
+| `/banner 25px Doors open at 7pm` | An exact speed, in pixels per second (5–600). A plain number with no `px` is part of the text: `/banner 5 minutes left`. |
+| `/banner off` | Takes it down. |
+
+A banner that fits is centred. One too wide for the screen stays on one line and
+scrolls slowly at the chosen speed to reveal the rest, pausing at each end, then
+scrolls back. With **Reduce motion** on, long text wraps instead. Whisper it to
+send it to one display (`/whisper Lobby TV: /banner Hello`). Like everything
+else there's no history: a display that joins or reloads later won't show it
+until it's sent again.
+
 ## In the background
 
 While LocalChatter is open but in the background (you've switched to another

@@ -2,9 +2,10 @@
 // whispers and spoof markers.
 import { el } from '../dom';
 import { parseEffect } from '../effects';
+import { bannerConfirmation, parseBanner, showBanner } from '../features/banner';
 import { whisperNames } from '../features/whispers';
 import * as LANG from '../languages';
-import { can } from '../state';
+import { can, DISPLAY } from '../state';
 import type { ChatMessage, Peer } from '../types';
 import { base64ToBlob, formatSize, formatTime } from '../util';
 import { renderEffect } from './effect-line';
@@ -23,6 +24,13 @@ export function renderMessage(msg: ChatMessage, mine: boolean): HTMLElement | nu
   const shown = msg.as || msg.from;
   const who = mine ? (msg.as ? 'You (as ' + msg.as.name + ')' : 'You') : (shown && shown.name) || 'Someone';
   const effect = !msg.file && !msg.sound ? parseEffect(msg.text) : null;
+  // /banner: shown on displays; the sender gets a confirmation; others see nothing.
+  const bannerCmd = !msg.file && !msg.sound ? parseBanner(msg.text) : null;
+  if (bannerCmd) {
+    if (DISPLAY) showBanner(bannerCmd);
+    else if (mine) append(bannerConfirmation(bannerCmd));
+    return null;
+  }
   if (msg.sound) return renderSound(msg, mine, who);
   if (effect) { renderEffect(effect, msg, who); return null; }
 

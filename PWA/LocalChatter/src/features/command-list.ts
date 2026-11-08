@@ -18,6 +18,7 @@ export const COMMANDS: CommandInfo[] = [
   { name: 'earthquake', aliases: ['quake'], args: '[30 | 2m | on | off]', hint: 'Shake everyone\'s screen', standalone: true },
   { name: 'lightning', args: '[30 | 2m | on | off]', hint: 'Lightning strikes the chat', standalone: true },
   { name: 'zalgo', args: '[30 | 2m | on | off]', hint: 'Corrupt the chat (10 s unless you say)', standalone: true },
+  { name: 'banner', args: '[slow | fast | 40px] <text> | off', hint: 'Put a banner across the top of the displays', standalone: false },
   { name: 'sound', args: '[name]', hint: 'Play a sound for everyone, or list the ones you have', standalone: true },
   { name: 'speak', args: '<language | default>', hint: 'Write your messages in a language', standalone: true },
   { name: 'languages', aliases: ['langs'], args: '[add | remove <names> | reset]', hint: 'The languages you understand', standalone: true },

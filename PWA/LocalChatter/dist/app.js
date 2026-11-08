@@ -789,6 +789,81 @@
     return !!state.ws && state.ws.readyState === WebSocket.OPEN && !!state.me;
   }
 
+  // PWA/LocalChatter/src/features/banner.ts
+  var SPEEDS = { slow: 30, normal: 60, medium: 60, fast: 120 };
+  var DEFAULT_SPEED = 60;
+  var MAX_TEXT = 300;
+  var PAUSE_MS = 1500;
+  function parseBanner(text3) {
+    const m = /^\s*\/banner\b\s*([\s\S]*)$/i.exec(String(text3 || ""));
+    if (!m) return null;
+    let rest = m[1].trim();
+    if (/^(off|clear|stop)$/i.test(rest)) return { off: true };
+    if (SPEEDS[rest.toLowerCase()] || /^\d{1,3}px(?:\/s)?$/i.test(rest)) return null;
+    let speed = DEFAULT_SPEED;
+    let speedText = "";
+    const first = /^(\S+)\s+([\s\S]+)$/.exec(rest);
+    if (first) {
+      const word = first[1].toLowerCase();
+      const px = /^(\d{1,3})px(?:\/s)?$/.exec(word);
+      if (SPEEDS[word]) {
+        speed = SPEEDS[word];
+        speedText = word;
+        rest = first[2];
+      } else if (px) {
+        speed = Math.min(600, Math.max(5, parseInt(px[1], 10)));
+        speedText = speed + "px";
+        rest = first[2];
+      }
+    }
+    rest = rest.replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
+    return rest ? { off: false, text: rest, speed, speedText } : null;
+  }
+  var banner2 = $("display-banner");
+  var label = $("display-banner-text");
+  var current = null;
+  var anim = null;
+  function layout() {
+    if (anim) {
+      anim.cancel();
+      anim = null;
+    }
+    if (!current) return;
+    const calm = reducedMotion();
+    banner2.classList.toggle("calm", calm);
+    const room = banner2.firstElementChild.clientWidth;
+    const dist = label.scrollWidth - room;
+    banner2.classList.toggle("overflowing", dist > 0 && !calm);
+    if (dist <= 0 || calm || !label.animate) return;
+    const travel = dist / current.speed * 1e3;
+    const total = PAUSE_MS * 2 + travel * 2;
+    const at = (x, offset) => ({ transform: "translateX(" + x + "px)", offset });
+    anim = label.animate([
+      at(0, 0),
+      at(0, PAUSE_MS / total),
+      at(-dist, (PAUSE_MS + travel) / total),
+      at(-dist, (2 * PAUSE_MS + travel) / total),
+      at(0, 1)
+    ], { duration: total, iterations: Infinity, easing: "linear" });
+  }
+  function showBanner(b) {
+    if (!DISPLAY) return;
+    if (b.off) {
+      current = null;
+      banner2.hidden = true;
+      layout();
+      return;
+    }
+    current = { text: b.text, speed: b.speed };
+    label.textContent = b.text;
+    banner2.hidden = false;
+    requestAnimationFrame(layout);
+  }
+  if (DISPLAY && "ResizeObserver" in window) new ResizeObserver(() => requestAnimationFrame(layout)).observe(banner2);
+  function bannerConfirmation(b) {
+    return el("p", "system", b.off ? "📢 You took down the display banner." : "📢 Banner on the displays: “" + b.text + "”" + (b.speedText ? " (" + b.speedText + ")" : ""));
+  }
+
   // PWA/LocalChatter/src/features/whispers.ts
   function whisperNames(to) {
     return to.map((t) => state.me && t.id === state.me.id ? "you" : t.name).join(", ");
@@ -1174,11 +1249,11 @@
     meta.appendChild(el("time", null, formatTime(msg.at || Date.now())));
     box2.appendChild(meta);
     const body = el("div", "sound");
-    const label = el("div");
-    label.appendChild(el("div", "sound-name", "🔊 " + snd.name));
+    const label2 = el("div");
+    label2.appendChild(el("div", "sound-name", "🔊 " + snd.name));
     const status = el("div", "sound-status", "Loading…");
-    label.appendChild(status);
-    body.appendChild(label);
+    label2.appendChild(status);
+    body.appendChild(label2);
     box2.appendChild(body);
     append(box2);
     function unavailable(reason) {
@@ -1197,7 +1272,7 @@
       const btn = el("button", "play", "▶");
       btn.type = "button";
       btn.setAttribute("aria-label", "Play " + snd.name);
-      body.insertBefore(btn, label);
+      body.insertBefore(btn, label2);
       const where = SOURCE_TEXT[source];
       const go = () => {
         status.textContent = "Playing " + where;
@@ -1251,6 +1326,12 @@
     const shown = msg.as || msg.from;
     const who = mine ? msg.as ? "You (as " + msg.as.name + ")" : "You" : shown && shown.name || "Someone";
     const effect = !msg.file && !msg.sound ? parseEffect(msg.text) : null;
+    const bannerCmd = !msg.file && !msg.sound ? parseBanner(msg.text) : null;
+    if (bannerCmd) {
+      if (DISPLAY) showBanner(bannerCmd);
+      else if (mine) append(bannerConfirmation(bannerCmd));
+      return null;
+    }
     if (msg.sound) return renderSound(msg, mine, who);
     if (effect) {
       renderEffect(effect, msg, who);
@@ -1551,8 +1632,8 @@
           if (window.confirm('Delete "' + e.name + '" from this device?')) void remove2(e.id).then(refreshSoundboard);
         }]
       ];
-      actions.forEach(([label, aria, fn]) => {
-        const b = el("button", null, label);
+      actions.forEach(([label2, aria, fn]) => {
+        const b = el("button", null, label2);
         b.type = "button";
         b.setAttribute("aria-label", aria);
         b.addEventListener("click", fn);
@@ -1891,7 +1972,7 @@
 
   // PWA/LocalChatter/src/features/commands.ts
   function runCommand(value) {
-    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak)\b\s*([\s\S]*)$/i.exec(value);
+    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     const cmd = m[1].toLowerCase();
     const raw = m[2];
@@ -1899,6 +1980,9 @@
     switch (cmd) {
       case "sound":
         soundCommand(rest);
+        return true;
+      case "banner":
+        bannerCommand(value);
         return true;
       case "whisper":
       case "w":
@@ -1937,6 +2021,13 @@
       return;
     }
     setRole(rest);
+  }
+  function bannerCommand(value) {
+    if (!parseBanner(value)) {
+      systemLine("Put a banner on the displays with /banner <text>, e.g. /banner fast Doors open at 7pm. Speeds: slow, normal, fast or e.g. 40px (per second). /banner off takes it down.");
+      return;
+    }
+    if (!sendChat({ text: value.trim() })) systemLine("Not connected: banner not sent");
   }
   function debugCommand(rest) {
     if (!can("debug")) {
@@ -2008,6 +2099,7 @@
     { name: "earthquake", aliases: ["quake"], args: "[30 | 2m | on | off]", hint: "Shake everyone's screen", standalone: true },
     { name: "lightning", args: "[30 | 2m | on | off]", hint: "Lightning strikes the chat", standalone: true },
     { name: "zalgo", args: "[30 | 2m | on | off]", hint: "Corrupt the chat (10 s unless you say)", standalone: true },
+    { name: "banner", args: "[slow | fast | 40px] <text> | off", hint: "Put a banner across the top of the displays", standalone: false },
     { name: "sound", args: "[name]", hint: "Play a sound for everyone, or list the ones you have", standalone: true },
     { name: "speak", args: "<language | default>", hint: "Write your messages in a language", standalone: true },
     { name: "languages", aliases: ["langs"], args: "[add | remove <names> | reset]", hint: "The languages you understand", standalone: true },
@@ -2071,10 +2163,10 @@
   }
   function highlight() {
     Array.from(popup.children).forEach((c, i) => c.setAttribute("aria-selected", String(i === active2)));
-    const current = popup.children[active2];
-    if (current) {
-      text.setAttribute("aria-activedescendant", current.id);
-      current.scrollIntoView({ block: "nearest" });
+    const current2 = popup.children[active2];
+    if (current2) {
+      text.setAttribute("aria-activedescendant", current2.id);
+      current2.scrollIntoView({ block: "nearest" });
     }
   }
   function update() {
@@ -2292,12 +2384,12 @@
     renderPeople();
     openDashboard("settings");
   }
-  function fillSpeak(langs, current) {
+  function fillSpeak(langs, current2) {
     speakBox.textContent = "";
     speakBox.appendChild(new Option("Default", ""));
     langs.filter((n) => !isDefault(n)).forEach((n) => speakBox.appendChild(new Option(n, n)));
-    speakBox.value = current;
-    if (speakBox.value !== current) speakBox.value = "";
+    speakBox.value = current2;
+    if (speakBox.value !== current2) speakBox.value = "";
   }
   langsBox.addEventListener("input", () => fillSpeak(split(langsBox.value), speakBox.value));
   langsBox.addEventListener("change", () => {
@@ -2538,10 +2630,10 @@
       const fx = parseEffect("/" + f.effect + (f.arg ? " " + f.arg : ""));
       if (!fx) return;
       const li = el("li");
-      const label = el("span", "fav-label");
-      label.appendChild(el("span", "fav-name", effectPhrase(fx)[0] + " " + EFFECT_TITLES[f.effect] + (f.arg ? " " + f.arg : "")));
-      label.appendChild(el("span", "fav-from", f.from ? "from " + f.from : "yours"));
-      li.appendChild(label);
+      const label2 = el("span", "fav-label");
+      label2.appendChild(el("span", "fav-name", effectPhrase(fx)[0] + " " + EFFECT_TITLES[f.effect] + (f.arg ? " " + f.arg : "")));
+      label2.appendChild(el("span", "fav-from", f.from ? "from " + f.from : "yours"));
+      li.appendChild(label2);
       const go = el("button", "fav-go", f.from ? "Echo" : "Resend");
       go.type = "button";
       go.title = f.from ? "Play " + f.from + "'s effect for everyone again" : "Send it to everyone again";

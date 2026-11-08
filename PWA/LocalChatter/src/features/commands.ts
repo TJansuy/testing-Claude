@@ -4,19 +4,22 @@ import { refreshLanguages, systemLine } from '../chat/list';
 import { sendSound } from '../chat/sound-message';
 import * as LANG from '../languages';
 import { findByName, list } from '../sounds/library';
+import { sendChat } from '../net/connection';
 import { can, ROLES, state } from '../state';
+import { parseBanner } from './banner';
 import { describeRoles, setDebug, setRole } from './roles';
 import { spyCommand, whisperCommand } from './whispers';
 
 /** Returns true if the text was a command. */
 export function runCommand(value: string): boolean {
-  const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak)\b\s*([\s\S]*)$/i.exec(value);
+  const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner)\b\s*([\s\S]*)$/i.exec(value);
   if (!m) return false;
   const cmd = m[1].toLowerCase();
   const raw = m[2];
   const rest = raw.trim();
   switch (cmd) {
     case 'sound': soundCommand(rest); return true;
+    case 'banner': bannerCommand(value); return true;
     case 'whisper': case 'w': whisperCommand(raw); return true;
     case 'spy': spyCommand(rest); return true;
     case 'speak': speakCommand(rest); return true;
@@ -31,6 +34,15 @@ function roleCommand(rest: string): void {
   if (!ROLES[rest]) { systemLine('There\'s no "' + rest + '" role. Type /role to see the roles.'); return; }
   if (rest === 'display') { location.assign('Display/'); return; }
   setRole(rest);
+}
+
+/** /banner [slow | normal | fast | <n>px] <text> | off: sent to the displays. */
+function bannerCommand(value: string): void {
+  if (!parseBanner(value)) {
+    systemLine('Put a banner on the displays with /banner <text>, e.g. /banner fast Doors open at 7pm. Speeds: slow, normal, fast or e.g. 40px (per second). /banner off takes it down.');
+    return;
+  }
+  if (!sendChat({ text: value.trim() })) systemLine('Not connected: banner not sent');
 }
 
 /** /debug [on|off] */

@@ -2,7 +2,7 @@
 "use strict";
 (() => {
   // PWA/LocalChatter/src/sw.ts
-  var CACHE = "localchatter-v14";
+  var CACHE = "localchatter-v15";
   var ASSETS = [
     "./",
     "index.html",

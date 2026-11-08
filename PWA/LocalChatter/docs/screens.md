@@ -19,6 +19,18 @@ landscape) it's a column beside the chat that stays open. ⚙️ switches it to
 Settings, and saving goes back to Effects. Narrower, 4:3 and portrait screens
 keep the phone layout, and it switches live when you rotate or resize.
 
+## Commands as you type
+
+Type `/` in the message box and a list of every command slides up, each with how
+to use it (`/whisper <names>: <message>`, `/fire [30 | 2m | on | off]` …). It
+narrows as you type, aliases included (`/qu` finds `/quake`), and never covers
+more than a third of the screen; the rest scrolls.
+
+- ↑ / ↓ move, **Tab** or **Enter** fill in the highlighted command, **Esc**
+  closes the list. Tapping or clicking a row fills it in too.
+- A command typed in full (`/fire`) is sent by Enter as usual.
+- Once the command is filled in, the list shows just its usage while you type the rest.
+
 ## The header (phones)
 
 On phones the header slides away a few seconds after you stop using it, so

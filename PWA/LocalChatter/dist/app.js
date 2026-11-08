@@ -11,10 +11,10 @@
   function $(id2) {
     return document.getElementById(id2);
   }
-  function el(tag, cls, text2) {
+  function el(tag, cls, text3) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
-    if (text2 != null) e.textContent = text2;
+    if (text3 != null) e.textContent = text3;
     return e;
   }
   var input = (id2) => $(id2);
@@ -66,8 +66,8 @@
   function cleanName(name) {
     return String(name || "").replace(/[^\p{L}\p{N} '\-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 24);
   }
-  function split(text2) {
-    return String(text2 || "").split(",").map(cleanName).filter(Boolean);
+  function split(text3) {
+    return String(text3 || "").split(",").map(cleanName).filter(Boolean);
   }
   function known() {
     try {
@@ -143,10 +143,10 @@
   ];
   var SYSTEM_STYLE = ["0x", "1F", "A7", "3C", "E9", "0b", "10", "01", "11", "FF", "7E", "D4", "//", "##"];
   var styleFor = (lang) => id(lang) === "system" ? SYSTEM_STYLE : STYLES[hash(id(lang)) % STYLES.length];
-  function gibberish(text2, lang, seed) {
+  function gibberish(text3, lang, seed) {
     const style = styleFor(lang);
     const r = rng(hash(id(lang) + "|" + seed));
-    return String(text2).replace(/[\p{L}\p{N}]+/gu, (word) => {
+    return String(text3).replace(/[\p{L}\p{N}]+/gu, (word) => {
       const len = Array.from(word).length;
       let out = "";
       while (out.length < len) out += style[Math.floor(r() * style.length)];
@@ -156,9 +156,9 @@
       return out;
     });
   }
-  function render(text2, lang, seed) {
-    if (understands(lang || "default")) return text2;
-    return gibberish(text2, lang || "default", seed);
+  function render(text3, lang, seed) {
+    if (understands(lang || "default")) return text3;
+    return gibberish(text3, lang || "default", seed);
   }
   var hue = (name) => hash(id(name)) % 360;
 
@@ -178,20 +178,20 @@
     }
     if (stick) list.scrollTop = list.scrollHeight;
   }
-  function systemLine(text2) {
-    append(el("p", "system", text2));
+  function systemLine(text3) {
+    append(el("p", "system", text3));
   }
   var original = /* @__PURE__ */ new WeakMap();
   var notUnderstood = (lang) => "In " + nameOf(lang) + ", which you don't understand";
-  function langText(tag, cls, text2, lang, seed) {
+  function langText(tag, cls, text3, lang, seed) {
     const e = el(tag, (cls ? cls + " " : "") + "lc");
-    original.set(e, { text: text2, lang, seed });
-    e.textContent = render(text2, lang, seed);
+    original.set(e, { text: text3, lang, seed });
+    e.textContent = render(text3, lang, seed);
     if (!understands(lang)) e.title = notUnderstood(lang);
     return e;
   }
-  function systemNotice(text2, cls) {
-    append(langText("p", "system" + (cls ? " " + cls : ""), text2, "system", text2 + "|" + Date.now()));
+  function systemNotice(text3, cls) {
+    append(langText("p", "system" + (cls ? " " + cls : ""), text3, "system", text3 + "|" + Date.now()));
   }
   function refreshLanguages() {
     document.querySelectorAll(".lc").forEach((n) => {
@@ -601,9 +601,9 @@
     } while (c === 847);
     return String.fromCharCode(c);
   }
-  function zalgoify(text2, strength) {
+  function zalgoify(text3, strength) {
     let out = "";
-    Array.from(text2).forEach((ch) => {
+    Array.from(text3).forEach((ch) => {
       out += ch;
       if (/\s/.test(ch)) return;
       const n = 1 + Math.floor(Math.random() * strength);
@@ -684,8 +684,8 @@
     lightning: startLightning,
     zalgo: startZalgoEffect
   };
-  function parseEffect(text2) {
-    const m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text2 || ""));
+  function parseEffect(text3) {
+    const m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text3 || ""));
     if (!m) return null;
     const name = COMMANDS[m[1].toLowerCase()];
     if (!name) return null;
@@ -1038,7 +1038,7 @@
     });
   }
   function list2() {
-    return all().then((items) => items.sort((a, b) => {
+    return all().then((items2) => items2.sort((a, b) => {
       if (a.source !== b.source) return a.source === "library" ? -1 : 1;
       return a.name.localeCompare(b.name);
     }));
@@ -1506,8 +1506,8 @@
   });
 
   // PWA/LocalChatter/src/features/soundboard.ts
-  var soundStatus = (text2) => {
-    $("sound-status").textContent = text2;
+  var soundStatus = (text3) => {
+    $("sound-status").textContent = text3;
   };
   function refreshSoundboard() {
     return library().then((lib) => {
@@ -1662,12 +1662,12 @@
     if (!can("viewSystem")) return;
     const me = state.me && state.me.id;
     const name = (p) => p && p.id === me ? "You" : p && p.name || "Someone";
-    let text2;
-    if (msg.kind === "role") text2 = name(msg.from) + " changed role: " + msg.old + " → " + msg.role;
-    else if (msg.kind === "effect") text2 = name(msg.from) + " triggered " + msg.name + " for " + (msg.to === "all" ? "everyone" : msg.to === me ? "you" : nameOf2(msg.to));
-    else if (msg.kind === "debug") text2 = name(msg.from) + " turned debug mode " + (msg.on ? "on" : "off");
+    let text3;
+    if (msg.kind === "role") text3 = name(msg.from) + " changed role: " + msg.old + " → " + msg.role;
+    else if (msg.kind === "effect") text3 = name(msg.from) + " triggered " + msg.name + " for " + (msg.to === "all" ? "everyone" : msg.to === me ? "you" : nameOf2(msg.to));
+    else if (msg.kind === "debug") text3 = name(msg.from) + " turned debug mode " + (msg.on ? "on" : "off");
     else return;
-    systemNotice("🛡️ " + text2, "audit");
+    systemNotice("🛡️ " + text3, "audit");
   }
   var debugToggle = input("debug-toggle");
   debugToggle.addEventListener("change", () => setDebug(debugToggle.checked));
@@ -1685,7 +1685,7 @@
   }
   function decodeRecord(record) {
     const data = record.data;
-    const text2 = (enc) => {
+    const text3 = (enc) => {
       try {
         return new TextDecoder(enc || "utf-8").decode(data);
       } catch {
@@ -1696,10 +1696,10 @@
       case "empty":
         return "";
       case "text":
-        return text2(record.encoding);
+        return text3(record.encoding);
       case "url":
       case "absolute-url":
-        return text2();
+        return text3();
       case "smart-poster":
         try {
           return (record.toRecords ? record.toRecords() : []).map(decodeRecord).filter(Boolean).join("\n");
@@ -1707,11 +1707,11 @@
           return "";
         }
       case "mime":
-        if (/^text\/|json|xml|vcard/i.test(record.mediaType || "")) return text2();
+        if (/^text\/|json|xml|vcard/i.test(record.mediaType || "")) return text3();
         return "[" + (record.mediaType || "binary") + " data, " + formatSize(data ? data.byteLength : 0) + "]";
       default: {
         if (!data) return "";
-        const s = text2();
+        const s = text3();
         return /[\u0000-\u0008\u000e-\u001f�]/.test(s) ? "[" + record.recordType + " record]" : s;
       }
     }
@@ -1722,14 +1722,14 @@
     return "Empty NFC tag" + (event.serialNumber ? " (" + event.serialNumber + ")" : "");
   }
   function onTag(event) {
-    const text2 = tagMessage(event).slice(0, 4e3);
-    const key = (event.serialNumber || "") + "|" + text2;
+    const text3 = tagMessage(event).slice(0, 4e3);
+    const key = (event.serialNumber || "") + "|" + text3;
     const now = Date.now();
     if (key === nfc.last && now - nfc.lastAt < 4e3) return;
     nfc.last = key;
     nfc.lastAt = now;
     vibrate2(50);
-    if (!sendChat({ text: text2, via: "nfc" })) systemLine("Not connected: NFC tag wasn't sent");
+    if (!sendChat({ text: text3, via: "nfc" })) systemLine("Not connected: NFC tag wasn't sent");
   }
   function stopNfc() {
     if (nfc.abort) nfc.abort.abort();
@@ -1769,8 +1769,8 @@
   };
   var dialog = $("qr");
   var video = $("qr-video");
-  var qrStatus = (text2) => {
-    $("qr-status").textContent = text2;
+  var qrStatus = (text3) => {
+    $("qr-status").textContent = text3;
   };
   function loadJsQr() {
     if (window.jsQR) return Promise.resolve();
@@ -1833,9 +1833,9 @@
       scanSoon();
       return;
     }
-    void decodeFrame().then((text2) => {
+    void decodeFrame().then((text3) => {
       if (!qr.stream) return;
-      if (text2 && text2.trim()) onQr(text2);
+      if (text3 && text3.trim()) onQr(text3);
       else scanSoon();
     });
   }
@@ -1849,10 +1849,10 @@
     stopCamera();
     if (dialog.open) dialog.close();
   }
-  function onQr(text2) {
+  function onQr(text3) {
     vibrate2(50);
     closeQr();
-    if (!sendChat({ text: text2.slice(0, 4e3), via: "qr" })) systemLine("Not connected: the QR code wasn't sent");
+    if (!sendChat({ text: text3.slice(0, 4e3), via: "qr" })) systemLine("Not connected: the QR code wasn't sent");
   }
   dialog.addEventListener("close", stopCamera);
   $("qr-close").addEventListener("click", closeQr);
@@ -2001,21 +2001,174 @@
     systemLine("You now write in " + (speaking() || "Default") + ".");
   }
 
-  // PWA/LocalChatter/src/ui/composer.ts
+  // PWA/LocalChatter/src/features/command-list.ts
+  var COMMANDS2 = [
+    { name: "whisper", aliases: ["w"], args: "<names>: <message>", hint: "Message only the people you name", standalone: false },
+    { name: "fire", args: "[30 | 2m | on | off]", hint: "Set the chat on fire", standalone: true },
+    { name: "earthquake", aliases: ["quake"], args: "[30 | 2m | on | off]", hint: "Shake everyone's screen", standalone: true },
+    { name: "lightning", args: "[30 | 2m | on | off]", hint: "Lightning strikes the chat", standalone: true },
+    { name: "zalgo", args: "[30 | 2m | on | off]", hint: "Corrupt the chat (10 s unless you say)", standalone: true },
+    { name: "sound", args: "[name]", hint: "Play a sound for everyone, or list the ones you have", standalone: true },
+    { name: "speak", args: "<language | default>", hint: "Write your messages in a language", standalone: true },
+    { name: "languages", aliases: ["langs"], args: "[add | remove <names> | reset]", hint: "The languages you understand", standalone: true },
+    { name: "role", args: "[member | monitor | spy | admin | display]", hint: "See or change your role", standalone: true },
+    { name: "spy", args: "[<names> | all | off]", hint: "Spy role: see whispers to and from people", standalone: true },
+    { name: "debug", args: "[on | off]", hint: "Admins: target effects and send as others", standalone: true }
+  ];
+  function matching(typed) {
+    const t = typed.toLowerCase();
+    const out = [];
+    COMMANDS2.forEach((cmd) => {
+      const as = [cmd.name, ...cmd.aliases || []].find((n) => n.startsWith(t));
+      if (as) out.push({ cmd, as });
+    });
+    return out;
+  }
+  function find(name) {
+    const n = name.toLowerCase();
+    return COMMANDS2.find((c) => c.name === n || (c.aliases || []).indexOf(n) >= 0);
+  }
+
+  // PWA/LocalChatter/src/ui/autocomplete.ts
   var text = $("text");
+  var popup = $("autocomplete");
+  var items = [];
+  var active2 = 0;
+  var dismissedFor = null;
+  text.setAttribute("aria-autocomplete", "list");
+  text.setAttribute("aria-controls", "autocomplete");
+  text.setAttribute("aria-expanded", "false");
+  var isOpen2 = () => !popup.hidden;
+  function close() {
+    popup.hidden = true;
+    items = [];
+    text.setAttribute("aria-expanded", "false");
+    text.removeAttribute("aria-activedescendant");
+  }
+  function row(cmd, as, typed, i, usageOnly) {
+    const li = el("li", "ac-item");
+    li.id = "ac-" + i;
+    li.setAttribute("role", "option");
+    const head = el("div", "ac-head");
+    const name = el("span", "ac-name");
+    name.appendChild(el("strong", null, "/" + as.slice(0, typed.length)));
+    name.appendChild(document.createTextNode(as.slice(typed.length)));
+    head.appendChild(name);
+    if (cmd.args) head.appendChild(el("span", "ac-args", cmd.args));
+    li.appendChild(head);
+    const aliases = [cmd.name, ...cmd.aliases || []].filter((n) => n !== as).map((n) => "/" + n);
+    li.appendChild(el("div", "ac-hint", cmd.hint + (aliases.length ? " · also " + aliases.join(", ") : "")));
+    if (!usageOnly) {
+      li.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        active2 = i;
+        complete();
+      });
+    } else {
+      li.classList.add("usage");
+    }
+    return li;
+  }
+  function highlight() {
+    Array.from(popup.children).forEach((c, i) => c.setAttribute("aria-selected", String(i === active2)));
+    const current = popup.children[active2];
+    if (current) {
+      text.setAttribute("aria-activedescendant", current.id);
+      current.scrollIntoView({ block: "nearest" });
+    }
+  }
+  function update() {
+    const value = text.value;
+    if (dismissedFor !== null && value === dismissedFor) return;
+    dismissedFor = null;
+    const m = /^\/(\S*)(\s?)/.exec(value);
+    if (!m || value.indexOf("\n") >= 0) {
+      close();
+      return;
+    }
+    const typed = m[1];
+    popup.textContent = "";
+    if (m[2]) {
+      const cmd = find(typed);
+      if (!cmd) {
+        close();
+        return;
+      }
+      items = [];
+      popup.appendChild(row(cmd, typed.toLowerCase(), typed, 0, true));
+    } else {
+      items = matching(typed);
+      if (!items.length) {
+        close();
+        return;
+      }
+      if (active2 >= items.length) active2 = 0;
+      items.forEach((it, i) => popup.appendChild(row(it.cmd, it.as, typed, i, false)));
+    }
+    popup.hidden = false;
+    text.setAttribute("aria-expanded", "true");
+    if (items.length) highlight();
+    else text.removeAttribute("aria-activedescendant");
+  }
+  function complete() {
+    const it = items[active2];
+    if (!it) return;
+    text.value = "/" + it.as + " ";
+    text.focus();
+    text.dispatchEvent(new Event("input"));
+  }
+  function autocompleteKey(e) {
+    if (!isOpen2() || e.isComposing) return false;
+    if (e.key === "Escape") {
+      dismissedFor = text.value;
+      close();
+      return true;
+    }
+    if (!items.length) return false;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      active2 = (active2 + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+      highlight();
+      return true;
+    }
+    if (e.key === "Tab" || e.key === "Enter" && !e.shiftKey) {
+      const exact = find(text.value.slice(1));
+      if (e.key === "Enter" && exact && exact.standalone) {
+        close();
+        return false;
+      }
+      complete();
+      return true;
+    }
+    return false;
+  }
+  text.addEventListener("input", () => {
+    active2 = text.value.length <= 1 ? 0 : active2;
+    update();
+  });
+  text.addEventListener("blur", () => setTimeout(() => {
+    if (document.activeElement !== text) close();
+  }, 150));
+  text.addEventListener("focus", update);
+
+  // PWA/LocalChatter/src/ui/composer.ts
+  var text2 = $("text");
   var form = $("composer");
   function autosize() {
-    text.style.height = "auto";
-    text.style.height = Math.min(text.scrollHeight, 160) + "px";
+    text2.style.height = "auto";
+    text2.style.height = Math.min(text2.scrollHeight, 160) + "px";
   }
   function prefill(value) {
     closeDashboard();
-    text.value = value;
-    text.focus();
+    text2.value = value;
+    text2.focus();
     autosize();
   }
-  text.addEventListener("input", autosize);
-  text.addEventListener("keydown", (e) => {
+  text2.addEventListener("input", autosize);
+  text2.addEventListener("keydown", (e) => {
+    if (autocompleteKey(e)) {
+      e.preventDefault();
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       form.requestSubmit();
@@ -2023,11 +2176,12 @@
   });
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const value = text.value;
+    const value = text2.value;
     if (!value.trim()) return;
     if (runCommand(value) || sendChat({ text: value })) {
-      text.value = "";
+      text2.value = "";
       autosize();
+      update();
     }
   });
   function sendFile(file) {
@@ -2053,7 +2207,7 @@
     Array.from(fileInput.files || []).forEach(sendFile);
     fileInput.value = "";
   });
-  text.addEventListener("paste", (e) => {
+  text2.addEventListener("paste", (e) => {
     const files2 = e.clipboardData && e.clipboardData.files;
     if (files2 && files2.length) {
       e.preventDefault();
@@ -2062,10 +2216,10 @@
   });
 
   // PWA/LocalChatter/src/ui/status.ts
-  function setStatus(kind, text2) {
+  function setStatus(kind, text3) {
     const s = $("status");
     s.dataset.state = kind;
-    s.textContent = text2;
+    s.textContent = text3;
     $("header-tab").dataset.state = kind;
     const isOn = kind === "on";
     ["send", "attach", "effects", "scan"].forEach((id2) => {

@@ -56,7 +56,7 @@ enter the server address shown on the setup page (e.g.
 | [Scanning](docs/scanning.md) | Sending what's in a QR code or NFC tag. |
 | [Roles, whispers and spying](docs/roles-and-whispers.md) | `/role`, admin debug mode, `/whisper`, `/spy`. |
 | [Languages and colours](docs/languages.md) | `/languages`, `/speak`, gibberish, sender and language colours. |
-| [Screens](docs/screens.md) | The dashboard and Settings, the auto-hiding header, display mode, background messages and notifications. |
+| [Screens](docs/screens.md) | The dashboard and Settings, command suggestions as you type, the auto-hiding header, display mode, background messages and notifications. |
 | [The relay server](docs/server.md) | Settings, endpoints, privacy and how it works. |
 
 ## Developing

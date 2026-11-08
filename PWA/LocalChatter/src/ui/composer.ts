@@ -5,6 +5,7 @@ import { runCommand } from '../features/commands';
 import { sendChat } from '../net/connection';
 import { state } from '../state';
 import { formatSize } from '../util';
+import { autocompleteKey, update as updateAutocomplete } from './autocomplete';
 import { closeDashboard } from './dashboard';
 
 const text = $<HTMLTextAreaElement>('text');
@@ -25,6 +26,8 @@ export function prefill(value: string): void {
 
 text.addEventListener('input', autosize);
 text.addEventListener('keydown', (e) => {
+  // The command list gets first say over arrows, Tab, Enter and Esc while it's open.
+  if (autocompleteKey(e)) { e.preventDefault(); return; }
   // Enter sends, Shift+Enter adds a new line (except while composing with an IME).
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
@@ -39,6 +42,7 @@ form.addEventListener('submit', (e) => {
   if (runCommand(value) || sendChat({ text: value })) {
     text.value = '';
     autosize();
+    updateAutocomplete();
   }
 });
 

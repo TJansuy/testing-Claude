@@ -2,7 +2,7 @@
 "use strict";
 (() => {
   // PWA/LocalChatter/src/sw.ts
-  var CACHE = "localchatter-v16";
+  var CACHE = "localchatter-2026-11-08T07:12:28.069Z";
   var ASSETS = [
     "./",
     "index.html",
@@ -24,7 +24,7 @@
     "vendor/jsQR.js"
   ];
   self.addEventListener("install", (event) => {
-    event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+    event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: "reload" })))));
     void self.skipWaiting();
   });
   self.addEventListener("activate", (event) => {
@@ -44,6 +44,9 @@
         return Response.error();
       }))
     );
+  });
+  self.addEventListener("message", (event) => {
+    if (event.data === "version" && event.ports[0]) event.ports[0].postMessage("2026-11-08T07:12:28.069Z");
   });
   self.addEventListener("notificationclick", (event) => {
     event.notification.close();

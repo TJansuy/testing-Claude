@@ -1251,8 +1251,8 @@
     const body = el("div", "sound");
     const label2 = el("div");
     label2.appendChild(el("div", "sound-name", "🔊 " + snd.name));
-    const status = el("div", "sound-status", "Loading…");
-    label2.appendChild(status);
+    const status2 = el("div", "sound-status", "Loading…");
+    label2.appendChild(status2);
     body.appendChild(label2);
     box2.appendChild(body);
     append(box2);
@@ -1275,19 +1275,19 @@
       body.insertBefore(btn, label2);
       const where = SOURCE_TEXT[source];
       const go = () => {
-        status.textContent = "Playing " + where;
+        status2.textContent = "Playing " + where;
         playIt().then(() => {
-          status.textContent = "Played " + where;
+          status2.textContent = "Played " + where;
           soundEvent(snd.name, source, true);
         }).catch((err) => {
           if (err && err.name === "NotAllowedError") {
-            status.textContent = "Tap ▶ to play (" + where + ")";
+            status2.textContent = "Tap ▶ to play (" + where + ")";
             if (DISPLAY) $("stage-tap").hidden = false;
             soundEvent(snd.name, source, false, "blocked");
           } else if (source === "link") {
             unavailable("link failed");
           } else {
-            status.textContent = "Couldn't play this sound here";
+            status2.textContent = "Couldn't play this sound here";
             soundEvent(snd.name, source, false, "error");
           }
         });
@@ -1297,11 +1297,11 @@
         go();
       });
       if (missed) {
-        status.textContent = "Sent while you were away · tap ▶ to play";
+        status2.textContent = "Sent while you were away · tap ▶ to play";
         soundEvent(snd.name, source, false, "missed");
       } else if (state.soundOn) go();
       else {
-        status.textContent = "Sounds are off · tap ▶ to play";
+        status2.textContent = "Sounds are off · tap ▶ to play";
         soundEvent(snd.name, source, false, "muted");
       }
     });
@@ -2821,6 +2821,113 @@
     });
   }
 
+  // PWA/LocalChatter/src/features/updates.ts
+  var BUILD_TIME = "2026-11-08T07:12:28.069Z";
+  var CHECK_EVERY_MS = 30 * 1e3;
+  var status = (text3) => {
+    $("update-status").textContent = text3;
+  };
+  function formatBuild(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleString([], { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+  var registration = null;
+  var lastCheck = 0;
+  var updateReady = false;
+  var chatIsEmpty = () => !document.querySelector("#messages .msg, #messages .effect-line");
+  function reloadIntoNewVersion() {
+    try {
+      sessionStorage.setItem("localchatter-reloaded", String(Date.now()));
+    } catch {
+    }
+    location.reload();
+  }
+  function offerReload() {
+    const frag = document.createDocumentFragment();
+    frag.appendChild(document.createTextNode("A new version of LocalChatter is ready. "));
+    const b = el("button", "link-button", "Reload now");
+    b.type = "button";
+    b.addEventListener("click", reloadIntoNewVersion);
+    frag.appendChild(b);
+    frag.appendChild(document.createTextNode(" (this clears the chat on this device)."));
+    banner(frag);
+  }
+  function onNewVersion() {
+    if (updateReady) return;
+    updateReady = true;
+    status("A new version has been downloaded.");
+    let recent = 0;
+    try {
+      recent = Number(sessionStorage.getItem("localchatter-reloaded")) || 0;
+    } catch {
+    }
+    if (chatIsEmpty() && Date.now() - recent > 1e4) {
+      reloadIntoNewVersion();
+      return;
+    }
+    status("A new version is ready: reload to use it.");
+    offerReload();
+  }
+  function activeVersion() {
+    const sw = navigator.serviceWorker.controller;
+    if (!sw) return Promise.resolve("");
+    return new Promise((resolve2) => {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = (e) => resolve2(String(e.data || ""));
+      sw.postMessage("version", [channel.port2]);
+      setTimeout(() => resolve2(""), 2e3);
+    });
+  }
+  function compareWithActive() {
+    void activeVersion().then((v) => {
+      if (v && v > BUILD_TIME) onNewVersion();
+    });
+  }
+  function checkForUpdates(manual = false) {
+    if (!registration) {
+      if (manual) status("Updates need the app to be opened from its web address (not from a file).");
+      return;
+    }
+    if (!manual && Date.now() - lastCheck < CHECK_EVERY_MS) return;
+    lastCheck = Date.now();
+    if (!navigator.onLine) {
+      status("Offline: will check for updates when you're back online.");
+      return;
+    }
+    if (updateReady) return;
+    status("Checking for updates…");
+    const reg = registration;
+    reg.update().then(() => {
+      if (updateReady) return;
+      if (reg.installing || reg.waiting) status("Downloading the new version…");
+      else status("Up to date (checked " + (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ").");
+    }).catch(() => status("Couldn't check for updates right now."));
+  }
+  function setupUpdates() {
+    $("version").textContent = formatBuild(BUILD_TIME);
+    $("version").title = BUILD_TIME;
+    $("check-update").addEventListener("click", () => checkForUpdates(true));
+    if (!("serviceWorker" in navigator) || location.protocol === "file:") {
+      status("Opened from a file: updates and offline use need the app's web address.");
+      return;
+    }
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hadController) onNewVersion();
+      else compareWithActive();
+    });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+      registration = reg;
+      compareWithActive();
+      checkForUpdates();
+    }).catch(() => status("Couldn't set up offline use and updates."));
+    window.addEventListener("online", () => checkForUpdates());
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) checkForUpdates();
+    });
+  }
+
   // PWA/LocalChatter/src/main.ts
   window.LocalChatterFX = effects_exports;
   function readSetupLink() {
@@ -2829,11 +2936,6 @@
     const relay = normaliseRelay(new URLSearchParams(hash2).get("relay"));
     if (relay) save(KEY.relay, relay);
     history.replaceState(null, "", location.pathname + location.search);
-  }
-  function registerServiceWorker() {
-    if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
-    navigator.serviceWorker.register("sw.js").catch(() => {
-    });
   }
   function start() {
     readSetupLink();
@@ -2854,7 +2956,7 @@
       setRole("display", true);
       startDisplay();
     } else setRole(ROLES[savedRole] && savedRole !== "display" ? savedRole : "member", true);
-    registerServiceWorker();
+    setupUpdates();
     if (state.relay && !firstRun) {
       connect();
     } else {

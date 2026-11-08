@@ -31,6 +31,17 @@ more than a third of the screen; the rest scrolls.
 - A command typed in full (`/fire`) is sent by Enter as usual.
 - Once the command is filled in, the list shows just its usage while you type the rest.
 
+## Updates and versions
+
+Settings shows **Last update**: when the version you're running was built, in
+your own time zone. Compare it between devices to see who's on what.
+
+When LocalChatter is opened (or you come back to it, or the device comes back
+online) it checks for a newer version and downloads it in the background. If the
+chat is still empty it switches straight to it; if there are messages on screen,
+a bar offers **Reload now**, because reloading clears the chat on that device.
+**Check for updates** in Settings checks straight away.
+
 ## The header (phones)
 
 On phones the header slides away a few seconds after you stop using it, so

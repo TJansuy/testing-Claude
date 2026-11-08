@@ -81,7 +81,21 @@ npm run watch   # rebuilds as you edit
 
 The built `dist/app.js` and `sw.js` are committed, so GitHub Pages can serve
 the app without a build step. Rebuild and commit them after changing `src/`,
-and bump `CACHE` in `src/sw.ts` when cached files change so installed copies update.
+and installed copies pick up the new version on their own (see below).
+
+### Versions and updates
+
+Every build is stamped with the time it was made. That's the **Last update**
+shown in Settings (so people can tell which version they have), and it names
+the service worker's cache, so each build is automatically a new version; there's
+no cache version to bump by hand. Set `SOURCE_DATE_EPOCH` (seconds) to pin it.
+
+The app checks for a new version when it's opened, when you come back to it and
+when the device comes back online, and from **Check for updates** in Settings.
+New files are fetched fresh, not from the browser's cache. Once a new version is
+downloaded, the app switches to it straight away if the chat is empty (e.g. just
+reopened); if there are messages on screen it offers **Reload now** instead,
+since reloading clears the chat on that device.
 
 The app is bundled into a single plain script (not a module) so it also works
 when `index.html` is opened straight from disk.

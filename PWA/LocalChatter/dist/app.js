@@ -106,8 +106,8 @@
   }
   function nameOf(lang) {
     const l = id(lang);
-    const mine = known().filter((n2) => id(n2) === l)[0];
-    if (mine) return mine;
+    const mine2 = known().filter((n2) => id(n2) === l)[0];
+    if (mine2) return mine2;
     const n = cleanName(lang);
     return n.charAt(0).toUpperCase() + n.slice(1);
   }
@@ -232,6 +232,7 @@
   var effects_exports = {};
   __export(effects_exports, {
     DEFAULT_MS: () => DEFAULT_MS,
+    GAMES: () => GAMES,
     activeNames: () => activeNames,
     canVibrate: () => canVibrate,
     isActive: () => isActive,
@@ -934,6 +935,228 @@
     };
   }
 
+  // PWA/LocalChatter/src/effects/wall.ts
+  var DESCEND_PER_S = 11;
+  var KNOCK_BACK = 70;
+  var RISE_PER_S = 220;
+  var BRICK_H = 26;
+  var BRICK_W = 62;
+  function wallStrength(seed) {
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i++) {
+      h ^= seed.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return 3 + (h >>> 0) % 48;
+  }
+  var counts = (n) => n instanceof HTMLElement && n.classList.contains("msg") && !n.classList.contains("whisper") && !n.classList.contains("poll-msg") && !n.classList.contains("game-msg");
+  function bricks(w, h, dpr) {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const g = c.getContext("2d");
+    g.fillStyle = "#cbbfb2";
+    g.fillRect(0, 0, w, h);
+    const bh = BRICK_H * dpr, bw = BRICK_W * dpr, gap = 3 * dpr;
+    for (let row2 = 0, y = h - bh; y > -bh; row2++, y -= bh) {
+      for (let x = row2 % 2 ? -bw / 2 : 0; x < w; x += bw) {
+        g.fillStyle = `hsl(${8 + Math.random() * 12} ${42 + Math.random() * 18}% ${33 + Math.random() * 12}%)`;
+        g.fillRect(x + gap / 2, y + gap / 2, bw - gap, bh - gap);
+        g.fillStyle = "rgb(255 255 255 / .08)";
+        g.fillRect(x + gap / 2, y + gap / 2, bw - gap, 3 * dpr);
+      }
+    }
+    g.fillStyle = "rgb(0 0 0 / .35)";
+    g.fillRect(0, h - 4 * dpr, w, 4 * dpr);
+    return c;
+  }
+  function crack(g, x, h, dpr, hurt) {
+    g.strokeStyle = "rgb(25 12 6 / .85)";
+    g.lineWidth = (1.2 + hurt) * dpr;
+    for (let b = 0; b < 2 + Math.round(hurt * 3); b++) {
+      let px = x, py = h;
+      g.beginPath();
+      g.moveTo(px, py);
+      const len = (30 + Math.random() * 70 * (1 + hurt)) * dpr;
+      const dir = -Math.PI / 2 + (Math.random() - 0.5) * 1.6;
+      for (let d = 0; d < len; d += 9 * dpr) {
+        px += Math.cos(dir + (Math.random() - 0.5) * 1.2) * 9 * dpr;
+        py += Math.sin(dir + (Math.random() - 0.5) * 1.2) * 9 * dpr;
+        g.lineTo(px, py);
+      }
+      g.stroke();
+    }
+    g.save();
+    g.globalCompositeOperation = "destination-out";
+    g.beginPath();
+    g.ellipse(x, h, (8 + Math.random() * 14) * dpr, (6 + Math.random() * 10) * dpr, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+  function startWall(seed, done) {
+    vibrate([40, 30, 40]);
+    const calm = reducedMotion();
+    const strength = wallStrength(seed);
+    const o = overlayCanvas("fx-wall");
+    const { ctx: ctx2, w, h, dpr } = o;
+    const wallH = Math.round(Math.min(170, Math.max(110, innerHeight * 0.2)));
+    const tex = bricks(w, wallH * dpr, dpr);
+    const tg = tex.getContext("2d");
+    const composer = document.getElementById("composer");
+    const lowest = () => Math.min(innerHeight * 0.6, (composer && composer.offsetParent ? composer.getBoundingClientRect().top : innerHeight) - 90);
+    let bottom = calm ? wallH + 20 : Math.round(wallH * 0.3);
+    let shake = 0;
+    let hits = 0;
+    let mode = "up";
+    const shards = [];
+    const dust = [];
+    const ghosts = /* @__PURE__ */ new Set();
+    let last = performance.now();
+    function finish(by2) {
+      mode = "broken";
+      observer.disconnect();
+      vibrate([120, 40, 200]);
+      document.dispatchEvent(new CustomEvent("localchatter:game", { detail: { game: "wall", result: "broken", hits, by: by2 } }));
+      if (calm) {
+        o.canvas.classList.add("fx-fade");
+        setTimeout(end, 700);
+        return;
+      }
+      const top = (bottom - wallH) * dpr;
+      for (let y = 0; y < tex.height; y += BRICK_H * dpr) {
+        for (let x = 0; x < w; x += BRICK_W * dpr) {
+          shards.push({ sx: x, sy: y, sw: BRICK_W * dpr, sh: BRICK_H * dpr, x, y: top + y, vx: (Math.random() - 0.5) * 260 * dpr, vy: (-80 - Math.random() * 220) * dpr, rot: 0, vr: (Math.random() - 0.5) * 8 });
+        }
+      }
+    }
+    function end() {
+      if (mode === "gone") return;
+      mode = "gone";
+      o.canvas.remove();
+      done();
+    }
+    function impact(x, by2) {
+      if (mode !== "up") return;
+      hits++;
+      if (hits >= strength) {
+        finish(by2);
+        return;
+      }
+      crack(tg, x * dpr, tex.height, dpr, Math.min(1, hits / strength));
+      if (!calm) {
+        bottom = Math.min(bottom, Math.max(24, bottom - KNOCK_BACK));
+        shake = 1;
+        for (let i = 0; i < 10; i++) dust.push({ x: x * dpr, y: bottom * dpr, vx: (Math.random() - 0.5) * 220 * dpr, vy: (Math.random() * 160 - 40) * dpr, life: 1 });
+      }
+      vibrate(25);
+    }
+    function launch(box2) {
+      const who = (box2.querySelector(".who") || { textContent: "" }).textContent || "Someone";
+      const r = box2.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      if (calm || !r.height) {
+        impact(x, who);
+        return;
+      }
+      const ghost = box2.cloneNode(true);
+      ghost.classList.add("fx-ghost");
+      Object.assign(ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", maxWidth: "none", margin: "0" });
+      document.body.appendChild(ghost);
+      ghosts.add(ghost);
+      const rise = Math.max(0, r.top - bottom);
+      const anim2 = ghost.animate([
+        { transform: "translateY(0) scale(1)" },
+        { transform: `translateY(${-rise}px) scale(.85) rotate(${(Math.random() - 0.5) * 16}deg)`, offset: 0.92 },
+        { transform: `translateY(${-rise + 6}px) scale(.6)`, opacity: 0 }
+      ], { duration: 320 + rise * 0.9, easing: "cubic-bezier(.5, 0, .9, .6)", fill: "forwards" });
+      const land = () => {
+        ghost.remove();
+        ghosts.delete(ghost);
+      };
+      anim2.finished.then(() => {
+        land();
+        impact(x, who);
+      }, land);
+    }
+    const list3 = document.getElementById("messages");
+    const observer = new MutationObserver((recs) => recs.forEach((rec2) => rec2.addedNodes.forEach((n) => {
+      if (counts(n)) launch(n);
+    })));
+    if (list3) observer.observe(list3, { childList: true });
+    function frame(now) {
+      if (mode === "gone") return;
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
+      last = now;
+      if (mode === "up" && !calm) bottom = Math.min(lowest(), bottom + DESCEND_PER_S * dt);
+      if (mode === "rising") bottom -= RISE_PER_S * dt;
+      shake = Math.max(0, shake - dt * 3);
+      ctx2.clearRect(0, 0, w, h);
+      if (mode === "broken" && !calm) {
+        shards.forEach((s) => {
+          s.vy += 1700 * dpr * dt;
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          s.rot += s.vr * dt;
+          ctx2.save();
+          ctx2.translate(s.x + s.sw / 2, s.y + s.sh / 2);
+          ctx2.rotate(s.rot);
+          ctx2.drawImage(tex, s.sx, s.sy, s.sw, s.sh, -s.sw / 2, -s.sh / 2, s.sw, s.sh);
+          ctx2.restore();
+        });
+        if (shards.every((s) => s.y > h)) {
+          end();
+          return;
+        }
+      } else {
+        const jx = shake ? (Math.random() - 0.5) * 10 * shake * dpr : 0;
+        ctx2.drawImage(tex, jx, (bottom - wallH) * dpr + (shake ? (Math.random() - 0.5) * 6 * shake * dpr : 0));
+        if (mode === "rising" && bottom <= 0) {
+          end();
+          return;
+        }
+      }
+      ctx2.fillStyle = "rgb(190 170 150)";
+      for (let i = dust.length - 1; i >= 0; i--) {
+        const d = dust[i];
+        d.vy += 500 * dpr * dt;
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        d.life -= dt * 1.6;
+        if (d.life <= 0) {
+          dust.splice(i, 1);
+          continue;
+        }
+        ctx2.globalAlpha = d.life;
+        ctx2.fillRect(d.x, d.y, 3 * dpr, 3 * dpr);
+      }
+      ctx2.globalAlpha = 1;
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    return {
+      stop(_early, hard) {
+        observer.disconnect();
+        ghosts.forEach((g) => g.remove());
+        if (hard || mode === "broken") {
+          if (hard) {
+            mode = "gone";
+            o.canvas.remove();
+          }
+          return;
+        }
+        if (calm) {
+          o.canvas.classList.add("fx-fade");
+          setTimeout(() => {
+            mode = "gone";
+            o.canvas.remove();
+          }, 700);
+          return;
+        }
+        mode = "rising";
+      }
+    };
+  }
+
   // PWA/LocalChatter/src/effects/zalgo.ts
   var TARGETS = [".topbar", "#messages", "#effects-tray", "#banner"];
   var zalgo = {
@@ -1063,8 +1286,10 @@
     zalgo: "zalgo",
     blackhole: "blackhole",
     blur: "blur",
-    rain: "rain"
+    rain: "rain",
+    wall: "wall"
   };
+  var GAMES = ["wall"];
   var MAX_S = 600;
   var DEFAULT_MS = {
     fire: 2200,
@@ -1073,7 +1298,8 @@
     zalgo: 1e4,
     blackhole: 1e4,
     blur: 1e4,
-    rain: 12e3
+    rain: 12e3,
+    wall: MAX_S * 1e3
   };
   var STARTERS = {
     fire: startFire,
@@ -1082,7 +1308,8 @@
     zalgo: startZalgoEffect,
     blackhole: startBlackhole,
     blur: startBlur,
-    rain: startRain
+    rain: startRain,
+    wall: startWall
   };
   function parseEffect(text4) {
     const m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text4 || ""));
@@ -1115,7 +1342,14 @@
     }
     announce(name, false);
   }
-  function play(name, arg = null) {
+  function finished(name, ctrl) {
+    const a = active[name];
+    if (!a || a.ctrl !== ctrl) return;
+    clearTimeout(a.timer);
+    delete active[name];
+    announce(name, false);
+  }
+  function play(name, arg = null, seed = "") {
     if (arg === "off") {
       stopEffect(name, true);
       return true;
@@ -1123,9 +1357,11 @@
     let a = active[name];
     if (!a) {
       Object.keys(active).forEach((other) => stopEffect(other, true, true));
-      let ctrl;
+      let ctrl = null;
       try {
-        ctrl = STARTERS[name]();
+        ctrl = STARTERS[name](seed || String(Math.random()), () => {
+          if (ctrl) finished(name, ctrl);
+        });
       } catch {
         return false;
       }
@@ -1278,9 +1514,9 @@
     const to = [];
     const missing = [];
     wanted.forEach((n) => {
-      const found = Array.from(state.peers.values()).find((p) => p.name.toLowerCase() === n.toLowerCase());
-      if (found) {
-        if (to.indexOf(found) < 0) to.push(found);
+      const found2 = Array.from(state.peers.values()).find((p) => p.name.toLowerCase() === n.toLowerCase());
+      if (found2) {
+        if (to.indexOf(found2) < 0) to.push(found2);
       } else missing.push(n);
     });
     if (missing.length) {
@@ -1334,11 +1570,11 @@
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
   }
-  function base64ToBlob(b64, type) {
+  function base64ToBlob(b64, type2) {
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type });
+    return new Blob([bytes], { type: type2 });
   }
   function vibrate2(pattern) {
     try {
@@ -1438,8 +1674,8 @@
   function cleanName2(name) {
     return String(name || "").replace(/\.[a-z0-9]{1,5}$/i, "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 60) || "sound";
   }
-  function isAudioType(type, name) {
-    return /^audio\//.test(type || "") || /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i.test(name || "");
+  function isAudioType(type2, name) {
+    return /^audio\//.test(type2 || "") || /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i.test(name || "");
   }
   function guessType(name) {
     const ext = ((/\.([a-z0-9]+)$/i.exec(name || "") || [])[1] || "").toLowerCase();
@@ -1635,7 +1871,7 @@
     link: "from a link"
   };
   var isVoice = (name) => /^voice message\b/i.test(name);
-  var extFor = (type) => ({ "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/wav": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "audio/aac": "aac", "audio/flac": "flac" })[type.split(";")[0]] || "audio";
+  var extFor = (type2) => ({ "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/wav": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "audio/aac": "aac", "audio/flac": "flac" })[type2.split(";")[0]] || "audio";
   function soundActions(r, snd, status3) {
     const wrap = el("div", "sound-actions");
     const save2 = el("button", "sound-act", "💾");
@@ -1673,14 +1909,14 @@
   function soundEvent(name, source, played, reason = "") {
     document.dispatchEvent(new CustomEvent("localchatter:sound", { detail: { name, source, played, reason } }));
   }
-  function renderSound(msg, mine, who) {
+  function renderSound(msg, mine2, who) {
     const missed = state.catchingUp;
     const snd = msg.sound;
-    const box2 = el("article", "msg" + (mine ? " mine" : ""));
-    if (!mine) colourBubble(box2, msg.as || msg.from);
+    const box2 = el("article", "msg" + (mine2 ? " mine" : ""));
+    if (!mine2) colourBubble(box2, msg.as || msg.from);
     const meta = el("div", "meta");
     meta.appendChild(el("span", "who", who));
-    const spoofer = !mine && spoofedBy(msg);
+    const spoofer = !mine2 && spoofedBy(msg);
     if (spoofer) meta.appendChild(el("span", "spoof", "really sent by " + spoofer.name));
     meta.appendChild(el("time", null, formatTime(msg.at || Date.now())));
     box2.appendChild(meta);
@@ -1695,7 +1931,7 @@
     function unavailable(reason) {
       box2.classList.add("unavailable");
       body.textContent = "";
-      body.appendChild(el("div", "text", "🔇 " + (mine ? "You" : who) + ' tried to play "' + snd.name + `", but it isn't available on this device.`));
+      body.appendChild(el("div", "text", "🔇 " + (mine2 ? "You" : who) + ' tried to play "' + snd.name + `", but it isn't available on this device.`));
       soundEvent(snd.name, "none", false, reason);
     }
     void resolve(snd).then((r) => {
@@ -1759,38 +1995,38 @@
   function spoofedBy(msg) {
     return msg.as && msg.from && msg.as.id !== msg.from.id && can("seeSpoofer") ? msg.from : null;
   }
-  function renderMessage(msg, mine) {
-    const shown = msg.as || msg.from;
-    const who = mine ? msg.as ? "You (as " + msg.as.name + ")" : "You" : shown && shown.name || "Someone";
+  function renderMessage(msg, mine2) {
+    const shown2 = msg.as || msg.from;
+    const who = mine2 ? msg.as ? "You (as " + msg.as.name + ")" : "You" : shown2 && shown2.name || "Someone";
     const effect = !msg.file && !msg.sound ? parseEffect(msg.text) : null;
     const bannerCmd = !msg.file && !msg.sound ? parseBanner(msg.text) : null;
     if (bannerCmd) {
       if (DISPLAY) showBanner(bannerCmd);
-      else if (mine) append(bannerConfirmation(bannerCmd));
+      else if (mine2) append(bannerConfirmation(bannerCmd));
       return null;
     }
-    if (msg.sound) return renderSound(msg, mine, who);
+    if (msg.sound) return renderSound(msg, mine2, who);
     if (effect) {
       renderEffect(effect, msg, who);
       return null;
     }
-    const box2 = el("article", "msg" + (mine ? " mine" : ""));
-    if (!mine) colourBubble(box2, shown);
+    const box2 = el("article", "msg" + (mine2 ? " mine" : ""));
+    if (!mine2) colourBubble(box2, shown2);
     const meta = el("div", "meta");
     meta.appendChild(el("span", "who", who));
     const inLang = !isDefault(msg.lang) ? msg.lang : "";
     if (inLang) {
       box2.dataset.lang = inLang;
-      if (mine) box2.dataset.mine = "";
+      if (mine2) box2.dataset.mine = "";
       box2.style.setProperty("--lang-hue", String(hue(inLang)));
       const tag = el("span", "lang-tag", "🗣 " + nameOf(inLang));
       meta.appendChild(tag);
-      showLanguage(box2, tag, mine || understands(inLang));
-      if (!mine && !understands(inLang)) box2.classList.add("foreign");
+      showLanguage(box2, tag, mine2 || understands(inLang));
+      if (!mine2 && !understands(inLang)) box2.classList.add("foreign");
     }
     if (msg.via === "nfc") meta.appendChild(el("span", "via", "via NFC tag"));
     if (msg.via === "qr") meta.appendChild(el("span", "via", "via QR code"));
-    const spoofer = !mine && spoofedBy(msg);
+    const spoofer = !mine2 && spoofedBy(msg);
     if (spoofer) meta.appendChild(el("span", "spoof", "really sent by " + spoofer.name));
     if (msg.to) {
       box2.classList.add("whisper");
@@ -1800,23 +2036,23 @@
     meta.appendChild(el("time", null, formatTime(msg.at || Date.now())));
     box2.appendChild(meta);
     if (msg.text) {
-      box2.appendChild(mine ? el("div", "text", msg.text) : langText("div", "text", msg.text, inLang || "default", msg.id || msg.text));
-      if (!mine && !inLang && !understands("default")) box2.classList.add("foreign");
+      box2.appendChild(mine2 ? el("div", "text", msg.text) : langText("div", "text", msg.text, inLang || "default", msg.id || msg.text));
+      if (!mine2 && !inLang && !understands("default")) box2.classList.add("foreign");
     }
     if (msg.file) box2.appendChild(fileView(msg.file.name, msg.file.type, msg.file.size, msg.file.data));
     append(box2);
     return box2;
   }
-  function fileView(name, type, size, data) {
+  function fileView(name, type2, size, data) {
     let url;
     try {
-      url = URL.createObjectURL(base64ToBlob(data, type));
+      url = URL.createObjectURL(base64ToBlob(data, type2));
     } catch {
       url = null;
     }
     if (!url) return el("div", "text", "[file could not be read]");
     const href = url;
-    if (INLINE_IMAGE.test(type)) {
+    if (INLINE_IMAGE.test(type2)) {
       const img = el("img");
       img.src = href;
       img.alt = name;
@@ -1851,10 +2087,11 @@
     save(KEY.device, id2);
     return id2;
   })();
+  var keeps = (p, had, v) => !!had && (p.quiz ? had.at <= v.at : had.at > v.at);
   function vote(p, v) {
     if (p.cleared || p.closed || v.option < 0 || v.option >= p.options.length) return false;
     const had = p.votes.get(v.voter);
-    if (had && had.at > v.at) return false;
+    if (keeps(p, had, v)) return false;
     p.votes.set(v.voter, v);
     return true;
   }
@@ -1877,14 +2114,16 @@
         author: w.author,
         owner: w.owner || "",
         at: w.at || at || Date.now(),
-        votes: /* @__PURE__ */ new Map()
+        votes: /* @__PURE__ */ new Map(),
+        quiz: !!w.quiz,
+        correct: w.quiz && w.correct ? w.correct : []
       };
       polls.set(p.id, p);
     }
     const target = p;
     (w.votes || []).forEach((v) => {
       const had = target.votes.get(v.voter);
-      if (v.option < target.options.length && (!had || had.at < v.at)) target.votes.set(v.voter, v);
+      if (v.option < target.options.length && !keeps(target, had, v) && !(had && had.at === v.at)) target.votes.set(v.voter, v);
     });
     (early.get(w.id) || []).forEach((v) => vote(target, v));
     early.delete(w.id);
@@ -1901,7 +2140,8 @@
       author: p.author,
       owner: p.owner,
       at: p.at,
-      votes: Array.from(p.votes.values())
+      votes: Array.from(p.votes.values()),
+      ...p.quiz ? { quiz: true, correct: p.correct } : {}
     };
   }
   function active2() {
@@ -1915,109 +2155,490 @@
     return list3.find((p) => p.question.toLowerCase().startsWith(r)) || list3.find((p) => p.question.toLowerCase().includes(r));
   }
   function tally(p) {
-    const counts = p.options.map(() => 0);
+    const counts2 = p.options.map(() => 0);
     const voters = p.options.map(() => []);
     p.votes.forEach((v) => {
-      counts[v.option]++;
+      counts2[v.option]++;
       voters[v.option].push(v.name);
     });
-    return { counts, voters, total: p.votes.size };
+    return { counts: counts2, voters, total: p.votes.size };
   }
-  var resultsShown = (p) => !p.secret || p.closed;
+  var resultsShown = (p) => !p.secret && !p.quiz || p.closed;
+  var isCorrect = (p, option) => p.correct.indexOf(option) >= 0;
+  function marks(p) {
+    const right = [], wrong = [];
+    p.votes.forEach((v) => (isCorrect(p, v.option) ? right : wrong).push(v.name));
+    return { right, wrong };
+  }
   var myVote = (p) => p.votes.get(device)?.option;
+
+  // PWA/LocalChatter/src/games/hangman.ts
+  var MAX_WRONG = 6;
+  var games = /* @__PURE__ */ new Map();
+  var norm = (c) => c.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+  var isLetter = (c) => new RegExp("^\\p{L}$", "u").test(norm(c));
+  function lettersOf(g) {
+    return new Set(Array.from(g.phrase).map(norm).filter(isLetter));
+  }
+  var wrongGuesses = (g) => {
+    const l = lettersOf(g);
+    return g.guessed.filter((c) => !l.has(c));
+  };
+  var found = (g, c) => !isLetter(c) || g.guessed.indexOf(norm(c)) >= 0;
+  function settle(g) {
+    if (g.state !== "open") return;
+    if (Array.from(lettersOf(g)).every((c) => g.guessed.indexOf(c) >= 0)) g.state = "won";
+    else if (wrongGuesses(g).length >= MAX_WRONG) g.state = "lost";
+  }
+  function guessIn(text4) {
+    const first = Array.from(String(text4 || "").trim())[0] || "";
+    return first && isLetter(first) ? norm(first) : "";
+  }
+  function guess(g, letter, by2) {
+    if (g.state !== "open" || g.cleared || !letter || g.guessed.indexOf(letter) >= 0) return null;
+    g.guessed.push(letter);
+    const hit = lettersOf(g).has(letter);
+    g.last = { letter, by: by2, hit };
+    settle(g);
+    return hit;
+  }
+  function mergeGame(w, at) {
+    let g = games.get(w.id);
+    const isNew = !g;
+    if (!g) {
+      g = { id: w.id, phrase: w.phrase, author: w.author, owner: w.owner || "", at: w.at || at || Date.now(), guessed: [], state: "open", cleared: false };
+      games.set(g.id, g);
+    }
+    const target = g;
+    Array.from(w.guessed || "").map(norm).forEach((c) => {
+      if (isLetter(c) && target.guessed.indexOf(c) < 0) target.guessed.push(c);
+    });
+    settle(target);
+    return { game: target, isNew };
+  }
+  var toWire2 = (g) => ({
+    id: g.id,
+    kind: "hangman",
+    phrase: g.phrase,
+    author: g.author,
+    owner: g.owner,
+    at: g.at,
+    guessed: g.guessed.join("")
+  });
+  var shown = () => Array.from(games.values()).filter((g) => !g.cleared && g.state !== "won").sort((a, b) => a.at - b.at);
+  var open = () => Array.from(games.values()).filter((g) => !g.cleared && g.state === "open");
+  var mine = (g) => g.owner === device;
+
+  // PWA/LocalChatter/src/games/card.ts
+  var onClear = null;
+  var setClear = (fn) => {
+    onClear = fn;
+  };
+  var cards = /* @__PURE__ */ new Map();
+  var SVG = "http://www.w3.org/2000/svg";
+  function gallows(wrong) {
+    const svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("viewBox", "0 0 100 120");
+    svg.setAttribute("class", "hm-gallows");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", wrong + " of " + MAX_WRONG + " wrong guesses");
+    const parts = [
+      "M10 115 H70 M25 115 V8 H70 V20",
+      // the gallows
+      "circle",
+      "M70 42 V75",
+      "M70 50 L55 64",
+      "M70 50 L85 64",
+      "M70 75 L57 95",
+      "M70 75 L83 95"
+    ];
+    parts.forEach((d, i) => {
+      if (i > wrong) return;
+      const shape = d === "circle" ? document.createElementNS(SVG, "circle") : document.createElementNS(SVG, "path");
+      if (d === "circle") {
+        shape.setAttribute("cx", "70");
+        shape.setAttribute("cy", "31");
+        shape.setAttribute("r", "11");
+      } else shape.setAttribute("d", d);
+      shape.setAttribute("class", i ? "hm-part" : "hm-frame");
+      svg.appendChild(shape);
+    });
+    return svg;
+  }
+  function phrase(g, mode) {
+    const box2 = el("p", "hm-phrase");
+    const reveal = g.state !== "open" || mode === "chat" && mine(g);
+    g.phrase.split(/\s+/).forEach((word) => {
+      const w = el("span", "hm-word");
+      Array.from(word).forEach((c) => {
+        const got = found(g, c);
+        const letter = el("span", "hm-letter" + (got ? "" : reveal ? " hm-missing" : " hm-blank"), got || reveal ? c : "");
+        w.appendChild(letter);
+      });
+      box2.appendChild(w);
+    });
+    box2.setAttribute("aria-label", Array.from(g.phrase).map((c) => found(g, c) || g.state !== "open" ? c : "blank").join(" "));
+    return box2;
+  }
+  function fill(node, g, mode) {
+    const wrong = wrongGuesses(g);
+    node.replaceChildren();
+    node.classList.toggle("lost", g.state === "lost");
+    const head = el("div", "poll-head");
+    head.appendChild(el("span", "poll-kind", "🪢 Hangman"));
+    head.appendChild(el("span", "poll-state", g.state === "open" ? "Open" : g.state === "won" ? "Solved!" : "Lost"));
+    node.appendChild(head);
+    node.appendChild(el("p", "poll-from", "from " + (mode === "chat" && mine(g) ? "you" : g.author.name)));
+    const body = el("div", "hm-body");
+    body.appendChild(gallows(wrong.length));
+    body.appendChild(phrase(g, mode));
+    node.appendChild(body);
+    node.appendChild(el("p", "hm-wrong", "Wrong (" + wrong.length + "/" + MAX_WRONG + "): " + (wrong.join(" ") || "—")));
+    if (g.last && g.state === "open") node.appendChild(el("p", "hm-last", g.last.by + " guessed " + g.last.letter + (g.last.hit ? " ✓" : " ✗")));
+    const foot = g.state === "lost" ? "💀 Out of guesses. The phrase was “" + g.phrase + "”." : mode === "chat" && mine(g) ? "Your phrase: everyone else's messages are guesses." : "Send a message: its first letter is your guess.";
+    node.appendChild(el("p", "poll-foot", foot));
+    if (mode === "chat" && !g.cleared) {
+      const row2 = el("div", "poll-actions");
+      const b = el("button", "link-button", "Clear from displays");
+      b.type = "button";
+      b.addEventListener("click", () => {
+        if (onClear) onClear(g);
+      });
+      row2.appendChild(b);
+      node.appendChild(row2);
+    }
+  }
+  function gameCard(g, mode) {
+    const node = el("div", "poll-card game-card hangman in-" + mode);
+    node.dataset.game = g.id;
+    fill(node, g, mode);
+    const set = cards.get(g.id) || /* @__PURE__ */ new Set();
+    set.add({ node, mode });
+    cards.set(g.id, set);
+    return node;
+  }
+  function refreshGame(g) {
+    const set = cards.get(g.id);
+    if (!set) return;
+    set.forEach((c) => {
+      if (c.node.isConnected) fill(c.node, g, c.mode);
+      else set.delete(c);
+    });
+  }
+  function explode(g) {
+    const set = cards.get(g.id);
+    cards.delete(g.id);
+    if (!set) return;
+    set.forEach(({ node }) => {
+      if (!node.isConnected) return;
+      const target = node.closest(".game-msg") || node;
+      const r = target.getBoundingClientRect();
+      if (!reducedMotion()) confetti(r);
+      const out = target.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(1.15)" }], { duration: 260, fill: "forwards" });
+      out.finished.then(() => target.remove(), () => target.remove());
+    });
+  }
+  var COLOURS = ["#f43f5e", "#f59e0b", "#22c55e", "#3b82f6", "#a855f7", "#14b8a6", "#facc15"];
+  function confetti(r) {
+    const o = overlayCanvas("fx-confetti");
+    const { ctx: ctx2, w, h, dpr } = o;
+    const bits = Array.from({ length: 160 }, () => ({
+      x: (r.left + Math.random() * r.width) * dpr,
+      y: (r.top + Math.random() * r.height) * dpr,
+      vx: (Math.random() - 0.5) * 520 * dpr,
+      vy: (-150 - Math.random() * 450) * dpr,
+      rot: Math.random() * 6,
+      vr: (Math.random() - 0.5) * 14,
+      sway: Math.random() * 6,
+      size: (5 + Math.random() * 5) * dpr,
+      colour: COLOURS[Math.floor(Math.random() * COLOURS.length)]
+    }));
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1e3);
+      last = now;
+      ctx2.clearRect(0, 0, w, h);
+      bits.forEach((b) => {
+        b.vy = Math.min(b.vy + 900 * dpr * dt, 260 * dpr);
+        b.vx *= 1 - 1.5 * dt;
+        b.x += (b.vx + Math.sin(now / 300 + b.sway) * 40 * dpr) * dt;
+        b.y += b.vy * dt;
+        b.rot += b.vr * dt;
+        ctx2.save();
+        ctx2.translate(b.x, b.y);
+        ctx2.rotate(b.rot);
+        ctx2.fillStyle = b.colour;
+        ctx2.fillRect(-b.size / 2, -b.size / 4, b.size, b.size / 2);
+        ctx2.restore();
+      });
+      if (bits.some((b) => b.y < h + 20 * dpr)) requestAnimationFrame(frame);
+      else o.canvas.remove();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // PWA/LocalChatter/src/games/index.ts
+  var send = (msg) => sendRaw({ type: "game", ...msg });
+  var board = $("poll-board");
+  function updateBoard() {
+    if (!DISPLAY) return;
+    const list3 = shown();
+    board.querySelectorAll("[data-game]").forEach((c) => {
+      if (!list3.some((g) => g.id === c.dataset.game) && !c.getAnimations().length) c.remove();
+    });
+    list3.forEach((g) => {
+      if (!board.querySelector('[data-game="' + CSS.escape(g.id) + '"]')) board.appendChild(gameCard(g, "board"));
+    });
+    board.hidden = !board.children.length;
+  }
+  function placeInChat(g) {
+    if (DISPLAY || g.state === "won") return;
+    const box2 = el("div", "msg game-msg" + (g.owner === device ? " mine" : ""));
+    box2.appendChild(gameCard(g, "chat"));
+    append(box2);
+  }
+  function changed(g, by2) {
+    if (g.state === "won") {
+      explode(g);
+      show(() => systemNotice("🎉 Hangman solved: “" + g.phrase + "”! " + by2 + " found the last letter."));
+    } else {
+      refreshGame(g);
+      if (g.state === "lost") show(() => systemNotice("💀 Hangman lost: the phrase was “" + g.phrase + "”."));
+    }
+    updateBoard();
+  }
+  function chatGuess(msg, sender) {
+    if (msg.to || msg.file || msg.sound || !sender || /^\s*\//.test(msg.text || "")) return;
+    const letter = guessIn(msg.text);
+    if (!letter) return;
+    const meSending = !!state.me && sender.id === state.me.id;
+    open().forEach((g) => {
+      if (sender.id === g.author.id || meSending && g.owner === device) return;
+      if (guess(g, letter, meSending ? "You" : sender.name) !== null) changed(g, meSending ? "You" : sender.name);
+    });
+  }
+  function startHangman(text4) {
+    const phrase2 = text4.replace(/\s+/g, " ").trim().slice(0, 120);
+    if (!Array.from(phrase2).some(isLetter)) return "Give a word or phrase to guess, e.g. /hangman Under the weather";
+    if (!connected() || !state.me) return "Not connected: game not started.";
+    const w = { id: randomId(), kind: "hangman", phrase: phrase2, author: state.me, owner: device, at: Date.now() };
+    send({ op: "new", game: w });
+    placeInChat(mergeGame(w).game);
+    updateBoard();
+    return "";
+  }
+  function clearLocal(g) {
+    g.cleared = true;
+    refreshGame(g);
+    updateBoard();
+  }
+  function clearGames(list3, all2) {
+    if (!list3.length) {
+      systemLine("There are no hangman games on the displays.");
+      return;
+    }
+    if (!send(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
+      systemLine("Not connected: nothing cleared");
+      return;
+    }
+    list3.forEach(clearLocal);
+    systemLine("🧹 You cleared " + (all2 ? "the hangman games" : "the hangman game") + " from the displays.");
+  }
+  setClear((g) => clearGames([g], false));
+  function hangmanCommand(rest) {
+    const m = /^clear\b\s*(.*)$/i.exec(rest);
+    if (m) {
+      const list3 = shown();
+      const n = parseInt(m[1], 10);
+      if (!m[1] || /^all$/i.test(m[1])) clearGames(list3, true);
+      else if (list3[n - 1]) clearGames([list3[n - 1]], false);
+      else systemLine("There's no hangman game " + m[1] + ". Type /hangman to see them.");
+      return;
+    }
+    if (!rest) {
+      const list3 = shown();
+      if (!list3.length) {
+        systemLine("No hangman games are running. Start one with /hangman <phrase>: everyone else's messages are guesses (their first letter).");
+        return;
+      }
+      systemLine("🪢 Hangman games running (" + list3.length + "):");
+      list3.forEach(placeInChat);
+      return;
+    }
+    const err = startHangman(rest);
+    if (err) systemLine(err);
+  }
+  function handleGame(msg) {
+    const g = msg.id ? games.get(msg.id) : void 0;
+    if (msg.op === "new" && msg.game) {
+      const r = mergeGame(msg.game, msg.at);
+      if (r.isNew) show(() => placeInChat(r.game));
+      updateBoard();
+    } else if (msg.op === "clear") {
+      const list3 = msg.all ? shown() : g && !g.cleared ? [g] : [];
+      list3.forEach(clearLocal);
+      if (list3.length) show(() => systemNotice("🧹 " + (msg.from ? msg.from.name : "Someone") + " cleared " + (msg.all ? "the hangman games" : "a hangman game") + " from the displays."));
+    } else if (msg.op === "sync") {
+      if (msg.to) cancelReminder(msg.to);
+      const forMe = !!state.me && msg.to === state.me.id;
+      const added = [];
+      (msg.games || []).forEach((w) => {
+        const had = games.get(w.id);
+        if (had && had.cleared) return;
+        const r = mergeGame(w);
+        if (r.isNew) added.push(r.game);
+        else refreshGame(r.game);
+      });
+      if (added.length) {
+        show(() => {
+          if (forMe && msg.from) systemNotice("🪢 " + msg.from.name + " reminded you about " + (added.length === 1 ? "a hangman game" : added.length + " hangman games") + ":");
+          added.forEach(placeInChat);
+        });
+      }
+      updateBoard();
+    }
+  }
+  var reminders = /* @__PURE__ */ new Map();
+  function cancelReminder(id2) {
+    clearTimeout(reminders.get(id2));
+    reminders.delete(id2);
+  }
+  function remindAboutGames(peer) {
+    if (!shown().length || state.me && peer.id === state.me.id) return;
+    cancelReminder(peer.id);
+    reminders.set(peer.id, setTimeout(() => {
+      reminders.delete(peer.id);
+      const list3 = shown().map(toWire2);
+      if (list3.length && state.peers.has(peer.id)) send({ op: "sync", to: peer.id, games: list3 });
+    }, (DISPLAY ? 150 : 450) + Math.random() * 900));
+  }
+  document.addEventListener("localchatter:game", (ev) => {
+    const d = ev.detail;
+    if (d.game === "wall" && d.result === "broken") systemLine("💥 The wall broke after " + d.hits + " message" + (d.hits === 1 ? "" : "s") + "! " + d.by + " landed the final blow.");
+  });
+  var dialog = $("hangman-dialog");
+  button("hangman-new").addEventListener("click", () => {
+    input("hangman-phrase").value = "";
+    $("hangman-status").textContent = "";
+    dialog.showModal();
+  });
+  button("hangman-cancel").addEventListener("click", () => dialog.close());
+  $("hangman-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = startHangman(input("hangman-phrase").value);
+    if (err) {
+      $("hangman-status").textContent = err;
+      return;
+    }
+    dialog.close();
+  });
 
   // PWA/LocalChatter/src/polls/card.ts
   var actions = null;
   var setActions = (a) => {
     actions = a;
   };
-  var cards = /* @__PURE__ */ new Map();
+  var cards2 = /* @__PURE__ */ new Map();
   var plural = (n, word) => n + " " + word + (n === 1 ? "" : "s");
+  var button2 = (cls, text4, onClick) => {
+    const b = el("button", cls, text4);
+    b.type = "button";
+    b.addEventListener("click", onClick);
+    return b;
+  };
   function state2(p) {
-    if (p.cleared) return p.closed || !p.secret ? "Ended" : "Ended without results";
+    if (p.cleared) return p.closed || !p.secret && !p.quiz ? "Ended" : "Ended without results";
     return p.closed ? "Closed" : "Open";
   }
+  function kind(p) {
+    return p.quiz ? "🧠 Quiz" : p.secret ? "🔒 Secret poll" : "📊 Poll";
+  }
   function footer(p, total, mode) {
-    const votes = plural(total, "vote");
+    const votes = plural(total, p.quiz ? "answer" : "vote");
     if (resultsShown(p)) return votes + (p.closed || p.cleared ? " · final results" : " · updates live");
     if (p.cleared) return votes + " · it was cleared before the results were shown";
-    return votes + " so far · 🔒 results when " + (mode === "chat" && p.owner === device ? "you close it" : p.author.name + " closes it");
+    const closer = mode === "chat" && p.owner === device ? "you close it" : p.author.name + " closes it";
+    return votes + " so far · 🔒 " + (p.quiz ? "answers" : "results") + " when " + closer;
   }
-  function fill(node, p, mode) {
+  function fill2(node, p, mode) {
     const t = tally(p);
-    const shown = resultsShown(p);
-    const mine = myVote(p);
-    const canVote = mode === "chat" && !p.closed && !p.cleared;
+    const shown2 = resultsShown(p);
+    const mine2 = myVote(p);
+    const owner = p.owner === device;
+    const canVote = mode === "chat" && !p.closed && !p.cleared && !(p.quiz && (mine2 !== void 0 || owner));
+    const over = p.closed || p.cleared;
     const top = Math.max(1, ...t.counts);
     node.replaceChildren();
-    node.classList.toggle("closed", p.closed || p.cleared);
+    node.classList.toggle("closed", over);
     node.classList.toggle("secret", p.secret);
+    node.classList.toggle("quiz", p.quiz);
+    const verdict = p.quiz && mode === "chat" && mine2 !== void 0 ? isCorrect(p, mine2) ? "right" : "wrong" : "";
+    node.classList.toggle("right", verdict === "right");
+    node.classList.toggle("wrong", verdict === "wrong");
     const head = el("div", "poll-head");
     if (!p.cleared) head.appendChild(el("span", "poll-num", "#" + numberOf(p)));
-    head.appendChild(el("span", "poll-kind", p.secret ? "🔒 Secret poll" : "📊 Poll"));
+    head.appendChild(el("span", "poll-kind", kind(p)));
     head.appendChild(el("span", "poll-state", state2(p)));
     node.appendChild(head);
     node.appendChild(el("p", "poll-q", p.question));
-    node.appendChild(el("p", "poll-from", "from " + (p.owner === device ? "you" : p.author.name)));
+    node.appendChild(el("p", "poll-from", "from " + (owner ? "you" : p.author.name)));
+    if (verdict) node.appendChild(el("p", "quiz-verdict", verdict === "right" ? "✅ You got it right!" : "❌ Not quite." + (over ? "" : " The answer is shown when the quiz closes.")));
     const list3 = el("ol", "poll-options");
     p.options.forEach((label2, i) => {
       const row2 = el("li", "poll-option");
-      const pct = shown && t.total ? Math.round(t.counts[i] / t.total * 100) : 0;
-      const win = shown && (p.closed || p.cleared) && t.total > 0 && t.counts[i] === top;
-      const body = canVote ? el("button", "poll-choice") : el("div", "poll-choice");
-      if (body instanceof HTMLButtonElement) {
-        body.type = "button";
-        body.setAttribute("aria-pressed", String(mine === i));
-        body.addEventListener("click", () => {
-          if (actions) actions.vote(p, i);
-        });
-      }
-      if (mine === i) row2.classList.add("picked");
+      const pct = shown2 && t.total ? Math.round(t.counts[i] / t.total * 100) : 0;
+      const answer = p.quiz && isCorrect(p, i) && (shown2 || owner && mode === "chat");
+      const win = shown2 && !p.quiz && over && t.total > 0 && t.counts[i] === top;
+      const body = canVote ? button2("poll-choice", "", () => {
+        if (actions) actions.vote(p, i);
+      }) : el("div", "poll-choice");
+      if (body instanceof HTMLButtonElement) body.setAttribute("aria-pressed", String(mine2 === i));
+      if (mine2 === i) row2.classList.add("picked");
       if (win) row2.classList.add("winner");
+      if (answer) row2.classList.add("answer");
       const bar = el("span", "poll-bar");
       bar.style.width = pct + "%";
       body.appendChild(bar);
-      body.appendChild(el("span", "poll-label", (mine === i ? "✓ " : "") + label2));
-      if (shown) body.appendChild(el("span", "poll-count", t.counts[i] + (t.total ? " · " + pct + "%" : "")));
+      body.appendChild(el("span", "poll-label", (mine2 === i ? "✓ " : "") + label2 + (answer ? " ✔ correct" : "")));
+      if (shown2) body.appendChild(el("span", "poll-count", t.counts[i] + (t.total ? " · " + pct + "%" : "")));
       row2.appendChild(body);
-      if (shown && !p.secret && t.voters[i].length) row2.appendChild(el("span", "poll-voters", t.voters[i].join(", ")));
+      if (shown2 && !p.secret && !p.quiz && t.voters[i].length) row2.appendChild(el("span", "poll-voters", t.voters[i].join(", ")));
       list3.appendChild(row2);
     });
     node.appendChild(list3);
+    if (p.quiz && shown2) {
+      const m = marks(p);
+      const who = el("div", "quiz-results");
+      who.appendChild(el("p", "quiz-right", "✅ Right (" + m.right.length + "): " + (m.right.join(", ") || "nobody")));
+      who.appendChild(el("p", "quiz-wrong", "❌ Wrong (" + m.wrong.length + "): " + (m.wrong.join(", ") || "nobody")));
+      node.appendChild(who);
+    }
     node.appendChild(el("p", "poll-foot", footer(p, t.total, mode)));
     if (mode === "chat" && !p.cleared) {
       const row2 = el("div", "poll-actions");
-      if (!p.closed && p.owner === device) {
-        const close2 = el("button", "link-button", p.secret ? "Close and show results" : "Close poll");
-        close2.type = "button";
-        close2.addEventListener("click", () => {
-          if (actions) actions.close(p);
-        });
-        row2.appendChild(close2);
-      }
-      const clear = el("button", "link-button", "Clear from displays");
-      clear.type = "button";
-      clear.addEventListener("click", () => {
+      if (!p.closed && owner) row2.appendChild(button2("link-button", p.quiz ? "Close and show answers" : p.secret ? "Close and show results" : "Close poll", () => {
+        if (actions) actions.close(p);
+      }));
+      row2.appendChild(button2("link-button", "Clear from displays", () => {
         if (actions) actions.clear(p);
-      });
-      row2.appendChild(clear);
+      }));
       node.appendChild(row2);
     }
   }
   function card(p, mode) {
-    const node = el("div", "poll-card poll-" + mode);
+    const node = el("div", "poll-card in-" + mode);
     node.dataset.poll = p.id;
-    fill(node, p, mode);
-    const set = cards.get(p.id) || /* @__PURE__ */ new Set();
+    fill2(node, p, mode);
+    const set = cards2.get(p.id) || /* @__PURE__ */ new Set();
     set.add({ node, mode });
-    cards.set(p.id, set);
+    cards2.set(p.id, set);
     return node;
   }
   function refresh(p) {
-    const set = cards.get(p.id);
+    const set = cards2.get(p.id);
     if (!set) return;
     set.forEach((c) => {
-      if (c.node.isConnected) fill(c.node, p, c.mode);
+      if (c.node.isConnected) fill2(c.node, p, c.mode);
       else if (!c.node.closest(".fx-ghost")) set.delete(c);
     });
   }
@@ -2026,44 +2647,48 @@
   }
 
   // PWA/LocalChatter/src/polls/index.ts
-  var send = (msg) => sendRaw({ type: "poll", ...msg });
+  var send2 = (msg) => sendRaw({ type: "poll", ...msg });
   var quote = (p) => "“" + p.question + "”";
   var by = (from) => from ? from.name : "Someone";
   function redraw(also) {
     refreshAll(also ? [...active2(), also] : active2());
-    updateBoard();
+    updateBoard2();
   }
-  function placeInChat(p) {
+  function placeInChat2(p) {
     if (DISPLAY) return;
     const box2 = el("div", "msg poll-msg" + (p.owner === device ? " mine" : ""));
     box2.appendChild(card(p, "chat"));
     append(box2);
   }
-  var board = $("poll-board");
-  function updateBoard() {
+  var board2 = $("poll-board");
+  function updateBoard2() {
     if (!DISPLAY) return;
     const list3 = active2();
-    Array.from(board.children).forEach((c) => {
+    board2.querySelectorAll("[data-poll]").forEach((c) => {
       if (!list3.some((p) => p.id === c.dataset.poll)) c.remove();
     });
     list3.forEach((p, i) => {
-      const node = board.querySelector('[data-poll="' + CSS.escape(p.id) + '"]') || card(p, "board");
-      if (board.children[i] !== node) board.insertBefore(node, board.children[i] || null);
+      const node = board2.querySelector('[data-poll="' + CSS.escape(p.id) + '"]') || card(p, "board");
+      if (board2.children[i] !== node) board2.insertBefore(node, board2.children[i] || null);
     });
-    board.hidden = !list3.length;
-    board.dataset.count = String(Math.min(list3.length, 4));
+    board2.hidden = !board2.children.length;
   }
-  function createPoll(question, options, secret) {
+  function createPoll(question, options, secret, correct) {
     if (!connected() || !state.me) return false;
     const w = { id: randomId(), question, options, secret, author: state.me, owner: device, at: Date.now() };
-    send({ op: "new", poll: w });
+    if (correct && correct.length) {
+      w.quiz = true;
+      w.correct = correct;
+      w.secret = false;
+    }
+    send2({ op: "new", poll: w });
     const { poll } = merge(w);
-    placeInChat(poll);
+    placeInChat2(poll);
     redraw();
     return true;
   }
   function castVote(p, option) {
-    if (!state.me || !send({ op: "vote", id: p.id, voter: device, option })) {
+    if (!state.me || !send2({ op: "vote", id: p.id, voter: device, option })) {
       systemLine("Not connected: vote not sent");
       return;
     }
@@ -2078,15 +2703,15 @@
       systemLine("The poll " + quote(p) + " is already closed.");
       return;
     }
-    if (!send({ op: "close", id: p.id, voter: device })) {
+    if (!send2({ op: "close", id: p.id, voter: device })) {
       systemLine("Not connected: poll not closed");
       return;
     }
     p.closed = true;
     redraw();
-    systemLine("📊 You closed the poll " + quote(p) + (p.secret ? ": the results are on the displays." : "."));
+    systemLine("📊 You closed " + (p.quiz ? "the quiz " : "the poll ") + quote(p) + (p.quiz ? ": the answers are on the displays." : p.secret ? ": the results are on the displays." : "."));
   }
-  function clearLocal(p) {
+  function clearLocal2(p) {
     p.cleared = true;
     redraw(p);
   }
@@ -2095,11 +2720,11 @@
       systemLine("There are no polls on the displays.");
       return;
     }
-    if (!send(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
+    if (!send2(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
       systemLine("Not connected: nothing cleared");
       return;
     }
-    list3.forEach(clearLocal);
+    list3.forEach(clearLocal2);
     systemLine("🧹 You cleared " + (all2 ? "all the polls" : "the poll " + quote(list3[0])) + " from the displays.");
   }
   setActions({ vote: castVote, close: closePoll, clear: (p) => clearPolls([p], false) });
@@ -2109,7 +2734,7 @@
       case "new": {
         if (!msg.poll) return;
         const r = merge(msg.poll, msg.at);
-        if (r.isNew) show(() => placeInChat(r.poll));
+        if (r.isNew) show(() => placeInChat2(r.poll));
         redraw();
         return;
       }
@@ -2124,17 +2749,17 @@
         if (!p || p.closed || p.cleared || msg.voter !== p.owner) return;
         p.closed = true;
         redraw();
-        show(() => systemNotice("📊 " + by(msg.from) + " closed the poll " + quote(p) + "."));
+        show(() => systemNotice("📊 " + by(msg.from) + " closed " + (p.quiz ? "the quiz " : "the poll ") + quote(p) + "."));
         return;
       case "clear": {
         const list3 = msg.all ? active2() : p && !p.cleared ? [p] : [];
         if (!list3.length) return;
-        list3.forEach(clearLocal);
+        list3.forEach(clearLocal2);
         show(() => systemNotice("🧹 " + by(msg.from) + " cleared " + (msg.all ? "all the polls" : "the poll " + quote(list3[0])) + " from the displays."));
         return;
       }
       case "sync":
-        if (msg.to) cancelReminder(msg.to);
+        if (msg.to) cancelReminder2(msg.to);
         remembered(msg.polls || [], msg.to === (state.me && state.me.id) ? msg.from : void 0);
     }
   }
@@ -2152,23 +2777,23 @@
     }
     show(() => {
       if (reminder) systemNotice("📊 " + reminder.name + " reminded you about " + (added.length === 1 ? "a poll that's" : added.length + " polls that are") + " running:");
-      added.forEach(placeInChat);
+      added.forEach(placeInChat2);
     });
     redraw();
   }
-  var reminders = /* @__PURE__ */ new Map();
-  function cancelReminder(id2) {
-    clearTimeout(reminders.get(id2));
-    reminders.delete(id2);
+  var reminders2 = /* @__PURE__ */ new Map();
+  function cancelReminder2(id2) {
+    clearTimeout(reminders2.get(id2));
+    reminders2.delete(id2);
   }
   function remindNewcomer(peer) {
     if (!active2().length || state.me && peer.id === state.me.id) return;
-    cancelReminder(peer.id);
+    cancelReminder2(peer.id);
     const wait = (DISPLAY ? 100 : 400) + Math.random() * 900;
-    reminders.set(peer.id, setTimeout(() => {
-      reminders.delete(peer.id);
+    reminders2.set(peer.id, setTimeout(() => {
+      reminders2.delete(peer.id);
       const list3 = active2().map(toWire);
-      if (list3.length && state.peers.has(peer.id)) send({ op: "sync", to: peer.id, polls: list3 });
+      if (list3.length && state.peers.has(peer.id)) send2({ op: "sync", to: peer.id, polls: list3 });
     }, wait));
   }
 
@@ -2208,6 +2833,7 @@
         renderPeople();
         show(() => systemNotice(peer.name + " joined"));
         remindNewcomer(peer);
+        remindAboutGames(peer);
         break;
       }
       case "leave": {
@@ -2231,6 +2857,7 @@
         break;
       }
       case "chat": {
+        chatGuess(msg, msg.from);
         if (msg.to) {
           const seen = whisperVisibility(msg);
           if (!seen) break;
@@ -2242,6 +2869,9 @@
       }
       case "poll":
         handlePoll(msg);
+        break;
+      case "game":
+        handleGame(msg);
         break;
       case "error":
         if (msg.message) systemLine(msg.message);
@@ -2275,10 +2905,10 @@
     }, HIDE_AFTER_MS);
   }
   function onStatus(connectedNow) {
-    const changed = connectedNow !== isConnected;
+    const changed2 = connectedNow !== isConnected;
     isConnected = connectedNow;
     if (!connectedNow) showHeader();
-    else if (changed) pokeHeader();
+    else if (changed2) pokeHeader();
   }
   tab.addEventListener("click", pokeHeader);
   topbar.addEventListener("pointerdown", pokeHeader);
@@ -2621,7 +3251,7 @@
     detector: null,
     canvas: null
   };
-  var dialog = $("qr");
+  var dialog2 = $("qr");
   var video = $("qr-video");
   var qrStatus = (text4) => {
     $("qr-status").textContent = text4;
@@ -2641,11 +3271,11 @@
     return BarcodeDetector.getSupportedFormats().then((f) => f.indexOf("qr_code") >= 0 ? new BarcodeDetector({ formats: ["qr_code"] }) : null).catch(() => null);
   }
   function openQr() {
-    if (dialog.open) return;
+    if (dialog2.open) return;
     qrStatus("Starting camera…");
-    dialog.showModal();
+    dialog2.showModal();
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false }).then((stream) => {
-      if (!dialog.open) {
+      if (!dialog2.open) {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -2701,14 +3331,14 @@
   }
   function closeQr() {
     stopCamera();
-    if (dialog.open) dialog.close();
+    if (dialog2.open) dialog2.close();
   }
   function onQr(text4) {
     vibrate2(50);
     closeQr();
     if (!sendChat({ text: text4.slice(0, 4e3), via: "qr" })) systemLine("Not connected: the QR code wasn't sent");
   }
-  dialog.addEventListener("close", stopCamera);
+  dialog2.addEventListener("close", stopCamera);
   $("qr-close").addEventListener("click", closeQr);
 
   // PWA/LocalChatter/src/scan/menu.ts
@@ -2730,9 +3360,9 @@
       toggleNfc();
       return;
     }
-    const open = menu.hidden;
-    menu.hidden = !open;
-    scan.setAttribute("aria-expanded", String(open));
+    const open2 = menu.hidden;
+    menu.hidden = !open2;
+    scan.setAttribute("aria-expanded", String(open2));
   });
   $("scan-qr").addEventListener("click", () => {
     closeScanMenu();
@@ -2746,15 +3376,20 @@
   // PWA/LocalChatter/src/polls/commands.ts
   var MAX_OPTIONS = 10;
   var HELP = 'Start a poll with /poll <question> | <option> | <option>, e.g. /poll Lunch? | Pizza | Tacos. Add "secret" first (/poll secret …) to hide the results until you close it. /poll close <number> closes yours; /poll clear <number> or /poll clear all takes polls off the displays.';
-  function startPoll(question, options, secret) {
+  var QUIZ_HELP = "Start a quiz with /quiz <question> | <option> | <option>, marking the right answer(s) with *, e.g. /quiz Capital of France? | *Paris | Lyon | Nice. Close it with /poll close to show who got it right.";
+  function startPoll(question, choices, secret, quiz = false) {
     const q = question.replace(/\s+/g, " ").trim().slice(0, 200);
-    const opts = options.map((o) => o.replace(/\s+/g, " ").trim().slice(0, 100)).filter(Boolean);
-    if (!q) return "Write a question for the poll.";
-    if (opts.length < 2) return "A poll needs at least two options.";
-    if (opts.length > MAX_OPTIONS) return "A poll can have up to " + MAX_OPTIONS + " options.";
-    const seen = new Set(opts.map((o) => o.toLowerCase()));
+    const opts = choices.map((c) => ({ text: c.text.replace(/\s+/g, " ").trim().slice(0, 100), correct: c.correct })).filter((c) => c.text);
+    const what = quiz ? "quiz" : "poll";
+    if (!q) return "Write a question for the " + what + ".";
+    if (opts.length < 2) return "A " + what + " needs at least two options.";
+    if (opts.length > MAX_OPTIONS) return "A " + what + " can have up to " + MAX_OPTIONS + " options.";
+    const seen = new Set(opts.map((o) => o.text.toLowerCase()));
     if (seen.size !== opts.length) return "Each option needs to be different.";
-    return createPoll(q, opts, secret) ? "" : "Not connected: poll not sent.";
+    const correct = opts.map((o, i) => o.correct ? i : -1).filter((i) => i >= 0);
+    if (quiz && !correct.length) return "Mark at least one right answer.";
+    if (quiz && correct.length === opts.length) return "At least one answer needs to be wrong.";
+    return createPoll(q, opts.map((o) => o.text), secret, quiz ? correct : void 0) ? "" : "Not connected: " + what + " not sent.";
   }
   function pollCommand(rest) {
     const m = /^(close|end|clear)\b\s*(.*)$/i.exec(rest);
@@ -2769,7 +3404,7 @@
         return;
       }
       systemLine("📊 Polls running (" + list3.length + "):");
-      list3.forEach(placeInChat);
+      list3.forEach(placeInChat2);
       return;
     }
     const secret = /^secret\b/i.test(rest);
@@ -2778,8 +3413,18 @@
       systemLine(HELP);
       return;
     }
-    const err = startPoll(parts[0], parts.slice(1), secret);
+    const err = startPoll(parts[0], parts.slice(1).map((text4) => ({ text: text4, correct: false })), secret);
     if (err) systemLine(err);
+  }
+  function quizCommand(rest) {
+    const parts = rest.split("|");
+    if (parts.length < 3) {
+      systemLine(QUIZ_HELP);
+      return;
+    }
+    const choices = parts.slice(1).map((t) => ({ text: t.trim().replace(/^\*\s*/, ""), correct: /^\s*\*/.test(t) }));
+    const err = startPoll(parts[0], choices, false, true);
+    if (err) systemLine(err + (/right answer/.test(err) ? " Put * before it, e.g. | *Paris" : ""));
   }
   function manage(verb, ref) {
     if (verb === "clear") {
@@ -2796,49 +3441,70 @@
     if (p) closePoll(p);
     else systemLine(ref ? "There's no poll " + ref + ". Type /poll to see them." : "You have no open polls to close.");
   }
-  var dialog2 = $("poll-dialog");
+  var dialog3 = $("poll-dialog");
+  var form = $("poll-form");
   var optionsBox = $("poll-options");
   var status = $("poll-status");
-  function addOption(value = "") {
+  var type = () => (form.querySelector('input[name="poll-type"]:checked') || { value: "poll" }).value;
+  function addOption() {
     if (optionsBox.children.length >= MAX_OPTIONS) return;
+    const n = optionsBox.children.length + 1;
+    const row2 = el("div", "poll-field");
     const field = document.createElement("input");
     field.maxLength = 100;
-    field.value = value;
-    field.placeholder = "Option " + (optionsBox.children.length + 1);
+    field.placeholder = "Option " + n;
     field.setAttribute("aria-label", field.placeholder);
-    optionsBox.appendChild(field);
+    const tick = el("label", "poll-correct");
+    const box2 = document.createElement("input");
+    box2.type = "checkbox";
+    box2.setAttribute("aria-label", "Option " + n + " is a right answer");
+    tick.append(box2, " Right");
+    row2.append(field, tick);
+    optionsBox.appendChild(row2);
     button("poll-add").hidden = optionsBox.children.length >= MAX_OPTIONS;
   }
-  function openForm() {
+  function setType(t) {
+    const r = form.querySelector('input[name="poll-type"][value="' + t + '"]');
+    if (r) r.checked = true;
+    form.classList.toggle("is-quiz", t === "quiz");
+    $("poll-title").textContent = t === "quiz" ? "New quiz" : "New poll";
+  }
+  function openForm(t) {
     input("poll-question").value = "";
-    input("poll-secret").checked = false;
     optionsBox.replaceChildren();
     addOption();
     addOption();
+    setType(t);
     status.textContent = "";
-    dialog2.showModal();
+    dialog3.showModal();
     input("poll-question").focus();
   }
-  button("poll-new").addEventListener("click", openForm);
+  button("poll-new").addEventListener("click", () => openForm("poll"));
+  button("quiz-new").addEventListener("click", () => openForm("quiz"));
+  form.addEventListener("change", () => setType(type()));
   button("poll-add").addEventListener("click", () => {
     addOption();
-    optionsBox.lastElementChild.focus();
+    (optionsBox.lastElementChild?.querySelector("input")).focus();
   });
-  button("poll-cancel").addEventListener("click", () => dialog2.close());
-  $("poll-form").addEventListener("submit", (e) => {
+  button("poll-cancel").addEventListener("click", () => dialog3.close());
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const options = Array.from(optionsBox.querySelectorAll("input")).map((i) => i.value);
-    const err = startPoll(input("poll-question").value, options, input("poll-secret").checked);
+    const choices = Array.from(optionsBox.children).map((row2) => {
+      const [text4, tick] = Array.from(row2.querySelectorAll("input"));
+      return { text: text4.value, correct: tick.checked };
+    });
+    const t = type();
+    const err = startPoll(input("poll-question").value, choices, t === "secret", t === "quiz");
     if (err) {
       status.textContent = err;
       return;
     }
-    dialog2.close();
+    dialog3.close();
   });
 
   // PWA/LocalChatter/src/features/commands.ts
   function runCommand(value) {
-    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll)\b\s*([\s\S]*)$/i.exec(value);
+    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll|quiz|hangman)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     const cmd = m[1].toLowerCase();
     const raw = m[2];
@@ -2852,6 +3518,12 @@
         return true;
       case "poll":
         pollCommand(rest);
+        return true;
+      case "quiz":
+        quizCommand(rest);
+        return true;
+      case "hangman":
+        hangmanCommand(rest);
         return true;
       case "whisper":
       case "w":
@@ -2969,7 +3641,7 @@
   var recView = $("voice-recording");
   var reviewView = $("voice-review");
   var mic = button("mic");
-  var send2 = button("send");
+  var send3 = button("send");
   var text = $("text");
   var audio = $("voice-audio");
   var nameBox = input("voice-name");
@@ -2986,7 +3658,7 @@
     const empty = !text.value.trim();
     const showMic = voiceSupported && empty && panel.hidden;
     mic.hidden = !showMic;
-    send2.hidden = showMic || !panel.hidden && empty;
+    send3.hidden = showMic || !panel.hidden && empty;
   }
   function show2(view) {
     panel.hidden = !view;
@@ -3024,8 +3696,8 @@
     if (rec) return;
     discardClip();
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then((stream) => {
-      const type = TYPES.find((t) => MediaRecorder.isTypeSupported(t)) || "";
-      const recorder = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
+      const type2 = TYPES.find((t) => MediaRecorder.isTypeSupported(t)) || "";
+      const recorder = type2 ? new MediaRecorder(stream, { mimeType: type2 }) : new MediaRecorder(stream);
       const r = { recorder, stream, chunks: [], started: Date.now(), discard: false };
       rec = r;
       recorder.ondataavailable = (e) => {
@@ -3038,7 +3710,7 @@
           show2(null);
           return;
         }
-        const blob = new Blob(r.chunks, { type: (recorder.mimeType || type || "audio/webm").split(";")[0] });
+        const blob = new Blob(r.chunks, { type: (recorder.mimeType || type2 || "audio/webm").split(";")[0] });
         review(blob, Date.now() - r.started);
       };
       recorder.start(250);
@@ -3129,8 +3801,11 @@
     { name: "zalgo", args: "[30 | 2m | on | off]", hint: "Corrupt the chat (10 s unless you say)", standalone: true },
     { name: "blackhole", args: "[30 | 2m | on | off]", hint: "Everything that arrives gets sucked into a black hole (and is gone)", standalone: true },
     { name: "blur", args: "[30 | 2m | on | off]", hint: "Everything slowly fades into a fuzzy cloud", standalone: true },
+    { name: "wall", args: "[30 | 2m | off]", hint: "Game: knock down a wall with your messages", standalone: true },
     { name: "rain", args: "[30 | 2m | on | off]", hint: "Rain on the chat, puddling on the message bar", standalone: true },
     { name: "poll", args: "[secret] <question> | <option> | <option> · close · clear [n | all]", hint: "Ask everyone a question; results show on the displays", standalone: true },
+    { name: "quiz", args: "<question> | *<right answer> | <option>…", hint: "A quiz: * marks the right answer(s)", standalone: false },
+    { name: "hangman", args: "<phrase> · clear [n | all]", hint: "Start a game of hangman: everyone's messages are guesses", standalone: true },
     { name: "banner", args: "[slow | fast | 40px] <text> | off", hint: "Put a banner across the top of the displays", standalone: false },
     { name: "sound", args: "[name]", hint: "Play a sound for everyone, or list the ones you have", standalone: true },
     { name: "speak", args: "<language | default>", hint: "Write your messages in a language", standalone: true },
@@ -3276,7 +3951,7 @@
 
   // PWA/LocalChatter/src/ui/composer.ts
   var text3 = $("text");
-  var form = $("composer");
+  var form2 = $("composer");
   function autosize() {
     text3.style.height = "auto";
     text3.style.height = Math.min(text3.scrollHeight, 160) + "px";
@@ -3295,10 +3970,10 @@
     }
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
-      form.requestSubmit();
+      form2.requestSubmit();
     }
   });
-  form.addEventListener("submit", (e) => {
+  form2.addEventListener("submit", (e) => {
     e.preventDefault();
     const value = text3.value;
     if (!value.trim()) return;
@@ -3341,12 +4016,12 @@
   });
 
   // PWA/LocalChatter/src/ui/status.ts
-  function setStatus(kind, text4) {
+  function setStatus(kind2, text4) {
     const s = $("status");
-    s.dataset.state = kind;
+    s.dataset.state = kind2;
     s.textContent = text4;
-    $("header-tab").dataset.state = kind;
-    const isOn = kind === "on";
+    $("header-tab").dataset.state = kind2;
+    const isOn = kind2 === "on";
     ["send", "mic", "attach", "effects", "scan"].forEach((id2) => {
       button(id2).disabled = !isOn;
     });
@@ -3355,7 +4030,7 @@
       closeScanMenu();
     }
     dashboard.classList.toggle("offline", !isOn);
-    if (kind === "off") stopNfc();
+    if (kind2 === "off") stopNfc();
     onStatus(isOn);
   }
   function onlineText() {
@@ -3453,7 +4128,7 @@
       state.name = name;
       if (state.ws && state.ws.readyState === WebSocket.OPEN && state.me) state.ws.send(JSON.stringify({ type: "rename", name }));
     }
-    const changed = relay !== state.relay;
+    const changed2 = relay !== state.relay;
     state.relay = relay;
     save(KEY.relay, relay);
     closeDashboard();
@@ -3462,7 +4137,7 @@
       setStatus("off", "No server set");
       return;
     }
-    if (changed || !state.ws) {
+    if (changed2 || !state.ws) {
       banner(null);
       state.retry = 0;
       connect();
@@ -3576,6 +4251,7 @@
     state.ws.send(JSON.stringify(msg));
     msg.at = Date.now();
     renderMessage(msg, true);
+    chatGuess(msg, state.me);
     return true;
   }
 
@@ -3585,16 +4261,16 @@
   function addStop(name, arg, how) {
     if (DISPLAY) return;
     removeStop(name);
-    const ms = arg === "on" ? Infinity : typeof arg === "number" ? arg * 1e3 : DEFAULT_MS[name];
-    const button2 = el("button");
-    button2.type = "button";
-    button2.dataset.stop = name;
-    button2.appendChild(el("span", null, "■ Stop " + EFFECT_LINES[name][0] + " " + EFFECT_TITLES[name]));
+    const ms = arg === "on" || arg === null && GAMES.includes(name) ? Infinity : typeof arg === "number" ? arg * 1e3 : DEFAULT_MS[name];
+    const button3 = el("button");
+    button3.type = "button";
+    button3.dataset.stop = name;
+    button3.appendChild(el("span", null, "■ Stop " + EFFECT_LINES[name][0] + " " + EFFECT_TITLES[name]));
     const left = el("span", "left");
-    button2.appendChild(left);
-    button2.addEventListener("click", () => sendStop(name));
-    dock.appendChild(button2);
-    const entry = { how, endsAt: Date.now() + ms, button: button2, left };
+    button3.appendChild(left);
+    button3.addEventListener("click", () => sendStop(name));
+    dock.appendChild(button3);
+    const entry = { how, endsAt: Date.now() + ms, button: button3, left };
     if (ms !== Infinity) entry.timer = setTimeout(() => removeStop(name), ms);
     stops[name] = entry;
     tickStops();
@@ -3691,7 +4367,8 @@
     zalgo: ["👹", "corrupted the chat"],
     blackhole: ["🕳️", "opened a black hole"],
     blur: ["🌫️", "blurred everything"],
-    rain: ["🌧️", "made it rain"]
+    rain: ["🌧️", "made it rain"],
+    wall: ["🧱", "called in a wall"]
   };
   var EFFECT_OFF = {
     fire: ["🧯", "put out the fire"],
@@ -3700,7 +4377,8 @@
     zalgo: ["✨", "restored the chat"],
     blackhole: ["🕳️", "closed the black hole"],
     blur: ["👓", "cleared the fog"],
-    rain: ["🌤️", "stopped the rain"]
+    rain: ["🌤️", "stopped the rain"],
+    wall: ["🧱", "called off the wall"]
   };
   var EFFECT_TITLES = {
     fire: "Fire",
@@ -3709,13 +4387,15 @@
     zalgo: "Zalgo",
     blackhole: "Black hole",
     blur: "Blur",
-    rain: "Rain"
+    rain: "Rain",
+    wall: "Wall"
   };
   function effectPhrase(fx) {
     const line = EFFECT_LINES[fx.name];
     if (fx.arg === "off") return EFFECT_OFF[fx.name];
     if (fx.arg === "on") return [line[0], line[1] + " until someone sends /" + fx.name + " off"];
     if (typeof fx.arg === "number") return [line[0], line[1] + " for " + formatDuration(fx.arg)];
+    if (fx.name === "wall") return [line[0], line[1] + ": send messages to knock it down!"];
     if (fx.name === "zalgo" || fx.name === "blackhole" || fx.name === "blur" || fx.name === "rain") return [line[0], line[1] + " for " + formatDuration(DEFAULT_MS[fx.name] / 1e3)];
     return line;
   }
@@ -3729,9 +4409,9 @@
     if (spoofer) notes.push("really sent by " + spoofer.name);
     const p = el("p", "system effect-line");
     p.appendChild(el("span", null, line[0] + " " + who + " " + line[1] + (notes.length ? " (" + notes.join(", ") + ")" : "")));
-    const shown = msg.as || msg.from;
-    const mine = who.indexOf("You") === 0;
-    const fav = { effect: fx.name, arg: fx.argText || "", from: mine || !shown ? null : shown.name };
+    const shown2 = msg.as || msg.from;
+    const mine2 = who.indexOf("You") === 0;
+    const fav = { effect: fx.name, arg: fx.argText || "", from: mine2 || !shown2 ? null : shown2.name };
     const star = el("button", "star");
     star.type = "button";
     star.dataset.favKey = favKey(fav);
@@ -3741,8 +4421,8 @@
     paintStars();
     if (fx.arg === "off") removeStop(fx.name);
     if (state.catchingUp) return;
-    play(fx.name, fx.arg);
-    if (fx.arg !== "off" && mine) addStop(fx.name, fx.arg, { to: msg.to || null });
+    play(fx.name, fx.arg, msg.id || "");
+    if (fx.arg !== "off" && mine2) addStop(fx.name, fx.arg, { to: msg.to || null });
   }
 
   // PWA/LocalChatter/src/features/background.ts
@@ -3869,7 +4549,7 @@
   }
 
   // PWA/LocalChatter/src/features/updates.ts
-  var BUILD_TIME = "2026-11-08T08:04:07.951Z";
+  var BUILD_TIME = "2026-11-08T08:21:07.201Z";
   var CHECK_EVERY_MS = 30 * 1e3;
   var status2 = (text4) => {
     $("update-status").textContent = text4;

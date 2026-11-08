@@ -31,6 +31,13 @@ function poll(v: unknown, author: Peer | null): Json | null {
   const who = author || person(v.author);
   if (!who) return null;
   const out: Json = { id, question, options, secret: v.secret === true, closed: v.closed === true, author: who, owner: clean(v.owner, 64) };
+  if (v.quiz === true) {
+    // A quiz: which options are right (at least one).
+    const correct = Array.isArray(v.correct) ? [...new Set(v.correct.map(option).filter((o): o is number => o !== null && o < options.length))] : [];
+    if (!correct.length) return null;
+    out.quiz = true;
+    out.correct = correct;
+  }
   const at = time(v.at);
   if (at) out.at = at;
   if (Array.isArray(v.votes)) {

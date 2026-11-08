@@ -21,6 +21,20 @@ the results as the votes come in.
 Tap an option to vote. Tap another to change your vote. Votes are per device, so
 reconnecting doesn't let anyone vote twice.
 
+## Quizzes
+
+A quiz is a poll with right answers. Type `/quiz Capital of France? | *Paris | Lyon | Nice`,
+putting `*` before each right answer, or use ✨ → **🧠 New quiz** and tick **Right**
+beside them. At least one answer must be right and at least one wrong.
+
+- Everyone answers once. Your quiz turns **green** if you got it right and
+  **red** if not; that's only on your screen, and the right answer isn't given
+  away until the quiz closes.
+- Whoever set it sees the right answers and doesn't answer.
+- Until it's closed, the displays only show how many people have answered.
+- **Closed** (`/poll close` or **Close and show answers**): the displays show the
+  right answer, the totals, and who got it right and who got it wrong.
+
 ## On the displays
 
 Displays show every poll on a board above the chat, numbered **#1**, **#2**…

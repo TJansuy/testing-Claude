@@ -52,7 +52,8 @@ enter the server address shown on the setup page (e.g.
 | Topic | |
 | --- | --- |
 | [Effects](docs/effects.md) | `/fire`, `/earthquake`, `/lightning`, `/zalgo`, `/blackhole`, `/blur`, `/rain`; durations, the marks they leave, Stop buttons, favourites, rumble. |
-| [Polls](docs/polls.md) | `/poll`: public or secret polls, live results on the displays, reminders for people who join. |
+| [Polls](docs/polls.md) | `/poll` and `/quiz`: public and secret polls and quizzes, live results on the displays, reminders for people who join. |
+| [Games](docs/games.md) | `/wall` (knock down a wall with your messages) and `/hangman`. |
 | [Sounds](docs/sounds.md) | Sending sounds; the admin soundboard and sound library. |
 | [Scanning](docs/scanning.md) | Sending what's in a QR code or NFC tag. |
 | [Roles, whispers and spying](docs/roles-and-whispers.md) | `/role`, admin debug mode, `/whisper`, `/spy`. |
@@ -111,7 +112,8 @@ when `index.html` is opened straight from disk.
 | `src/features/` | Roles and debug mode, commands, whispers, favourites, Stop buttons, soundboard, background, display. |
 | `src/effects/` | One file per effect, shared helpers, and the runner that times them. |
 | `src/sounds/` | The sound cache (IndexedDB), library and playback. |
-| `src/polls/` | Polls: votes and totals, the poll cards, `/poll` and the New poll form. |
+| `src/polls/` | Polls and quizzes: votes and totals, the cards, `/poll`, `/quiz` and the New poll form. |
+| `src/games/` | Hangman: guesses, its card and confetti, `/hangman`. (The wall is an effect, in `src/effects/wall.ts`.) |
 | `src/scan/` | The Scan button, QR codes and NFC tags. |
 | `src/languages.ts` | Languages, gibberish and colours. |
 | `vendor/jsQR.js` | QR decoder (jsQR 1.4.0, Apache-2.0), used where the browser has no built-in one. |

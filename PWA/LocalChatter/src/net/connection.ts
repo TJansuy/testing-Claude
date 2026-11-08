@@ -9,6 +9,7 @@ import type { ChatMessage, OutgoingChat, ServerMessage } from '../types';
 import { certBanner, renderPeople, setStatus } from '../ui/status';
 import { openSettings } from '../ui/settings';
 import { randomId } from '../util';
+import { chatGuess } from '../games';
 import { handle } from './handle';
 
 export function connect(): void {
@@ -91,5 +92,6 @@ export function sendChat(payload: OutgoingChat): boolean {
   state.ws.send(JSON.stringify(msg));
   msg.at = Date.now();
   renderMessage(msg, true);
+  chatGuess(msg, state.me);
   return true;
 }

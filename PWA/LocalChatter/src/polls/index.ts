@@ -33,21 +33,23 @@ const board = $('poll-board');
 function updateBoard(): void {
   if (!DISPLAY) return;
   const list = active();
-  Array.from(board.children).forEach((c) => {
-    if (!list.some((p) => p.id === (c as HTMLElement).dataset.poll)) c.remove();
+  // Polls come first; hangman games (games/index.ts) follow them.
+  board.querySelectorAll<HTMLElement>('[data-poll]').forEach((c) => {
+    if (!list.some((p) => p.id === c.dataset.poll)) c.remove();
   });
   list.forEach((p, i) => {
     const node = board.querySelector<HTMLElement>('[data-poll="' + CSS.escape(p.id) + '"]') || card(p, 'board');
     if (board.children[i] !== node) board.insertBefore(node, board.children[i] || null);
   });
-  board.hidden = !list.length;
-  board.dataset.count = String(Math.min(list.length, 4));
+  board.hidden = !board.children.length;
 }
 
 // ---- What this device does
-export function createPoll(question: string, options: string[], secret: boolean): boolean {
+/** correct: for a quiz, which options are right. */
+export function createPoll(question: string, options: string[], secret: boolean, correct?: number[]): boolean {
   if (!connected() || !state.me) return false;
   const w: WirePoll = { id: randomId(), question, options, secret, author: state.me, owner: device, at: Date.now() };
+  if (correct && correct.length) { w.quiz = true; w.correct = correct; w.secret = false; }
   send({ op: 'new', poll: w });
   const { poll } = merge(w);
   placeInChat(poll);
@@ -66,7 +68,7 @@ export function closePoll(p: Poll): void {
   if (!send({ op: 'close', id: p.id, voter: device })) { systemLine('Not connected: poll not closed'); return; }
   p.closed = true;
   redraw();
-  systemLine('📊 You closed the poll ' + quote(p) + (p.secret ? ': the results are on the displays.' : '.'));
+  systemLine('📊 You closed ' + (p.quiz ? 'the quiz ' : 'the poll ') + quote(p) + (p.quiz ? ': the answers are on the displays.' : p.secret ? ': the results are on the displays.' : '.'));
 }
 
 function clearLocal(p: Poll): void {
@@ -105,7 +107,7 @@ export function handlePoll(msg: PollMessage): void {
       if (!p || p.closed || p.cleared || msg.voter !== p.owner) return; // only its author's device can close it
       p.closed = true;
       redraw();
-      show(() => systemNotice('📊 ' + by(msg.from) + ' closed the poll ' + quote(p) + '.'));
+      show(() => systemNotice('📊 ' + by(msg.from) + ' closed ' + (p.quiz ? 'the quiz ' : 'the poll ') + quote(p) + '.'));
       return;
     case 'clear': {
       const list = msg.all ? active() : p && !p.cleared ? [p] : [];

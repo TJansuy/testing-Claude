@@ -1,19 +1,20 @@
 // Slash commands typed in the message box (never sent as chat):
-// /role, /debug, /sound, /whisper (/w), /spy, /languages, /speak, /banner, /poll.
+// /role, /debug, /sound, /whisper (/w), /spy, /languages, /speak, /banner, /poll, /quiz, /hangman.
 import { refreshLanguages, systemLine } from '../chat/list';
 import { sendSound } from '../chat/sound-message';
 import * as LANG from '../languages';
 import { findByName, list } from '../sounds/library';
 import { sendChat } from '../net/connection';
 import { can, ROLES, state } from '../state';
-import { pollCommand } from '../polls/commands';
+import { hangmanCommand } from '../games';
+import { pollCommand, quizCommand } from '../polls/commands';
 import { parseBanner } from './banner';
 import { describeRoles, setDebug, setRole } from './roles';
 import { spyCommand, whisperCommand } from './whispers';
 
 /** Returns true if the text was a command. */
 export function runCommand(value: string): boolean {
-  const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll)\b\s*([\s\S]*)$/i.exec(value);
+  const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll|quiz|hangman)\b\s*([\s\S]*)$/i.exec(value);
   if (!m) return false;
   const cmd = m[1].toLowerCase();
   const raw = m[2];
@@ -22,6 +23,8 @@ export function runCommand(value: string): boolean {
     case 'sound': soundCommand(rest); return true;
     case 'banner': bannerCommand(value); return true;
     case 'poll': pollCommand(rest); return true;
+    case 'quiz': quizCommand(rest); return true;
+    case 'hangman': hangmanCommand(rest); return true;
     case 'whisper': case 'w': whisperCommand(raw); return true;
     case 'spy': spyCommand(rest); return true;
     case 'speak': speakCommand(rest); return true;

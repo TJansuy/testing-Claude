@@ -19,7 +19,7 @@ const ASSETS = [
   'styles/dashboard.css',
   'styles/panels.css',
   'styles/effects.css',
-  'styles/effects-more.css', 'styles/polls.css',
+  'styles/effects-more.css', 'styles/polls.css', 'styles/games.css',
   'styles/display.css',
   'styles/voice.css',
   'manifest.webmanifest',

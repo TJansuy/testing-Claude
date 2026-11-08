@@ -19,6 +19,9 @@ export interface Poll {
   owner: string;
   at: number;
   votes: Map<string, WireVote>;
+  /** A quiz: one answer each, and only the correct options are right. */
+  quiz: boolean;
+  correct: number[];
 }
 
 export const polls = new Map<string, Poll>();
@@ -28,11 +31,14 @@ const early = new Map<string, WireVote[]>();
 /** This device's id: votes are per device, so reconnecting doesn't double-vote. */
 export const device: string = load(KEY.device) || (() => { const id = randomId().slice(0, 18); save(KEY.device, id); return id; })();
 
-/** Applies a vote; a later vote from the same device replaces the earlier one. */
+/** Whether the existing vote stays: in a quiz your first answer is final; in a poll the latest counts. */
+const keeps = (p: Poll, had: WireVote | undefined, v: WireVote): boolean => !!had && (p.quiz ? had.at <= v.at : had.at > v.at);
+
+/** Applies a vote; a later vote from the same device replaces the earlier one (not in a quiz). */
 export function vote(p: Poll, v: WireVote): boolean {
   if (p.cleared || p.closed || v.option < 0 || v.option >= p.options.length) return false;
   const had = p.votes.get(v.voter);
-  if (had && had.at > v.at) return false;
+  if (keeps(p, had, v)) return false;
   p.votes.set(v.voter, v);
   return true;
 }
@@ -51,6 +57,7 @@ export function merge(w: WirePoll, at?: number): { poll: Poll; isNew: boolean } 
     p = {
       id: w.id, question: w.question, options: w.options.slice(0, 10), secret: !!w.secret, closed: false, cleared: false,
       author: w.author, owner: w.owner || '', at: w.at || at || Date.now(), votes: new Map(),
+      quiz: !!w.quiz, correct: w.quiz && w.correct ? w.correct : [],
     };
     polls.set(p.id, p);
   }
@@ -58,7 +65,7 @@ export function merge(w: WirePoll, at?: number): { poll: Poll; isNew: boolean } 
   // Votes first (a closed poll takes no more), then whether it's closed.
   (w.votes || []).forEach((v) => {
     const had = target.votes.get(v.voter);
-    if (v.option < target.options.length && (!had || had.at < v.at)) target.votes.set(v.voter, v);
+    if (v.option < target.options.length && !keeps(target, had, v) && !(had && had.at === v.at)) target.votes.set(v.voter, v);
   });
   (early.get(w.id) || []).forEach((v) => vote(target, v));
   early.delete(w.id);
@@ -70,6 +77,7 @@ export function toWire(p: Poll): WirePoll {
   return {
     id: p.id, question: p.question, options: p.options, secret: p.secret, closed: p.closed,
     author: p.author, owner: p.owner, at: p.at, votes: Array.from(p.votes.values()),
+    ...(p.quiz ? { quiz: true, correct: p.correct } : {}),
   };
 }
 
@@ -96,7 +104,14 @@ export function tally(p: Poll): Tally {
   return { counts, voters, total: p.votes.size };
 }
 
-/** Whether results can be shown: public polls always; secret ones once closed. */
-export const resultsShown = (p: Poll): boolean => !p.secret || p.closed;
+/** Whether results can be shown: public polls always; secret ones and quizzes once closed. */
+export const resultsShown = (p: Poll): boolean => (!p.secret && !p.quiz) || p.closed;
+export const isCorrect = (p: Poll, option: number): boolean => p.correct.indexOf(option) >= 0;
+/** A quiz's results: who got it right and who didn't. */
+export function marks(p: Poll): { right: string[]; wrong: string[] } {
+  const right: string[] = [], wrong: string[] = [];
+  p.votes.forEach((v) => (isCorrect(p, v.option) ? right : wrong).push(v.name));
+  return { right, wrong };
+}
 /** This device's vote, if any. */
 export const myVote = (p: Poll): number | undefined => p.votes.get(device)?.option;

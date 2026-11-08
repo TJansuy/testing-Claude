@@ -16,6 +16,7 @@ everyone in the chat, including you, and shows as a line like
 | `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text that keeps boiling (re-scrambled several times a second), and the dashboard glitches. |
 | `/blackhole` | The chat goes black and a black hole opens in the middle. Every message that arrives (yours too) is pulled in, swirling and shrinking until it's gone. Swallowed messages are discarded: they don't come back when it ends. Messages already on screen stay. |
 | `/blur` | Everything slowly fades into a fuzzy cloud of fog, then clears again. |
+| `/wall` | A game: a wall comes down and everyone's messages knock it down. See [Games](games.md). |
 | `/rain` | Rain falls from the top of the screen, splashes off the message bubbles on the way down and collects in a puddle on top of the message bar. When it stops, the last drops land and the puddle drains away. |
 
 ### Marks they leave

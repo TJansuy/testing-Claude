@@ -1,0 +1,17 @@
+/* Hangman: a bubble in the chat and a card on the display's board */
+.msg.game-msg { width: min(100%, 420px); max-width: min(92%, 420px); padding: 10px 12px; background-color: var(--theirs); color: var(--fg); border: 1px solid var(--line); }
+.msg.game-msg.mine { background-color: color-mix(in srgb, var(--accent) 10%, var(--theirs)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.hm-body { display: flex; align-items: center; gap: 14px; }
+.hm-gallows { flex: none; width: 4.5em; height: 5.4em; fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.hm-gallows .hm-frame { stroke: var(--muted); }
+.hm-gallows .hm-part { stroke: var(--bad); }
+.hm-phrase { margin: 0; display: flex; flex-wrap: wrap; gap: .35em 1em; font-size: 1.3em; font-weight: 700; letter-spacing: .02em; }
+.hm-word { display: inline-flex; gap: .15em; white-space: nowrap; }
+.hm-letter { display: inline-block; min-width: .75em; text-align: center; }
+.hm-blank { border-bottom: 2px solid currentColor; height: 1.2em; }
+.hm-missing { color: var(--bad); opacity: .75; border-bottom: 2px dashed currentColor; }
+.poll-card.lost .hm-missing { opacity: 1; }
+.hm-wrong { margin: 0; font-size: .85em; color: var(--bad); letter-spacing: .05em; }
+.hm-last { margin: 0; font-size: .8em; color: var(--muted); }
+.poll-board .hm-phrase { font-size: 1.5em; }
+.poll-board .hm-wrong, .poll-board .hm-last { font-size: .75em; }

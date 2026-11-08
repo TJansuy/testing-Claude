@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="styles/display.css">
   <link rel="stylesheet" href="styles/voice.css">
   <link rel="stylesheet" href="styles/polls.css">
+  <link rel="stylesheet" href="styles/games.css">
 </head>
 <body>
   <!-- Display mode: the /banner across the top of the screen. -->
@@ -95,8 +96,16 @@
       <div id="sb-buttons" class="effects-buttons"></div>
       <p id="sb-empty" class="hint">No sounds yet. Tap <strong>Manage sounds</strong> to add some.</p>
     </div>
+    <div id="games" class="favs">
+      <div class="sb-head"><strong>Games</strong></div>
+      <div class="effects-buttons">
+        <button type="button" data-effect="wall">🧱 Wall</button>
+        <button id="hangman-new" type="button">🪢 Hangman</button>
+      </div>
+      <p class="hint">Wall: knock it down by sending messages. Hangman: everyone's messages are guesses (their first letter).</p>
+    </div>
     <div id="polls" class="favs">
-      <div class="sb-head"><strong>Polls</strong><button id="poll-new" type="button" class="link-button">📊 New poll</button></div>
+      <div class="sb-head"><strong>Polls</strong><button id="poll-new" type="button" class="link-button">📊 New poll</button><button id="quiz-new" type="button" class="link-button">🧠 New quiz</button></div>
       <p class="hint">Ask everyone a question. Results show on the displays as votes come in. Type <code>/poll</code> to see the running polls.</p>
     </div>
     <div id="favs" class="favs">
@@ -216,11 +225,30 @@
       <label>Options</label>
       <div id="poll-options" class="poll-fields"></div>
       <button id="poll-add" type="button" class="secondary-button">+ Add option</button>
-      <label class="check"><input type="checkbox" id="poll-secret"> Secret: votes are anonymous, and nobody sees the results until you close the poll</label>
+      <fieldset class="poll-types">
+        <legend>Type</legend>
+        <label class="check"><input type="radio" name="poll-type" value="poll" checked> <span><strong>Poll</strong>: everyone sees the results live, and who voted for what</span></label>
+        <label class="check"><input type="radio" name="poll-type" value="secret"> <span><strong>Secret poll</strong>: anonymous, and nobody sees the results until you close it</span></label>
+        <label class="check"><input type="radio" name="poll-type" value="quiz"> <span><strong>Quiz</strong>: tick the right answers; each person answers once and sees if they got it right</span></label>
+      </fieldset>
       <p id="poll-status" class="hint" role="status"></p>
       <div class="actions">
         <button id="poll-cancel" type="button" class="secondary">Cancel</button>
         <button type="submit">Send poll</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="hangman-dialog" aria-labelledby="hangman-title">
+    <form id="hangman-form">
+      <h2 id="hangman-title">New hangman game</h2>
+      <label for="hangman-phrase">Word or phrase to guess</label>
+      <input id="hangman-phrase" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Under the weather">
+      <p class="hint">Only you see it. The first letter of every message anyone else sends is a guess; six wrong guesses and it's lost.</p>
+      <p id="hangman-status" class="hint" role="status"></p>
+      <div class="actions">
+        <button id="hangman-cancel" type="button" class="secondary">Cancel</button>
+        <button type="submit">Start game</button>
       </div>
     </form>
   </dialog>

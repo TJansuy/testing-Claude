@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import type { Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { clean, MAX_BUFFERED, MAX_BYTES, MAX_NAME, MAX_PEERS, ROOM_NAME } from './config';
+import { sanitiseGame } from './game';
 import { sanitisePoll } from './poll';
 import { Peer, publicPeer, sanitiseChat, sanitiseNotice } from './sanitise';
 
@@ -56,6 +57,11 @@ function onMessage(ws: WebSocket, peer: Connection, raw: Buffer): void {
     case 'chat': {
       const out = sanitiseChat(m, peer);
       if (out) broadcast(out, ws); // forwarded, never stored
+      return;
+    }
+    case 'game': {
+      const out = sanitiseGame(m, peer);
+      if (out) broadcast(out, ws);
       return;
     }
     case 'poll': {

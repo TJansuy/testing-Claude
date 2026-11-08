@@ -48,6 +48,8 @@ export interface WireVote { voter: string; name: string; option: number; at: num
 export interface WirePoll {
   id: string; question: string; options: string[]; secret: boolean; closed?: boolean;
   author: Peer; owner: string; at?: number; votes?: WireVote[];
+  /** A quiz: only the options listed in correct are right. */
+  quiz?: boolean; correct?: number[];
 }
 /** Polls: new, vote, close (by its author), clear (from the displays, by anyone), sync (remind someone who joined). */
 export interface PollMessage {
@@ -55,7 +57,15 @@ export interface PollMessage {
   poll?: WirePoll; id?: string; voter?: string; option?: number; all?: boolean; to?: string; polls?: WirePoll[];
 }
 
-export type ServerMessage = WelcomeMessage | PeerMessage | ChatMessage | SystemMessage | EffectMessage | PollMessage | ErrorMessage;
+/** A hangman game. guessed: the letters guessed so far, in order (passed on to people who join). */
+export interface WireGame { id: string; kind: 'hangman'; phrase: string; author: Peer; owner: string; at?: number; guessed?: string }
+/** Games: new, clear (from the displays, by anyone), sync (remind someone who joined). */
+export interface GameMessage {
+  type: 'game'; op: 'new' | 'clear' | 'sync'; from?: Peer; at?: number;
+  game?: WireGame; id?: string; all?: boolean; to?: string; games?: WireGame[];
+}
+
+export type ServerMessage = WelcomeMessage | PeerMessage | ChatMessage | SystemMessage | EffectMessage | PollMessage | GameMessage | ErrorMessage;
 
 /** What the app sends for a chat message; type/id are filled in when sending. */
 export type OutgoingChat = Omit<ChatMessage, 'type' | 'id'> & { type?: 'chat'; id?: string };

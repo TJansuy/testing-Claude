@@ -1,0 +1,14 @@
+{
+  "name": "testing-claude",
+  "private": true,
+  "description": "Build tooling for the PWA experiments. Source is TypeScript in each app's src/ folder; the built JavaScript is committed so GitHub Pages can serve it as-is.",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "tsc -p PWA/LocalChatter && tsc -p PWA/LocalChatter/tsconfig.sw.json && tsc -p PWA/Sample && tsc -p PWA/Sample/tsconfig.sw.json",
+    "watch": "node build.mjs --watch"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0",
+    "typescript": "5.6.3"
+  }
+}

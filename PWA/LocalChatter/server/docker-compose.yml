@@ -1,0 +1,27 @@
+# Start with:  LOCALCHATTER_HOST=192.168.1.50 docker compose up -d --build
+# (use this machine's LAN IP address so it's in the TLS certificate and on the setup page)
+services:
+  localchatter:
+    build: .
+    image: localchatter-relay
+    container_name: localchatter-relay
+    restart: unless-stopped
+    ports:
+      - "${LOCALCHATTER_PORT:-8443}:8443"
+    environment:
+      # LAN address devices use to reach this machine. Leave empty to use whatever
+      # address a device opened the setup page with.
+      ADVERTISED_HOST: "${LOCALCHATTER_HOST:-}"
+      ADVERTISED_PORT: "${LOCALCHATTER_PORT:-8443}"
+      # Where the LocalChatter app is hosted.
+      APP_URL: "${LOCALCHATTER_APP_URL:-https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/}"
+      ROOM_NAME: "${LOCALCHATTER_ROOM:-LocalChatter}"
+      MAX_MESSAGE_MB: "${LOCALCHATTER_MAX_MB:-25}"
+    volumes:
+      - certs:/certs
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  certs:

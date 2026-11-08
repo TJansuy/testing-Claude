@@ -592,7 +592,15 @@
 
   // PWA/LocalChatter/src/effects/zalgo.ts
   var TARGETS = [".topbar", "#messages", "#effects-tray", "#banner"];
-  var zalgo = { active: false, observer: null, nodes: /* @__PURE__ */ new Map() };
+  var zalgo = {
+    active: false,
+    observer: null,
+    nodes: /* @__PURE__ */ new Map(),
+    timer: void 0,
+    /** Live regions muted while the text keeps changing, with what they were. */
+    muted: []
+  };
+  var BOIL_MS = 140;
   var zalgoActive = () => zalgo.active;
   function randomMark() {
     let c;
@@ -635,6 +643,35 @@
     while (walker.nextNode()) list3.push(walker.currentNode);
     list3.forEach(corrupt);
   }
+  function boil() {
+    const surge = 3 + Math.round(4 + 3 * Math.sin(Date.now() / 700));
+    zalgo.nodes.forEach((rec, node) => {
+      if (!node.isConnected) {
+        zalgo.nodes.delete(node);
+        return;
+      }
+      if (node.nodeValue !== rec.mangled) return;
+      if (Math.random() < 0.25) return;
+      const extra = node.parentElement && node.parentElement.closest("#effects-tray") ? 3 : 0;
+      rec.mangled = zalgoify(rec.orig, surge + extra);
+      node.nodeValue = rec.mangled;
+    });
+  }
+  function muteLiveRegions() {
+    TARGETS.forEach((sel) => document.querySelectorAll(sel).forEach((root) => {
+      [root, ...Array.from(root.querySelectorAll("[aria-live]"))].forEach((e) => {
+        const live = e.getAttribute("aria-live");
+        if (live && live !== "off") {
+          zalgo.muted.push([e, live]);
+          e.setAttribute("aria-live", "off");
+        }
+      });
+    }));
+  }
+  function unmuteLiveRegions() {
+    zalgo.muted.forEach(([e, live]) => e.setAttribute("aria-live", live));
+    zalgo.muted = [];
+  }
   function startZalgo() {
     if (zalgo.active) return;
     zalgo.active = true;
@@ -650,16 +687,21 @@
       observer.observe(e, { childList: true, subtree: true, characterData: true });
     }));
     zalgo.observer = observer;
+    muteLiveRegions();
+    if (!reducedMotion()) zalgo.timer = setInterval(boil, BOIL_MS);
   }
   function stopZalgo() {
     if (!zalgo.active) return;
     zalgo.active = false;
+    clearInterval(zalgo.timer);
+    zalgo.timer = void 0;
     if (zalgo.observer) zalgo.observer.disconnect();
     zalgo.observer = null;
     zalgo.nodes.forEach((rec, node) => {
       if (node.isConnected && node.nodeValue === rec.mangled) node.nodeValue = rec.orig;
     });
     zalgo.nodes.clear();
+    unmuteLiveRegions();
     document.body.classList.remove("fx-zalgo");
   }
   function startZalgoEffect() {
@@ -2822,7 +2864,7 @@
   }
 
   // PWA/LocalChatter/src/features/updates.ts
-  var BUILD_TIME = "2026-11-08T07:12:28.069Z";
+  var BUILD_TIME = "2026-11-08T07:22:52.104Z";
   var CHECK_EVERY_MS = 30 * 1e3;
   var status = (text3) => {
     $("update-status").textContent = text3;

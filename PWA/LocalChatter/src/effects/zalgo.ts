@@ -1,11 +1,20 @@
 // Zalgo: turns all the chat's text into zalgo text and glitches the dashboard
-// until stopped. Text typed in the message box stays readable, and every
-// original is remembered and put back exactly.
-import { EffectControl, vibrate } from './shared';
+// until stopped. The corruption boils: every piece of text is re-scrambled
+// several times a second. Text typed in the message box stays readable, and
+// every original is remembered and put back exactly.
+import { EffectControl, reducedMotion, vibrate } from './shared';
 
 const TARGETS = ['.topbar', '#messages', '#effects-tray', '#banner'];
 interface Record_ { orig: string; mangled: string }
-const zalgo = { active: false, observer: null as MutationObserver | null, nodes: new Map<Text, Record_>() };
+const zalgo = {
+  active: false,
+  observer: null as MutationObserver | null,
+  nodes: new Map<Text, Record_>(),
+  timer: undefined as ReturnType<typeof setInterval> | undefined,
+  /** Live regions muted while the text keeps changing, with what they were. */
+  muted: [] as Array<[HTMLElement, string]>,
+};
+const BOIL_MS = 140;
 
 export const zalgoActive = (): boolean => zalgo.active;
 
@@ -46,6 +55,35 @@ function corruptTree(root: Node): void {
   list.forEach(corrupt);
 }
 
+/** Re-scrambles the text: most of it each time, with intensity that surges and
+ *  ebbs, so the corruption never settles. */
+function boil(): void {
+  const surge = 3 + Math.round(4 + 3 * Math.sin(Date.now() / 700));
+  zalgo.nodes.forEach((rec, node) => {
+    if (!node.isConnected) { zalgo.nodes.delete(node); return; }
+    if (node.nodeValue !== rec.mangled) return; // the app changed it; the observer handles that
+    if (Math.random() < 0.25) return; // leave some still this time, so it flickers unevenly
+    const extra = node.parentElement && node.parentElement.closest('#effects-tray') ? 3 : 0;
+    rec.mangled = zalgoify(rec.orig, surge + extra);
+    node.nodeValue = rec.mangled;
+  });
+}
+
+/** Screen readers would read constantly changing text again and again, so live
+ *  announcements in the corrupted areas pause until zalgo ends. */
+function muteLiveRegions(): void {
+  TARGETS.forEach((sel) => document.querySelectorAll<HTMLElement>(sel).forEach((root) => {
+    [root, ...Array.from(root.querySelectorAll<HTMLElement>('[aria-live]'))].forEach((e) => {
+      const live = e.getAttribute('aria-live');
+      if (live && live !== 'off') { zalgo.muted.push([e, live]); e.setAttribute('aria-live', 'off'); }
+    });
+  }));
+}
+function unmuteLiveRegions(): void {
+  zalgo.muted.forEach(([e, live]) => e.setAttribute('aria-live', live));
+  zalgo.muted = [];
+}
+
 function startZalgo(): void {
   if (zalgo.active) return;
   zalgo.active = true;
@@ -62,11 +100,16 @@ function startZalgo(): void {
     observer.observe(e, { childList: true, subtree: true, characterData: true });
   }));
   zalgo.observer = observer;
+  muteLiveRegions();
+  // Keep it boiling (with reduce motion on, the text is scrambled once and stays still).
+  if (!reducedMotion()) zalgo.timer = setInterval(boil, BOIL_MS);
 }
 
 function stopZalgo(): void {
   if (!zalgo.active) return;
   zalgo.active = false;
+  clearInterval(zalgo.timer);
+  zalgo.timer = undefined;
   if (zalgo.observer) zalgo.observer.disconnect();
   zalgo.observer = null;
   zalgo.nodes.forEach((rec, node) => {
@@ -74,6 +117,7 @@ function stopZalgo(): void {
     if (node.isConnected && node.nodeValue === rec.mangled) node.nodeValue = rec.orig;
   });
   zalgo.nodes.clear();
+  unmuteLiveRegions();
   document.body.classList.remove('fx-zalgo');
 }
 

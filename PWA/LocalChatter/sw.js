@@ -2,7 +2,7 @@
 "use strict";
 (() => {
   // PWA/LocalChatter/src/sw.ts
-  var CACHE = "localchatter-2026-11-08T07:12:28.069Z";
+  var CACHE = "localchatter-2026-11-08T07:22:52.104Z";
   var ASSETS = [
     "./",
     "index.html",
@@ -46,7 +46,7 @@
     );
   });
   self.addEventListener("message", (event) => {
-    if (event.data === "version" && event.ports[0]) event.ports[0].postMessage("2026-11-08T07:12:28.069Z");
+    if (event.data === "version" && event.ports[0]) event.ports[0].postMessage("2026-11-08T07:22:52.104Z");
   });
   self.addEventListener("notificationclick", (event) => {
     event.notification.close();

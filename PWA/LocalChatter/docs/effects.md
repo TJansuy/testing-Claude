@@ -13,7 +13,7 @@ everyone in the chat, including you, and shows as a line like
 | `/fire` | Flames rise from the bottom of the screen, and every message bubble catches fire. |
 | `/earthquake` (or `/quake`) | The screen shakes and Android phones rumble. |
 | `/lightning` | Lightning strikes down through the chat, hitting some messages at random (they flash and jolt) and passing beside others, with two flashes per strike. |
-| `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text, and the dashboard glitches. |
+| `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text that keeps boiling (re-scrambled several times a second), and the dashboard glitches. |
 
 ### How long they last
 
@@ -42,7 +42,10 @@ When it ends, every bit of text goes back exactly as it was.
 
 If a device has **Reduce motion** turned on, it shows a soft glow for as long
 as the effect lasts instead: no shaking, no flashing, no glitching (zalgo still
-scrambles the text).
+scrambles the text, once, and then holds it still).
+
+While zalgo is boiling, screen-reader announcements for the chat pause, so the
+constantly changing text isn't read out over and over; they resume when it ends.
 
 ### Stopping your own effects
 

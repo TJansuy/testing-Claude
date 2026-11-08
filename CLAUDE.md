@@ -15,9 +15,11 @@
 
 ## Pull requests
 
+- When a feature or major change is complete (checked, built, tested and pushed), open a pull request for its branch without being asked. Base it on `main`.
+- When later work belongs to a feature whose pull request is still open, push it to that branch and update the pull request's title and description so they still match what it contains.
 - Never monitor, watch or subscribe to pull requests on this repo (no `subscribe_pr_activity`, no polling).
 - Don't offer to monitor them either.
-- Only act on a pull request when the user explicitly asks.
+- Apart from opening and updating your own pull requests as above, only act on a pull request (reviews, comments, merging, closing) when the user explicitly asks.
 
 ## Code
 

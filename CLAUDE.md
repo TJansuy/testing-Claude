@@ -7,11 +7,19 @@
 - Before committing, verify with `git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT`. If either is not Claude, set it for this repo:
   `git config --local user.name Claude && git config --local user.email noreply@anthropic.com`
 
+## Branches
+
+- Create a new branch for each feature or major change, starting from the latest `main` (`git fetch origin main && git checkout -b claude/<short-feature-name> origin/main`).
+- Don't reuse an earlier feature's branch for new work, even if it hasn't been merged yet.
+- Small follow-up fixes to a feature that's still in progress go on that feature's branch.
+
 ## Pull requests
 
+- When a feature or major change is complete (checked, built, tested and pushed), open a pull request for its branch without being asked. Base it on `main`.
+- When later work belongs to a feature whose pull request is still open, push it to that branch and update the pull request's title and description so they still match what it contains.
 - Never monitor, watch or subscribe to pull requests on this repo (no `subscribe_pr_activity`, no polling).
 - Don't offer to monitor them either.
-- Only act on a pull request when the user explicitly asks.
+- Apart from opening and updating your own pull requests as above, only act on a pull request (reviews, comments, merging, closing) when the user explicitly asks.
 
 ## Code
 

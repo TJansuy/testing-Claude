@@ -7,6 +7,12 @@
 - Before committing, verify with `git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT`. If either is not Claude, set it for this repo:
   `git config --local user.name Claude && git config --local user.email noreply@anthropic.com`
 
+## Branches
+
+- Create a new branch for each feature or major change, starting from the latest `main` (`git fetch origin main && git checkout -b claude/<short-feature-name> origin/main`).
+- Don't reuse an earlier feature's branch for new work, even if it hasn't been merged yet.
+- Small follow-up fixes to a feature that's still in progress go on that feature's branch.
+
 ## Pull requests
 
 - Never monitor, watch or subscribe to pull requests on this repo (no `subscribe_pr_activity`, no polling).

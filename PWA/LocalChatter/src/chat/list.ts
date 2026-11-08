@@ -1,7 +1,6 @@
 // The message list: adding lines and bubbles, language-aware text, and the banner.
 import { $, el } from '../dom';
 import * as LANG from '../languages';
-import { DISPLAY } from '../state';
 import type { Peer } from '../types';
 
 const MAX_MESSAGES = 300;
@@ -25,7 +24,7 @@ export function append(node: HTMLElement): void {
 
 /** A line from the app itself (command replies etc.): always readable. */
 export function systemLine(text: string): void {
-  if (!DISPLAY) append(el('p', 'system', text));
+  append(el('p', 'system', text));
 }
 
 // Text in a language: shown clearly if this device understands it, otherwise as
@@ -45,7 +44,13 @@ export function langText<K extends 'p' | 'div'>(tag: K, cls: string, text: strin
 
 /** Join/leave lines and system notices are in the System language. */
 export function systemNotice(text: string, cls?: string): void {
-  if (!DISPLAY) append(langText('p', 'system' + (cls ? ' ' + cls : ''), text, 'system', text + '|' + Date.now()));
+  append(langText('p', 'system' + (cls ? ' ' + cls : ''), text, 'system', text + '|' + Date.now()));
+}
+
+/** Shows or hides which language a bubble is in (its tag and coloured ring). */
+export function showLanguage(box: HTMLElement, tag: HTMLElement | null, known: boolean): void {
+  box.classList.toggle('in-lang', known);
+  if (tag) tag.hidden = !known;
 }
 
 /** Re-renders language text after the viewer's languages change. */
@@ -58,6 +63,10 @@ export function refreshLanguages(): void {
     n.title = known ? '' : notUnderstood(info.lang);
     const bubble = n.closest('.msg');
     if (bubble) bubble.classList.toggle('foreign', !known);
+  });
+  // Bubbles in a language: tagged only for people who now understand it.
+  document.querySelectorAll<HTMLElement>('.msg[data-lang]').forEach((box) => {
+    showLanguage(box, box.querySelector<HTMLElement>('.lang-tag'), 'mine' in box.dataset || LANG.understands(box.dataset.lang));
   });
   const sp = LANG.speaking();
   const t = $<HTMLTextAreaElement>('text');

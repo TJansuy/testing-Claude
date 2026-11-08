@@ -1,0 +1,108 @@
+/* Polls: a card in the chat you can vote in, and the display's poll board */
+.msg.poll-msg { width: min(100%, 420px); max-width: min(92%, 420px); padding: 10px 12px; background-color: var(--theirs); color: var(--fg); border: 1px solid var(--line); }
+.msg.poll-msg.mine { background-color: color-mix(in srgb, var(--accent) 10%, var(--theirs)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+.poll-card { display: flex; flex-direction: column; gap: 6px; }
+.poll-head { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--muted); }
+.poll-num { font-weight: 700; color: var(--accent); }
+.poll-state { margin-left: auto; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-weight: 600; }
+.poll-card.closed .poll-state { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+.poll-q { margin: 0; font-weight: 700; font-size: 1.05em; }
+.poll-from { margin: -4px 0 2px; font-size: .75rem; color: var(--muted); }
+.poll-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.poll-option { display: flex; flex-direction: column; gap: 2px; }
+.poll-choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.poll-choice { cursor: pointer; }
+button.poll-choice:hover { border-color: var(--accent); }
+.poll-option.picked .poll-choice { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.poll-bar { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--accent) 22%, transparent); transition: width .5s ease; }
+.poll-option.winner .poll-bar { background: color-mix(in srgb, var(--accent) 38%, transparent); }
+.poll-label, .poll-count { position: relative; }
+.poll-label { flex: 1; overflow-wrap: anywhere; }
+.poll-option.winner .poll-label { font-weight: 700; }
+.poll-count { font-variant-numeric: tabular-nums; font-size: .85em; color: var(--muted); white-space: nowrap; }
+.poll-voters { padding: 0 12px; font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
+.poll-foot { margin: 0; font-size: .75rem; color: var(--muted); }
+.poll-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.poll-actions .link-button { font-size: .8rem; padding: 4px 0; }
+
+/* The New poll form */
+.poll-fields { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.poll-field { display: flex; align-items: center; gap: 8px; }
+.poll-field > input { flex: 1; min-width: 0; }
+.poll-correct { display: flex; align-items: center; gap: 4px; font-weight: 400; white-space: nowrap; }
+.poll-correct input { width: auto; }
+#poll-form:not(.is-quiz) .poll-correct { display: none; }
+.poll-types { border: 0; margin: 12px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.poll-types legend { font-weight: 600; margin-bottom: 4px; padding: 0; }
+
+/* Quizzes: green for a right answer, red for a wrong one (only on your screen) */
+.poll-card.right { --verdict: #15803d; }
+.poll-card.wrong { --verdict: #b91c1c; }
+.msg.poll-msg:has(.poll-card.right) { background-color: color-mix(in srgb, #16a34a 22%, var(--theirs)); border-color: #15803d; }
+.msg.poll-msg:has(.poll-card.wrong) { background-color: color-mix(in srgb, #dc2626 20%, var(--theirs)); border-color: #b91c1c; }
+.quiz-verdict { margin: 0; font-weight: 700; color: var(--verdict); }
+.poll-option.answer .poll-choice { border-color: #15803d; box-shadow: inset 0 0 0 1px #15803d; }
+.poll-option.answer .poll-bar { background: rgb(22 163 74 / .3); }
+.poll-option.answer .poll-label { font-weight: 700; }
+.quiz-results { display: flex; flex-direction: column; gap: 2px; font-size: .85em; }
+.quiz-results p { margin: 0; overflow-wrap: anywhere; }
+.quiz-right { color: #15803d; }
+.quiz-wrong { color: #b91c1c; }
+@media (prefers-color-scheme: dark) {
+  .quiz-right { color: #4ade80; }
+  .quiz-wrong { color: #f87171; }
+  .poll-card.right { --verdict: #4ade80; }
+  .poll-card.wrong { --verdict: #f87171; }
+}
+
+/* Display mode: the poll board sits above the chat; cards share the width. */
+.poll-board {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 560px));
+  justify-content: center;
+  align-items: start;
+  gap: clamp(10px, 1.5vw, 20px);
+  max-height: 72vh;
+  overflow-y: auto;
+  padding: clamp(10px, 1.6vw, 20px) clamp(16px, 4vw, 48px);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg));
+  font-size: clamp(.95rem, 1.5vw, 1.3rem);
+  position: relative;
+  z-index: 3;
+}
+.poll-board[hidden] { display: none; }
+.poll-board .poll-card {
+  padding: clamp(12px, 1.4vw, 20px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--theirs);
+  box-shadow: 0 4px 18px rgb(0 0 0 / .08);
+}
+.poll-board .poll-head, .poll-board .poll-from, .poll-board .poll-foot, .poll-board .poll-voters { font-size: .7em; }
+.poll-board .poll-q { font-size: 1.15em; }
+.poll-board .poll-card { gap: 4px; }
+.poll-board .poll-options { gap: 4px; }
+.poll-board .poll-choice { min-height: 0; padding: .35em .7em; }
+.poll-board .poll-from { margin: -2px 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .poll-bar { transition: none; }
+}

@@ -1,15 +1,17 @@
 // Chat bubbles: text, files and images, with sender colours, languages,
 // whispers and spoof markers.
 import { el } from '../dom';
-import { parseEffect, play } from '../effects';
+import { parseEffect } from '../effects';
+import { bannerConfirmation, parseBanner, showBanner } from '../features/banner';
 import { whisperNames } from '../features/whispers';
 import * as LANG from '../languages';
 import { can, DISPLAY } from '../state';
 import type { ChatMessage, Peer } from '../types';
 import { base64ToBlob, formatSize, formatTime } from '../util';
 import { renderEffect } from './effect-line';
-import { append, colourBubble, langText } from './list';
-import { displaySound, renderSound } from './sound-message';
+import { append, colourBubble, langText, showLanguage } from './list';
+import { setRawText } from './raw';
+import { renderSound } from './sound-message';
 
 const INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
 
@@ -23,10 +25,11 @@ export function renderMessage(msg: ChatMessage, mine: boolean): HTMLElement | nu
   const shown = msg.as || msg.from;
   const who = mine ? (msg.as ? 'You (as ' + msg.as.name + ')' : 'You') : (shown && shown.name) || 'Someone';
   const effect = !msg.file && !msg.sound ? parseEffect(msg.text) : null;
-  if (DISPLAY) {
-    // A display only plays effects and sounds; it never shows messages.
-    if (effect) play(effect.name, effect.arg);
-    else if (msg.sound) displaySound(msg.sound);
+  // /banner: shown on displays; the sender gets a confirmation; others see nothing.
+  const bannerCmd = !msg.file && !msg.sound ? parseBanner(msg.text) : null;
+  if (bannerCmd) {
+    if (DISPLAY) showBanner(bannerCmd);
+    else if (mine) append(bannerConfirmation(bannerCmd));
     return null;
   }
   if (msg.sound) return renderSound(msg, mine, who);
@@ -38,10 +41,15 @@ export function renderMessage(msg: ChatMessage, mine: boolean): HTMLElement | nu
   meta.appendChild(el('span', 'who', who));
   const inLang = !LANG.isDefault(msg.lang) ? msg.lang as string : '';
   if (inLang) {
-    box.classList.add('in-lang');
+    // Only people who understand the language see which one it is (the tag and
+    // its coloured ring); to everyone else it's just gibberish.
+    box.dataset.lang = inLang;
+    if (mine) box.dataset.mine = '';
     box.style.setProperty('--lang-hue', String(LANG.hue(inLang)));
+    const tag = el('span', 'lang-tag', '🗣 ' + LANG.nameOf(inLang));
+    meta.appendChild(tag);
+    showLanguage(box, tag, mine || LANG.understands(inLang));
     if (!mine && !LANG.understands(inLang)) box.classList.add('foreign');
-    meta.appendChild(el('span', 'lang-tag', '🗣 ' + LANG.nameOf(inLang)));
   }
   if (msg.via === 'nfc') meta.appendChild(el('span', 'via', 'via NFC tag'));
   if (msg.via === 'qr') meta.appendChild(el('span', 'via', 'via QR code'));
@@ -62,6 +70,7 @@ export function renderMessage(msg: ChatMessage, mine: boolean): HTMLElement | nu
     if (!mine && !inLang && !LANG.understands('default')) box.classList.add('foreign');
   }
   if (msg.file) box.appendChild(fileView(msg.file.name, msg.file.type, msg.file.size, msg.file.data));
+  setRawText(box, msg.text || '');
   append(box);
   return box;
 }

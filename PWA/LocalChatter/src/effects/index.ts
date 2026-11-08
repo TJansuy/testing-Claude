@@ -6,23 +6,37 @@
 //   off                stop it now
 // Sending it again while it's running resets the timer. Only one effect runs at
 // a time: starting a different one replaces it. Respects "reduce motion".
+// Games (/wall) run until they're won or stopped, and can end themselves.
+import { startBlackhole } from './blackhole';
+import { startBlur } from './blur';
 import { startFire } from './fire';
 import { startLightning } from './lightning';
 import { quakeRumble, startQuake } from './quake';
+import { startRain } from './rain';
 import { EffectControl, setVibration } from './shared';
+import { startWall } from './wall';
 import { startZalgoEffect, zalgoActive } from './zalgo';
 
-export type EffectName = 'fire' | 'earthquake' | 'lightning' | 'zalgo';
+export type EffectName = 'fire' | 'earthquake' | 'lightning' | 'zalgo' | 'blackhole' | 'blur' | 'rain' | 'wall';
 export type EffectArg = number | 'on' | 'off' | null;
 export interface ParsedEffect { name: EffectName; arg: EffectArg; argText: string }
 
 const COMMANDS: Record<string, EffectName> = {
   fire: 'fire', earthquake: 'earthquake', quake: 'earthquake', lightning: 'lightning', zalgo: 'zalgo',
+  blackhole: 'blackhole', blur: 'blur', rain: 'rain', wall: 'wall',
 };
+/** Games: with no length given, they last until won (or someone turns them off). */
+export const GAMES: EffectName[] = ['wall'];
 const MAX_S = 600;
-export const DEFAULT_MS: Record<EffectName, number> = { fire: 2200, earthquake: 1600, lightning: 1100, zalgo: 10000 };
-const STARTERS: Record<EffectName, () => EffectControl> = {
+export const DEFAULT_MS: Record<EffectName, number> = {
+  fire: 2200, earthquake: 1600, lightning: 1100, zalgo: 10000, blackhole: 10000, blur: 10000, rain: 12000, wall: MAX_S * 1000,
+};
+/** seed: the same on every device for the same message (games use it so they play out alike).
+ *  done: a game calls it when it's over. */
+type Starter = (seed: string, done: () => void) => EffectControl;
+const STARTERS: Record<EffectName, Starter> = {
   fire: startFire, earthquake: startQuake, lightning: startLightning, zalgo: startZalgoEffect,
+  blackhole: startBlackhole, blur: startBlur, rain: startRain, wall: startWall,
 };
 
 /** Reads "/fire 30" etc. Anything else after the command means it's ordinary text. */
@@ -60,15 +74,26 @@ function stopEffect(name: EffectName, early: boolean, hard = false): void {
   announce(name, false);
 }
 
+/** A game ended by itself (won): forget it without stopping it. */
+function finished(name: EffectName, ctrl: EffectControl): void {
+  const a = active[name];
+  if (!a || a.ctrl !== ctrl) return;
+  clearTimeout(a.timer);
+  delete active[name];
+  announce(name, false);
+}
+
 /** Starts, extends or stops an effect. arg: null (usual length), seconds, 'on' or 'off'. */
-export function play(name: EffectName, arg: EffectArg = null): boolean {
+export function play(name: EffectName, arg: EffectArg = null, seed = ''): boolean {
   if (arg === 'off') { stopEffect(name, true); return true; }
   let a = active[name];
   if (!a) {
     // Effects never overlap: a different effect replaces whatever is running, at once.
     (Object.keys(active) as EffectName[]).forEach((other) => stopEffect(other, true, true));
-    let ctrl: EffectControl;
-    try { ctrl = STARTERS[name](); } catch { return false; }
+    let ctrl: EffectControl | null = null;
+    try {
+      ctrl = STARTERS[name](seed || String(Math.random()), () => { if (ctrl) finished(name, ctrl); });
+    } catch { return false; }
     a = active[name] = { ctrl, timer: undefined };
     announce(name, true);
   }

@@ -1,28 +1,24 @@
-/* Display mode: a screen for effects and sounds only */
+/* Display mode: a big-screen view for a TV or spare screen */
 
-/* Display mode: a screen for effects and sounds only */
-body.display-mode .messages,
+/* No message box or controls; the chat fills the screen. */
 body.display-mode .composer,
 body.display-mode .debug-bar,
 body.display-mode .tabs,
 body.display-mode #panel-effects { display: none !important; }
 /* The dashboard only opens (from the gear) for its settings. */
-.stage {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 24px 16px;
-  color: var(--muted);
-  text-align: center;
-}
-.stage svg { color: var(--accent); }
-.stage-title { margin: 8px 0 0; font-size: clamp(1.6rem, 6vw, 3rem); font-weight: 700; color: var(--fg); }
-.stage-hint { margin: 0; max-width: 360px; }
-.stage-tap {
-  margin-top: 16px;
+
+/* Bigger text, so it can be read from across the room. */
+body.display-mode .messages { padding: 24px clamp(16px, 4vw, 48px); gap: 12px; font-size: clamp(1.1rem, 2.2vw, 1.6rem); }
+body.display-mode .msg { max-width: min(85%, 900px); }
+body.display-mode .msg .meta { font-size: .7em; }
+body.display-mode .system { font-size: .75em; }
+
+.display-tap {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 30;
+  transform: translateX(-50%);
   padding: 14px 22px;
   border: 0;
   border-radius: 12px;
@@ -30,5 +26,30 @@ body.display-mode #panel-effects { display: none !important; }
   color: var(--on-accent);
   font: inherit;
   font-weight: 600;
+  box-shadow: 0 6px 20px rgb(0 0 0 / .3);
   cursor: pointer;
 }
+
+/* /banner: across the top of the display, centred; too-wide text scrolls instead of wrapping */
+.display-banner {
+  flex: none;
+  padding: clamp(8px, 1.6vw, 18px) 16px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: clamp(1.4rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 2px 12px rgb(0 0 0 / .2);
+  position: relative;
+  z-index: 4;
+}
+.db-track { display: flex; justify-content: center; overflow: hidden; }
+.db-track span { white-space: nowrap; will-change: transform; }
+.display-banner.overflowing .db-track {
+  justify-content: flex-start;
+  /* Soft edges so scrolling text fades in and out rather than being cut off. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+}
+/* Reduce motion: no scrolling; long text wraps instead. */
+.display-banner.calm .db-track span { white-space: normal; text-align: center; }

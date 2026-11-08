@@ -1,4 +1,6 @@
-// Fire: flames keep rising until stopped, then die down over about a second.
+// Fire: flames rise from the bottom of the screen and every message bubble
+// catches light, until stopped; then it all dies down over about a second.
+import { char } from './marks';
 import { EffectControl, holdGlow, overlayCanvas, reducedMotion, vibrate } from './shared';
 
 interface Particle { x: number; y: number; vx: number; vy: number; size: number; life: number; decay: number }
@@ -20,9 +22,40 @@ function getFlameSprite(): HTMLCanvasElement {
   return s;
 }
 
+/** Sets every message alight (CSS flames on each bubble; new ones catch too).
+ *  A bubble that's been burning for a moment is charred for good. */
+function burnMessages(): EffectControl {
+  const body = document.body;
+  body.classList.remove('fx-burnout');
+  body.classList.add('fx-burning');
+  let out: ReturnType<typeof setTimeout> | undefined;
+  const lit = new Map<HTMLElement, number>();
+  const scorch = setInterval(() => {
+    const now = performance.now();
+    document.querySelectorAll<HTMLElement>('#messages .msg:not(.charred)').forEach((m) => {
+      const since = lit.get(m);
+      if (since === undefined) lit.set(m, now);
+      else if (now - since >= 700) char(m);
+    });
+  }, 250);
+  return {
+    stop(_early, hard) {
+      clearInterval(scorch);
+      clearTimeout(out);
+      if (hard) { body.classList.remove('fx-burning', 'fx-burnout'); return; }
+      body.classList.add('fx-burnout'); // flames die down, then go
+      out = setTimeout(() => body.classList.remove('fx-burning', 'fx-burnout'), 1000);
+    },
+  };
+}
+
 export function startFire(): EffectControl {
   vibrate([60, 40, 60]);
-  if (reducedMotion()) return holdGlow('fx-fire-glow');
+  const bubbles = burnMessages();
+  if (reducedMotion()) {
+    const glow = holdGlow('fx-fire-glow');
+    return { stop(early, hard) { glow.stop(early, hard); bubbles.stop(early, hard); } };
+  }
 
   const o = overlayCanvas('fx-fire');
   const { ctx, w, h, dpr } = o;
@@ -77,7 +110,8 @@ export function startFire(): EffectControl {
   }
   requestAnimationFrame(frame);
   return {
-    stop(_early, hard) {
+    stop(early, hard) {
+      bubbles.stop(early, hard);
       if (hard) { gone = true; o.canvas.remove(); return; } // replaced: vanish at once
       if (!stoppedAt) stoppedAt = performance.now();
     },

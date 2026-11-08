@@ -3,7 +3,7 @@
 // was sent to: the whole chat, a whisper's recipients, or an admin's target.
 import { EFFECT_LINES, EFFECT_TITLES } from '../chat/effect-line';
 import { $, el } from '../dom';
-import { DEFAULT_MS, EffectArg, EffectName } from '../effects';
+import { DEFAULT_MS, EffectArg, EffectName, GAMES } from '../effects';
 import { sendChat, sendRaw } from '../net/connection';
 import { handle } from '../net/handle';
 import { DISPLAY, state } from '../state';
@@ -19,7 +19,7 @@ const dock = $('fx-dock');
 export function addStop(name: EffectName, arg: EffectArg, how: How): void {
   if (DISPLAY) return;
   removeStop(name);
-  const ms = arg === 'on' ? Infinity : typeof arg === 'number' ? arg * 1000 : DEFAULT_MS[name];
+  const ms = arg === 'on' || (arg === null && GAMES.includes(name)) ? Infinity : typeof arg === 'number' ? arg * 1000 : DEFAULT_MS[name];
   const button = el('button');
   button.type = 'button';
   button.dataset.stop = name;

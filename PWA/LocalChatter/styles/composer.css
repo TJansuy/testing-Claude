@@ -59,3 +59,35 @@
   box-shadow: 0 0 0 100vmax rgb(0 0 0 / .35);
 }
 .qr-dialog .hint { margin: 12px 20px 20px; }
+
+/* Slash-command autocomplete: slides up from the message box, at most a third of the screen */
+.composer { position: relative; }
+.autocomplete {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  z-index: 15;
+  box-sizing: border-box;
+  max-height: 33.333dvh;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 -6px 24px rgb(0 0 0 / .14);
+  animation: ac-up .16s ease-out;
+}
+@keyframes ac-up { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .autocomplete { animation: none; } }
+.ac-item { padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.ac-item[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.ac-item.usage { cursor: default; }
+.ac-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.ac-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .95rem; }
+.ac-name strong { color: var(--accent); }
+.ac-args { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; color: var(--muted); }
+.ac-hint { margin-top: 2px; font-size: .85rem; color: var(--muted); }

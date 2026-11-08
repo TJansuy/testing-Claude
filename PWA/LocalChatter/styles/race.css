@@ -1,0 +1,76 @@
+/* Drop Race: a pinboard over the chat, above the message bar */
+.race { position: fixed; inset: 0; z-index: 18; pointer-events: none; overflow: hidden; }
+.race-board {
+  position: absolute; left: 0; top: 0; transform-origin: 0 0;
+  /* A frosted panel the pins rise out of, so the chat behind doesn't get in the way. */
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  border-radius: 18px 18px 0 0;
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 12px 30px rgb(0 0 0 / .06);
+  animation: race-board-in .5s ease-out both;
+}
+@keyframes race-board-in { from { opacity: 0; } }
+.race.out .race-board { transition: opacity .8s .3s; opacity: 0; }
+.race-board::after { /* the finish line */
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 6px;
+  background: repeating-linear-gradient(90deg, #111 0 12px, #fff 12px 24px); opacity: .55;
+}
+.race-pin {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #c7ccd4 35%, #6b7280 75%, #374151);
+  box-shadow: 0 2px 3px rgb(0 0 0 / .45);
+  animation: pin-in .6s cubic-bezier(.3, 1.6, .5, 1) both; /* they come out of the background */
+}
+@keyframes pin-in {
+  from { transform: scale(0); opacity: 0; box-shadow: none; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.race.out .race-pin { animation: pin-out .7s ease-in both; animation-delay: 0s !important; }
+.race.out .race-ball { transition: opacity .6s; opacity: 0; }
+@keyframes pin-out { to { transform: scale(0); opacity: 0; } }
+
+.race-ball {
+  position: absolute; left: 0; top: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4px; overflow: hidden; border-radius: 50%; text-align: center; line-height: 1.05;
+  background: var(--theirs); color: var(--fg); border: 2px solid var(--line);
+  box-shadow: 0 3px 8px rgb(0 0 0 / .25);
+  will-change: transform;
+}
+.race-ball[style*="--hue"] { background: hsl(var(--hue) 75% 92%); border-color: hsl(var(--hue) 45% 55%); }
+.race-ball.mine { background: var(--mine); color: var(--on-mine); border-color: color-mix(in srgb, var(--mine) 60%, #000); }
+.race-ball b { font-size: .8em; opacity: .8; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-ball span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.race-ball.winner { box-shadow: 0 0 0 3px #facc15, 0 0 24px #facc15; }
+/* Stuck on the pins: it catches fire, chars and burns away. */
+.race-ball.burning { animation: race-burn 1.1s ease-in forwards; }
+@keyframes race-burn {
+  0%   { box-shadow: 0 0 0 2px rgb(255 140 0), 0 -6px 18px rgb(255 100 0); }
+  40%  { filter: sepia(1) saturate(3) hue-rotate(-20deg) brightness(.8); box-shadow: 0 0 0 2px rgb(255 90 0), 0 -12px 26px rgb(255 60 0); }
+  100% { filter: brightness(0); opacity: 0; scale: .4; }
+}
+.race-banner {
+  position: absolute; left: 50%; top: 18%; transform: translate(-50%, -10px);
+  max-width: min(90vw, 640px); padding: 12px 20px; border-radius: 14px;
+  background: rgb(15 23 42 / .85); color: #fff; font-weight: 700; font-size: clamp(1rem, 3.2vw, 1.6rem); text-align: center;
+  opacity: 0; transition: opacity .3s, transform .3s;
+}
+.race-banner.show { opacity: 1; transform: translate(-50%, 0); }
+.race-sad { position: absolute; left: 50%; top: 0; font-size: 60vmin; line-height: 1; filter: drop-shadow(0 10px 30px rgb(0 0 0 / .35)); }
+.race-pin.swept, .race-ball.swept { transition: translate .6s ease-in, rotate .6s ease-in, opacity .6s; translate: 0 160px; rotate: 40deg; opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .race-pin { animation-duration: .01s; }
+}
+/* Cups of tightly packed pins: brass */
+.race-pin.cup { background: radial-gradient(circle at 35% 30%, #fff7d6, #e0b44c 40%, #9a6b14 80%, #5c3d06); }
+/* Denser messages look darker and heavier */
+.race-ball { filter: brightness(calc(1 - var(--heft, 0) * .3)) saturate(calc(1 + var(--heft, 0) * .6)); box-shadow: 0 calc(3px + var(--heft, 0) * 5px) calc(8px + var(--heft, 0) * 6px) rgb(0 0 0 / calc(.25 + var(--heft, 0) * .25)); }
+/* Tiny ones (a single word): the text sits just above the bubble */
+.race-ball.tiny { overflow: visible; padding: 0; }
+.race-ball.tiny b { display: none; }
+.race-ball.tiny span {
+  position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%);
+  display: block; white-space: nowrap; padding: 1px 5px; border-radius: 6px;
+  background: rgb(15 23 42 / .75); color: #fff; font-size: 9px; font-weight: 600;
+}

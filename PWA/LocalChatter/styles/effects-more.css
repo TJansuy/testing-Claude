@@ -1,0 +1,78 @@
+/* Black hole, blur and rain */
+
+/* Black hole: the chat goes black while the vortex swallows new messages */
+.messages { transition: background-color .9s ease; }
+body.fx-blackhole .messages { background-color: #05030a; }
+body.fx-blackhole .messages .system { color: #a59ab8; }
+body.fx-blackhole-out .messages { background-color: transparent; }
+.fx-ghost { position: fixed; z-index: 19; pointer-events: none; will-change: transform, opacity; }
+
+/* Blur: drifts slowly out of focus; clears faster. The Stop buttons stay sharp. */
+body.fx-blur > :not(.fx-dock):not(.fx):not(script):not(dialog) { filter: blur(9px) saturate(.75); transition: filter 6s ease-in; }
+body.fx-blur-out > :not(.fx-dock):not(.fx):not(script):not(dialog) { filter: none; transition: filter 1.5s ease-out; }
+.fx-fog {
+  background:
+    radial-gradient(40% 30% at 20% 30%, rgb(255 255 255 / .9), transparent 70%),
+    radial-gradient(35% 28% at 75% 25%, rgb(240 244 250 / .85), transparent 70%),
+    radial-gradient(45% 35% at 55% 70%, rgb(250 250 255 / .9), transparent 70%),
+    radial-gradient(30% 25% at 15% 80%, rgb(235 240 248 / .8), transparent 70%);
+  background-size: 140% 140%;
+  opacity: 0;
+  transition: opacity 6s ease-in;
+  animation: fog-drift 18s ease-in-out infinite alternate;
+}
+.fx-fog.on { opacity: .62; }
+.fx-fog.out { transition: opacity 1.5s ease-out; }
+@media (prefers-color-scheme: dark) {
+  .fx-fog { filter: brightness(.45); }
+}
+@keyframes fog-drift { from { background-position: 0% 0%; } to { background-position: 100% 60%; } }
+@media (prefers-reduced-motion: reduce) { .fx-fog { animation: none; } }
+
+/* Marks effects leave on bubbles for good (set by effects/marks.ts). */
+/* Fire: scorched, sooty edges. */
+.msg.charred {
+  background-image:
+    radial-gradient(ellipse 40% 70% at 0% 100%, rgb(35 18 6 / .55), transparent 70%),
+    radial-gradient(ellipse 35% 60% at 100% 0%, rgb(35 18 6 / .45), transparent 70%),
+    radial-gradient(ellipse 25% 45% at 70% 100%, rgb(60 28 6 / .35), transparent 70%),
+    linear-gradient(to top, rgb(40 20 5 / .28), transparent 45%);
+  border-color: #4a2e1c;
+  box-shadow: inset 0 0 8px 1px rgb(45 22 6 / .6), 0 1px 0 rgb(20 10 0 / .25);
+}
+.msg.charred .meta::after { content: ' 🔥'; opacity: .55; filter: grayscale(.6) brightness(.6); }
+.msg.charred.in-lang { box-shadow: inset 0 0 8px 1px rgb(45 22 6 / .6), 0 0 0 2px var(--bg), 0 0 0 4px hsl(var(--lang-hue) 70% 50%); }
+
+/* Lightning: a jagged, uneven outline, a little crooked. */
+.msg.shocked {
+  clip-path: var(--shock-clip);
+  border-radius: var(--shock-radius);
+  rotate: var(--shock-tilt);
+  border-color: rgb(120 150 200 / .8);
+  background-image: radial-gradient(circle at 30% 40%, rgb(150 190 255 / .18), transparent 60%);
+}
+.msg.shocked.charred { background-image: radial-gradient(circle at 30% 40%, rgb(150 190 255 / .18), transparent 60%), linear-gradient(to top, rgb(40 20 5 / .3), transparent 45%); }
+
+/* Rain: soaked through, sagging and buckled like wet paper. */
+.msg.soggy {
+  transform-origin: 50% 0;
+  transform: perspective(500px) rotateX(var(--sog-x, -12deg)) rotateY(var(--sog-y, 0deg)) rotate(var(--sog-r, 0deg));
+  border-bottom-left-radius: 45% 18px;
+  border-bottom-right-radius: 45% 18px;
+  border-color: rgb(90 130 180 / .7);
+  background-image:
+    radial-gradient(ellipse 30% 40% at 25% 60%, rgb(70 110 170 / .16), transparent 70%),
+    radial-gradient(ellipse 25% 35% at 75% 30%, rgb(70 110 170 / .13), transparent 70%),
+    linear-gradient(to bottom, transparent 30%, rgb(60 100 160 / .22));
+  filter: url(#soggy) saturate(.8);
+  transition: transform 2.5s ease-out, border-radius 2.5s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg.soggy { transition: none; }
+}
+.svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* Game: the wall (a canvas), fading out with reduce motion */
+.fx.fx-fade { opacity: 0; transition: opacity .6s ease-out; }
+/* A message that bounces off the wall without doing damage */
+.fx-ghost.fx-dud { filter: grayscale(.7) brightness(.95); }

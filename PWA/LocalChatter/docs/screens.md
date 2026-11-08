@@ -19,6 +19,29 @@ landscape) it's a column beside the chat that stays open. ⚙️ switches it to
 Settings, and saving goes back to Effects. Narrower, 4:3 and portrait screens
 keep the phone layout, and it switches live when you rotate or resize.
 
+## Commands as you type
+
+Type `/` in the message box and a list of every command slides up, each with how
+to use it (`/whisper <names>: <message>`, `/fire [30 | 2m | on | off]` …). It
+narrows as you type, aliases included (`/qu` finds `/quake`), and never covers
+more than a third of the screen; the rest scrolls.
+
+- ↑ / ↓ move, **Tab** or **Enter** fill in the highlighted command, **Esc**
+  closes the list. Tapping or clicking a row fills it in too.
+- A command typed in full (`/fire`) is sent by Enter as usual.
+- Once the command is filled in, the list shows just its usage while you type the rest.
+
+## Updates and versions
+
+Settings shows **Last update**: when the version you're running was built, in
+your own time zone. Compare it between devices to see who's on what.
+
+When LocalChatter is opened (or you come back to it, or the device comes back
+online) it checks for a newer version and downloads it in the background. If the
+chat is still empty it switches straight to it; if there are messages on screen,
+a bar offers **Reload now**, because reloading clears the chat on that device.
+**Check for updates** in Settings checks straight away.
+
 ## The header (phones)
 
 On phones the header slides away a few seconds after you stop using it, so
@@ -31,10 +54,11 @@ wide screens. Turn it off in Settings (*On phones, hide the header after a few s
 
 ## Display
 
-A display is a screen (a TV, tablet or spare phone) that plays the chat's
-effects and sounds, and never shows messages, whispers or system messages.
+A display is a big-screen view for a TV, tablet or spare phone. It shows the
+chat in large text, plays effects and sounds, and has no message box.
 
-- Open `<app>/Display`, e.g.
+- Turn on **Display mode** in Settings (and off again to go back), or open
+  `<app>/Display`, e.g.
   `https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/Display`. Note the
   capital **D**: GitHub Pages is case-sensitive.
 - Or tap **Set up as a display** on the server's setup page, or type
@@ -42,11 +66,39 @@ effects and sounds, and never shows messages, whispers or system messages.
 - On a display, ⚙️ opens just the settings.
 - It joins as "Display" (rename it in Settings) and keeps the screen awake
   where the browser allows.
+- It shows what everyone can see: whispers to other people and monitor-only
+  system messages stay hidden.
 - Sound needs one tap on the screen first (*Tap to turn on sound*).
 - Effects aimed at the display by an admin in debug mode, and whispered effects
   sent to it, play too.
 - The display role isn't saved: opening the normal link on the same device
-  gives your usual role. *Exit display* in Settings goes back to the chat.
+  gives your usual role.
+
+### Polls
+
+Displays show every running poll on a board above the chat, with the results
+updating as votes come in (secret polls only show their results once closed).
+Polls stay until someone clears them. See [Polls](polls.md).
+
+### Banners
+
+`/banner` puts a banner across the top of every display, in large text. Only
+displays show it; the sender gets a confirmation line and nobody else's chat
+changes.
+
+| Command | Does |
+| --- | --- |
+| `/banner Doors open at 7pm` | Shows the banner. Sending another replaces it. |
+| `/banner fast Doors open at 7pm` | Sets how fast long text scrolls: `slow`, `normal` (the default) or `fast`. |
+| `/banner 25px Doors open at 7pm` | An exact speed, in pixels per second (5–600). A plain number with no `px` is part of the text: `/banner 5 minutes left`. |
+| `/banner off` | Takes it down. |
+
+A banner that fits is centred. One too wide for the screen stays on one line and
+scrolls slowly at the chosen speed to reveal the rest, pausing at each end, then
+scrolls back. With **Reduce motion** on, long text wraps instead. Whisper it to
+send it to one display (`/whisper Lobby TV: /banner Hello`). Like everything
+else there's no history: a display that joins or reloads later won't show it
+until it's sent again.
 
 ## In the background
 

@@ -15,6 +15,7 @@ export const KEY = {
   autohide: 'localchatter-autohide',
   languages: 'localchatter-languages',
   speak: 'localchatter-speak',
+  device: 'localchatter-device',
 } as const;
 
 export function load(key: string): string {

@@ -7,6 +7,8 @@ import { away, notify, show } from '../features/background';
 import { renderSystem } from '../features/roles';
 import { addStop, removeStop } from '../features/stopdock';
 import { whisperVisibility } from '../features/whispers';
+import { chatGuess, handleGame, remindAboutGames } from '../games';
+import { handlePoll, remindNewcomer } from '../polls';
 import { DEFAULT_MAX_BYTES, state } from '../state';
 import type { ServerMessage } from '../types';
 import { renderPeople } from '../ui/status';
@@ -46,6 +48,8 @@ export function handle(msg: ServerMessage): void {
       state.peers.set(peer.id, peer);
       renderPeople();
       show(() => systemNotice(peer.name + ' joined'));
+      remindNewcomer(peer); // tell them about the polls running
+      remindAboutGames(peer);
       break;
     }
     case 'leave': {
@@ -65,6 +69,7 @@ export function handle(msg: ServerMessage): void {
       break;
     }
     case 'chat': {
+      chatGuess(msg, msg.from); // hangman: its first letter is a guess (not for whispers)
       // Whispers reach every device; each app only shows them to their recipients
       // (and to spies watching those people).
       if (msg.to) {
@@ -76,6 +81,12 @@ export function handle(msg: ServerMessage): void {
       show(() => renderMessage(msg, false));
       break;
     }
+    case 'poll':
+      handlePoll(msg);
+      break;
+    case 'game':
+      handleGame(msg);
+      break;
     case 'error':
       if (msg.message) systemLine(msg.message);
       break;

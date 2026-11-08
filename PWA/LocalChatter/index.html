@@ -15,9 +15,28 @@
   <link rel="stylesheet" href="styles/dashboard.css">
   <link rel="stylesheet" href="styles/panels.css">
   <link rel="stylesheet" href="styles/effects.css">
+  <link rel="stylesheet" href="styles/effects-more.css">
   <link rel="stylesheet" href="styles/display.css">
+  <link rel="stylesheet" href="styles/voice.css">
+  <link rel="stylesheet" href="styles/polls.css">
+  <link rel="stylesheet" href="styles/games.css">
+  <link rel="stylesheet" href="styles/race.css">
 </head>
 <body>
+  <!-- Display mode: the /banner across the top of the screen. -->
+  <div id="display-banner" class="display-banner" role="status" aria-live="polite" hidden>
+    <div class="db-track"><span id="display-banner-text"></span></div>
+  </div>
+  <!-- Rain leaves bubbles soggy: this warps them like wet paper. -->
+  <svg class="svg-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="soggy" x="-5%" y="-10%" width="110%" height="125%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.045" numOctaves="2" seed="7"/>
+      <feDisplacementMap in="SourceGraphic" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+  <!-- Display mode: every poll that hasn't been cleared, with live results. -->
+  <section id="poll-board" class="poll-board" aria-label="Polls" aria-live="polite" hidden></section>
+
   <header id="topbar" class="topbar">
     <div class="title">
       <h1 id="room">LocalChatter</h1>
@@ -36,13 +55,8 @@
 
   <div id="banner" class="banner" hidden></div>
 
-  <!-- Display mode only: effects and sounds play over this; messages are never shown. -->
-  <section id="stage" class="stage" hidden>
-    <svg viewBox="0 0 512 512" width="96" height="96" aria-hidden="true"><rect width="512" height="512" rx="112" fill="currentColor" opacity=".15"/><path d="M136 152h240a40 40 0 0 1 40 40v120a40 40 0 0 1-40 40H236l-72 56v-56h-28a40 40 0 0 1-40-40V192a40 40 0 0 1 40-40z" fill="currentColor" opacity=".5"/></svg>
-    <p class="stage-title">Display</p>
-    <p class="stage-hint">Effects and sounds from the chat play here. Messages aren't shown.</p>
-    <button id="stage-tap" class="stage-tap" type="button" hidden>Tap to turn on sound</button>
-  </section>
+  <!-- Display mode: browsers only play sound after a tap, so a display shows this until then. -->
+  <button id="stage-tap" class="display-tap" type="button" hidden>🔊 Tap to turn on sound</button>
 
   <main id="messages" class="messages" aria-live="polite">
     <p class="empty" id="empty">Messages appear here while you're connected. Nothing is saved: when you leave, they're gone.</p>
@@ -66,6 +80,9 @@
       <button type="button" data-effect="fire">🔥 Fire</button>
       <button type="button" data-effect="earthquake">🌍 Earthquake</button>
       <button type="button" data-effect="lightning">⚡ Lightning</button>
+      <button type="button" data-effect="blackhole">🕳️ Black hole</button>
+      <button type="button" data-effect="blur">🌫️ Blur</button>
+      <button type="button" data-effect="rain">🌧️ Rain</button>
       <button type="button" data-effect="zalgo">👹 Zalgo</button>
       <button type="button" data-effect="zalgo off">✨ Restore</button>
     </div>
@@ -79,6 +96,19 @@
       </div>
       <div id="sb-buttons" class="effects-buttons"></div>
       <p id="sb-empty" class="hint">No sounds yet. Tap <strong>Manage sounds</strong> to add some.</p>
+    </div>
+    <div id="games" class="favs">
+      <div class="sb-head"><strong>Games</strong></div>
+      <div class="effects-buttons">
+        <button type="button" data-effect="wall">🧱 Wall</button>
+        <button id="hangman-new" type="button">🪢 Hangman</button>
+        <button id="race-new" type="button">🎯 Drop Race</button>
+      </div>
+      <p class="hint">Wall: knock it down by sending messages. Hangman: everyone's messages are guesses (their first letter). Drop Race: everyone's next message drops through the pins; first to the bottom wins.</p>
+    </div>
+    <div id="polls" class="favs">
+      <div class="sb-head"><strong>Polls</strong><button id="poll-new" type="button" class="link-button">📊 New poll</button><button id="quiz-new" type="button" class="link-button">🧠 New quiz</button></div>
+      <p class="hint">Ask everyone a question. Results show on the displays as votes come in. Type <code>/poll</code> to see the running polls.</p>
     </div>
     <div id="favs" class="favs">
       <div class="sb-head"><strong>Favourites</strong></div>
@@ -101,6 +131,7 @@
       <p class="hint" id="notify-hint" hidden></p>
       <label class="check"><input type="checkbox" id="sound-on" checked> Play sounds sent to the chat</label>
       <label class="check" id="vibrate-row" hidden><input type="checkbox" id="vibrate-on" checked> Vibrate for effects (earthquakes rumble)</label>
+      <label class="check" id="display-row"><input type="checkbox" id="display-on"> Display mode: a big-screen view for a TV or spare screen, with no message box</label>
       <label class="check" id="autohide-row"><input type="checkbox" id="autohide-on" checked> On phones, hide the header after a few seconds (tap the tab at the top to bring it back)</label>
 
       <h3>Languages</h3>
@@ -108,7 +139,11 @@
       <input id="langs" placeholder="Default, System, Elvish" spellcheck="false" autocapitalize="words">
       <label for="speak">You write in</label>
       <select id="speak"></select>
-      <p class="hint">Messages in languages you don't understand look like gibberish. Join and leave lines are in System. You can also use <code>/languages</code> and <code>/speak</code>.</p>
+      <p class="hint">Changes here apply straight away. Messages in languages you don't understand look like gibberish; join and leave lines are in System. You can also use <code>/languages</code> and <code>/speak</code>.</p>
+
+      <h3>Version</h3>
+      <p class="hint version-line">Last update: <strong id="version">…</strong> · <button id="check-update" type="button" class="link-button">Check for updates</button></p>
+      <p class="hint" id="update-status" role="status"></p>
 
       <h3>Role</h3>
       <p class="hint" id="role-line">Your role: member. Type /role to see the others.</p>
@@ -118,7 +153,6 @@
       <ul id="people" class="people"></ul>
 
       <div class="actions">
-        <button id="exit-display" type="button" class="secondary" hidden>Exit display</button>
         <button id="disconnect" type="button" class="secondary">Disconnect</button>
         <button id="save" type="submit" value="save">Save &amp; connect</button>
       </div>
@@ -141,6 +175,31 @@
   </div>
 
   <form id="composer" class="composer" autocomplete="off">
+    <!-- Voice messages: recording, then reviewing before sending or saving. -->
+    <div id="voice" class="voice" hidden>
+      <div id="voice-recording" class="voice-row" hidden>
+        <span class="voice-dot" aria-hidden="true"></span>
+        <strong>Recording</strong>
+        <span id="voice-time" class="voice-time" role="timer">0:00</span>
+        <span class="voice-meter" aria-hidden="true"><span id="voice-level"></span></span>
+        <button id="voice-stop" type="button" class="voice-btn primary">■ Stop</button>
+        <button id="voice-cancel" type="button" class="voice-btn" aria-label="Cancel recording">✕</button>
+      </div>
+      <div id="voice-review" hidden>
+        <audio id="voice-audio" controls preload="auto"></audio>
+        <label class="voice-label" for="voice-name">Name</label>
+        <input id="voice-name" maxlength="60">
+        <div class="voice-row">
+          <button id="voice-send" type="button" class="voice-btn primary">Send</button>
+          <button id="voice-save" type="button" class="voice-btn">💾 Save to my sounds</button>
+          <button id="voice-again" type="button" class="voice-btn">Re-record</button>
+          <button id="voice-discard" type="button" class="voice-btn" aria-label="Discard recording">✕</button>
+        </div>
+        <p id="voice-status" class="hint" role="status"></p>
+      </div>
+    </div>
+    <!-- Slash-command suggestions, shown above the message box while typing a command. -->
+    <ul id="autocomplete" class="autocomplete" role="listbox" aria-label="Commands" hidden></ul>
     <input id="file" type="file" multiple hidden>
     <button id="attach" class="icon-button" type="button" aria-label="Send image or file">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.5 6.5v10a4.5 4.5 0 0 1-9 0V5a3 3 0 0 1 6 0v10.5a1.5 1.5 0 0 1-3 0V6.5H9v9a3 3 0 0 0 6 0V5a4.5 4.5 0 0 0-9 0v11.5a6 6 0 0 0 12 0v-10z"/></svg>
@@ -152,10 +211,49 @@
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 3h7v7H3zm2 2v3h3V5zm9-2h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zm9-2h2v2h-2zm2 2h2v2h-2zm2-2h3v2h-3zm-4 4h2v3h-2zm4 0h3v3h-3zm-2 2h2v1h-2z"/></svg>
     </button>
     <textarea id="text" rows="1" placeholder="Message everyone" aria-label="Message" maxlength="4000"></textarea>
+    <button id="mic" class="send" type="button" aria-label="Record a voice message" hidden>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z"/></svg>
+    </button>
     <button id="send" class="send" type="submit" aria-label="Send">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
     </button>
   </form>
+
+  <dialog id="poll-dialog" aria-labelledby="poll-title">
+    <form id="poll-form">
+      <h2 id="poll-title">New poll</h2>
+      <label for="poll-question">Question</label>
+      <input id="poll-question" maxlength="200" placeholder="What should we have for lunch?">
+      <label>Options</label>
+      <div id="poll-options" class="poll-fields"></div>
+      <button id="poll-add" type="button" class="secondary-button">+ Add option</button>
+      <fieldset class="poll-types">
+        <legend>Type</legend>
+        <label class="check"><input type="radio" name="poll-type" value="poll" checked> <span><strong>Poll</strong>: everyone sees the results live, and who voted for what</span></label>
+        <label class="check"><input type="radio" name="poll-type" value="secret"> <span><strong>Secret poll</strong>: anonymous, and nobody sees the results until you close it</span></label>
+        <label class="check"><input type="radio" name="poll-type" value="quiz"> <span><strong>Quiz</strong>: tick the right answers; each person answers once and sees if they got it right</span></label>
+      </fieldset>
+      <p id="poll-status" class="hint" role="status"></p>
+      <div class="actions">
+        <button id="poll-cancel" type="button" class="secondary">Cancel</button>
+        <button type="submit">Send poll</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="hangman-dialog" aria-labelledby="hangman-title">
+    <form id="hangman-form">
+      <h2 id="hangman-title">New hangman game</h2>
+      <label for="hangman-phrase">Word or phrase to guess</label>
+      <input id="hangman-phrase" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Under the weather">
+      <p class="hint">Only you see it. The first letter of every message anyone else sends is a guess; six wrong guesses and it's lost.</p>
+      <p id="hangman-status" class="hint" role="status"></p>
+      <div class="actions">
+        <button id="hangman-cancel" type="button" class="secondary">Cancel</button>
+        <button type="submit">Start game</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="sounds" aria-labelledby="sounds-title">
     <form method="dialog" id="sounds-form">

@@ -56,4 +56,10 @@ images and files are base64-encoded inside the same JSON message. The relay
 checks each message, keeps only the expected fields, stamps the sender's name
 and the time, and sends it to everyone else. Effects are ordinary messages
 (`/fire` etc.) that each app recognises and animates, so the server needs no
-special support for them.
+special support for them. Polls have their own message type (new poll, vote,
+close, clear, and the reminder for someone who joins); the relay checks and
+passes these on like everything else, but keeps no polls and counts no votes.
+Hangman games work the same way (new game, clear, and the reminder); the
+guesses are just chat messages, which each app reads. Drop Race messages
+(start, entry, stop) are also sent back to the device that sent them, so every
+device times them by the relay's clock and plays the same race.

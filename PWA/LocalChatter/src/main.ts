@@ -6,6 +6,7 @@ import { catchUp, setupNotifySetting } from './features/background';
 import { startDisplay } from './features/display';
 import { renderFavourites } from './features/favourites';
 import { setRole } from './features/roles';
+import { setupUpdates } from './features/updates';
 import { connect, nudge } from './net/connection';
 import { DISPLAY, ROLES, state } from './state';
 import { KEY, load, save } from './storage';
@@ -14,6 +15,8 @@ import { initSettings, openSettings } from './ui/settings';
 import { setStatus } from './ui/status';
 import { normaliseRelay } from './util';
 import './features/soundboard';
+import './polls/commands';
+import './games';
 import './scan/menu';
 import './ui/composer';
 
@@ -27,12 +30,6 @@ function readSetupLink(): void {
   const relay = normaliseRelay(new URLSearchParams(hash).get('relay'));
   if (relay) save(KEY.relay, relay);
   history.replaceState(null, '', location.pathname + location.search);
-}
-
-function registerServiceWorker(): void {
-  // Service workers need https:// or localhost; from file:// the app still works, just not offline.
-  if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
-  navigator.serviceWorker.register('sw.js').catch(() => { /* not fatal */ });
 }
 
 function start(): void {
@@ -52,7 +49,7 @@ function start(): void {
   const savedRole = load(KEY.role);
   if (DISPLAY) { setRole('display', true); startDisplay(); }
   else setRole(ROLES[savedRole] && savedRole !== 'display' ? savedRole : 'member', true);
-  registerServiceWorker();
+  setupUpdates();
   if (state.relay && !firstRun) {
     connect();
   } else {

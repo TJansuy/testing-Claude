@@ -1,10 +1,12 @@
 // Service worker: caches the app so it opens with no internet connection.
 // Chat traffic goes over a WebSocket to the local server and is never cached.
-// Bump the version whenever cached files change so clients pick up the update.
+// The cache is named after the build time, so every build is a new version:
+// browsers notice this file changed, install the new one, and it takes over.
 export {};
 declare const self: ServiceWorkerGlobalScope;
+declare const __BUILD_TIME__: string;
 
-const CACHE = 'localchatter-v13';
+const CACHE = 'localchatter-' + __BUILD_TIME__;
 const ASSETS = [
   './',
   'index.html',
@@ -17,7 +19,9 @@ const ASSETS = [
   'styles/dashboard.css',
   'styles/panels.css',
   'styles/effects.css',
+  'styles/effects-more.css', 'styles/polls.css', 'styles/games.css', 'styles/race.css',
   'styles/display.css',
+  'styles/voice.css',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',
@@ -27,7 +31,9 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+  // Fetch every file fresh (not from the browser's HTTP cache), so the new
+  // version really is new.
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' })))));
   void self.skipWaiting();
 });
 
@@ -53,6 +59,11 @@ self.addEventListener('fetch', (event) => {
         return Response.error();
       })),
   );
+});
+
+// The app asks which version this is, to tell whether it's behind.
+self.addEventListener('message', (event) => {
+  if (event.data === 'version' && event.ports[0]) event.ports[0].postMessage(__BUILD_TIME__);
 });
 
 // Tapping a message notification brings LocalChatter back (or opens it).

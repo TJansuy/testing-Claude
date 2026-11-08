@@ -27,6 +27,9 @@ declare class BarcodeDetector {
 interface JsQrResult { data: string }
 type JsQr = (data: Uint8ClampedArray, width: number, height: number, options?: { inversionAttempts?: string }) => JsQrResult | null;
 
+/** When this build was made (set by the build). */
+declare const __BUILD_TIME__: string;
+
 interface WakeLock { request(type: 'screen'): Promise<unknown> }
 
 interface Window {

@@ -11,10 +11,10 @@
   function $(id2) {
     return document.getElementById(id2);
   }
-  function el(tag, cls, text2) {
+  function el(tag, cls, text4) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
-    if (text2 != null) e.textContent = text2;
+    if (text4 != null) e.textContent = text4;
     return e;
   }
   var input = (id2) => $(id2);
@@ -35,7 +35,8 @@
     notify: "localchatter-notify",
     autohide: "localchatter-autohide",
     languages: "localchatter-languages",
-    speak: "localchatter-speak"
+    speak: "localchatter-speak",
+    device: "localchatter-device"
   };
   function load(key) {
     try {
@@ -66,8 +67,8 @@
   function cleanName(name) {
     return String(name || "").replace(/[^\p{L}\p{N} '\-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 24);
   }
-  function split(text2) {
-    return String(text2 || "").split(",").map(cleanName).filter(Boolean);
+  function split(text4) {
+    return String(text4 || "").split(",").map(cleanName).filter(Boolean);
   }
   function known() {
     try {
@@ -105,8 +106,8 @@
   }
   function nameOf(lang) {
     const l = id(lang);
-    const mine = known().filter((n2) => id(n2) === l)[0];
-    if (mine) return mine;
+    const mine2 = known().filter((n2) => id(n2) === l)[0];
+    if (mine2) return mine2;
     const n = cleanName(lang);
     return n.charAt(0).toUpperCase() + n.slice(1);
   }
@@ -143,10 +144,10 @@
   ];
   var SYSTEM_STYLE = ["0x", "1F", "A7", "3C", "E9", "0b", "10", "01", "11", "FF", "7E", "D4", "//", "##"];
   var styleFor = (lang) => id(lang) === "system" ? SYSTEM_STYLE : STYLES[hash(id(lang)) % STYLES.length];
-  function gibberish(text2, lang, seed) {
+  function gibberish(text4, lang, seed) {
     const style = styleFor(lang);
     const r = rng(hash(id(lang) + "|" + seed));
-    return String(text2).replace(/[\p{L}\p{N}]+/gu, (word) => {
+    return String(text4).replace(/[\p{L}\p{N}]+/gu, (word) => {
       const len = Array.from(word).length;
       let out = "";
       while (out.length < len) out += style[Math.floor(r() * style.length)];
@@ -156,57 +157,11 @@
       return out;
     });
   }
-  function render(text2, lang, seed) {
-    if (understands(lang || "default")) return text2;
-    return gibberish(text2, lang || "default", seed);
+  function render(text4, lang, seed) {
+    if (understands(lang || "default")) return text4;
+    return gibberish(text4, lang || "default", seed);
   }
   var hue = (name) => hash(id(name)) % 360;
-
-  // PWA/LocalChatter/src/state.ts
-  var DISPLAY = new URLSearchParams(location.search).has("display");
-  var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
-  var state = {
-    ws: null,
-    relay: "",
-    name: "",
-    me: null,
-    peers: /* @__PURE__ */ new Map(),
-    maxBytes: DEFAULT_MAX_BYTES,
-    /** The user wants to be connected (reconnect if it drops). */
-    wanted: false,
-    retry: 0,
-    retryTimer: 0,
-    role: "member",
-    debug: false,
-    soundOn: true,
-    /** True while drawing messages that arrived in the background (not replayed). */
-    catchingUp: false
-  };
-  var ROLES = {
-    member: { description: "Chat as normal." },
-    monitor: { description: "Also sees system messages, such as role changes.", viewSystem: true },
-    spy: { description: "Can spy on chosen people to see whispers to and from them (/spy <names>).", spy: true },
-    display: { description: "A screen that only shows effects and plays sounds, never messages. Open the app's /Display link.", display: true },
-    admin: {
-      description: "Sees system messages and who really sent spoofed messages, has a soundboard, and can use debug mode.",
-      viewSystem: true,
-      debug: true,
-      impersonate: true,
-      seeSpoofer: true,
-      soundboard: true
-    }
-  };
-  function can(perm) {
-    return !!(ROLES[state.role] || ROLES.member)[perm];
-  }
-  function nameOf2(id2) {
-    if (state.me && id2 === state.me.id) return state.me.name;
-    const p = id2 ? state.peers.get(id2) : void 0;
-    return p ? p.name : "someone";
-  }
-  function connected() {
-    return !!state.ws && state.ws.readyState === WebSocket.OPEN && !!state.me;
-  }
 
   // PWA/LocalChatter/src/chat/list.ts
   var MAX_MESSAGES = 300;
@@ -224,20 +179,24 @@
     }
     if (stick) list.scrollTop = list.scrollHeight;
   }
-  function systemLine(text2) {
-    if (!DISPLAY) append(el("p", "system", text2));
+  function systemLine(text4) {
+    append(el("p", "system", text4));
   }
   var original = /* @__PURE__ */ new WeakMap();
   var notUnderstood = (lang) => "In " + nameOf(lang) + ", which you don't understand";
-  function langText(tag, cls, text2, lang, seed) {
+  function langText(tag, cls, text4, lang, seed) {
     const e = el(tag, (cls ? cls + " " : "") + "lc");
-    original.set(e, { text: text2, lang, seed });
-    e.textContent = render(text2, lang, seed);
+    original.set(e, { text: text4, lang, seed });
+    e.textContent = render(text4, lang, seed);
     if (!understands(lang)) e.title = notUnderstood(lang);
     return e;
   }
-  function systemNotice(text2, cls) {
-    if (!DISPLAY) append(langText("p", "system" + (cls ? " " + cls : ""), text2, "system", text2 + "|" + Date.now()));
+  function systemNotice(text4, cls) {
+    append(langText("p", "system" + (cls ? " " + cls : ""), text4, "system", text4 + "|" + Date.now()));
+  }
+  function showLanguage(box2, tag, known2) {
+    box2.classList.toggle("in-lang", known2);
+    if (tag) tag.hidden = !known2;
   }
   function refreshLanguages() {
     document.querySelectorAll(".lc").forEach((n) => {
@@ -248,6 +207,9 @@
       n.title = known2 ? "" : notUnderstood(info.lang);
       const bubble = n.closest(".msg");
       if (bubble) bubble.classList.toggle("foreign", !known2);
+    });
+    document.querySelectorAll(".msg[data-lang]").forEach((box2) => {
+      showLanguage(box2, box2.querySelector(".lang-tag"), "mine" in box2.dataset || understands(box2.dataset.lang));
     });
     const sp = speaking();
     const t = $("text");
@@ -270,6 +232,7 @@
   var effects_exports = {};
   __export(effects_exports, {
     DEFAULT_MS: () => DEFAULT_MS,
+    GAMES: () => GAMES,
     activeNames: () => activeNames,
     canVibrate: () => canVibrate,
     isActive: () => isActive,
@@ -323,6 +286,197 @@
     };
   }
 
+  // PWA/LocalChatter/src/effects/blackhole.ts
+  var SWALLOW_MS = 1800;
+  function centre() {
+    const list3 = document.getElementById("messages");
+    const r = list3 && list3.offsetParent ? list3.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+  function swallow(el2, calm) {
+    const r = el2.getBoundingClientRect();
+    const ghost = el2.cloneNode(true);
+    el2.remove();
+    ghost.classList.add("fx-ghost");
+    Object.assign(ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", maxWidth: "none", margin: "0" });
+    document.body.appendChild(ghost);
+    let anim2;
+    if (calm) {
+      anim2 = ghost.animate([{ opacity: 1 }, { opacity: 0, transform: "scale(.6)" }], { duration: 900, fill: "forwards" });
+    } else {
+      const c = centre();
+      const ex = r.left + r.width / 2;
+      const ey = r.top + r.height / 2;
+      const dist = Math.hypot(c.x - ex, c.y - ey) || 1;
+      const start2 = Math.atan2(ey - c.y, ex - c.x);
+      const turn = (Math.random() < 0.5 ? -1 : 1) * Math.PI * (2 + Math.random());
+      const frames = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const rad = dist * Math.pow(1 - t, 1.3);
+        const a = start2 + turn * t;
+        frames.push({
+          transform: `translate(${c.x + Math.cos(a) * rad - ex}px, ${c.y + Math.sin(a) * rad - ey}px) rotate(${turn * t * 57.3}deg) scale(${1 - 0.97 * t})`,
+          opacity: t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25,
+          offset: t
+        });
+      }
+      anim2 = ghost.animate(frames, { duration: SWALLOW_MS, easing: "cubic-bezier(.45, 0, .85, .55)", fill: "forwards" });
+    }
+    anim2.finished.then(() => ghost.remove(), () => ghost.remove());
+  }
+  function startBlackhole() {
+    vibrate([80, 40, 120, 40, 200]);
+    const calm = reducedMotion();
+    const body = document.body;
+    body.classList.remove("fx-blackhole-out");
+    body.classList.add("fx-blackhole");
+    const list3 = document.getElementById("messages");
+    const observer = new MutationObserver((recs) => recs.forEach((rec2) => rec2.addedNodes.forEach((n) => {
+      if (n instanceof HTMLElement && !n.classList.contains("effect-line") && (n.classList.contains("msg") || n.classList.contains("system"))) swallow(n, calm);
+    })));
+    if (list3) observer.observe(list3, { childList: true });
+    const o = overlayCanvas("fx-blackhole-vortex");
+    const { ctx: ctx2, w, h, dpr } = o;
+    const R = Math.min(w, h) * 0.24;
+    const motes = [];
+    const spawn = (outer) => ({
+      a: Math.random() * Math.PI * 2,
+      r: R * (outer ? 0.95 + Math.random() * 0.1 : 0.25 + Math.random() * 0.8),
+      speed: 0.6 + Math.random() * 0.9,
+      size: (0.6 + Math.random() * 1.6) * dpr,
+      hue: 20 + Math.random() * 260
+    });
+    for (let i = 0; i < 220; i++) motes.push(spawn(false));
+    const start2 = performance.now();
+    let stoppedAt = 0;
+    let last = start2;
+    function frame2(now) {
+      if (!o.canvas.isConnected) return;
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
+      last = now;
+      const fade = stoppedAt ? Math.max(0, 1 - (now - stoppedAt) / 900) : Math.min(1, (now - start2) / 800);
+      const c = centre();
+      const cx = c.x * dpr;
+      const cy = c.y * dpr;
+      ctx2.clearRect(0, 0, w, h);
+      ctx2.globalAlpha = fade;
+      const halo = ctx2.createRadialGradient(cx, cy, R * 0.15, cx, cy, R * 1.25);
+      halo.addColorStop(0, "rgba(120, 60, 200, .55)");
+      halo.addColorStop(0.45, "rgba(255, 120, 40, .18)");
+      halo.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx2.fillStyle = halo;
+      ctx2.fillRect(0, 0, w, h);
+      ctx2.globalCompositeOperation = "lighter";
+      motes.forEach((m, i) => {
+        if (!calm) {
+          m.a += m.speed * (R / Math.max(m.r, R * 0.1)) * dt * 1.4;
+          m.r -= R * 0.08 * m.speed * dt;
+          if (m.r < R * 0.16) motes[i] = spawn(true);
+        }
+        ctx2.fillStyle = `hsla(${m.hue}, 90%, ${55 + 25 * (1 - m.r / R)}%, .85)`;
+        ctx2.beginPath();
+        ctx2.ellipse(cx + Math.cos(m.a) * m.r, cy + Math.sin(m.a) * m.r * 0.55, m.size, m.size, 0, 0, Math.PI * 2);
+        ctx2.fill();
+      });
+      ctx2.globalCompositeOperation = "source-over";
+      const core = ctx2.createRadialGradient(cx, cy, 0, cx, cy, R * 0.3);
+      core.addColorStop(0, "rgba(0, 0, 0, 1)");
+      core.addColorStop(0.75, "rgba(0, 0, 0, 1)");
+      core.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx2.fillStyle = core;
+      ctx2.beginPath();
+      ctx2.arc(cx, cy, R * 0.3, 0, Math.PI * 2);
+      ctx2.fill();
+      ctx2.globalAlpha = 1;
+      if (!stoppedAt || fade > 0) requestAnimationFrame(frame2);
+      else o.canvas.remove();
+    }
+    requestAnimationFrame(frame2);
+    return {
+      stop(_early, hard) {
+        observer.disconnect();
+        if (hard) {
+          o.canvas.remove();
+          body.classList.remove("fx-blackhole", "fx-blackhole-out");
+          return;
+        }
+        stoppedAt = performance.now();
+        body.classList.add("fx-blackhole-out");
+        body.classList.remove("fx-blackhole");
+        setTimeout(() => body.classList.remove("fx-blackhole-out"), 1e3);
+      }
+    };
+  }
+
+  // PWA/LocalChatter/src/effects/blur.ts
+  function startBlur() {
+    vibrate(30);
+    const body = document.body;
+    const fog = document.createElement("div");
+    fog.className = "fx fx-fog";
+    fog.setAttribute("aria-hidden", "true");
+    body.appendChild(fog);
+    body.classList.remove("fx-blur-out");
+    void body.offsetWidth;
+    body.classList.add("fx-blur");
+    requestAnimationFrame(() => fog.classList.add("on"));
+    let done;
+    return {
+      stop(_early, hard) {
+        clearTimeout(done);
+        if (hard) {
+          body.classList.remove("fx-blur", "fx-blur-out");
+          fog.remove();
+          return;
+        }
+        body.classList.add("fx-blur-out");
+        body.classList.remove("fx-blur");
+        fog.classList.add("out");
+        fog.classList.remove("on");
+        done = setTimeout(() => {
+          body.classList.remove("fx-blur-out");
+          fog.remove();
+        }, 1700);
+      }
+    };
+  }
+
+  // PWA/LocalChatter/src/effects/marks.ts
+  var rnd = (a, b) => a + Math.random() * (b - a);
+  function char(box2) {
+    box2.classList.add("charred");
+  }
+  function shock(box2) {
+    const hits = Math.min(3, Number(box2.dataset.shocks || 0) + 1);
+    box2.dataset.shocks = String(hits);
+    const depth = 1.5 + hits * 1.5;
+    const bite = () => rnd(0, depth).toFixed(1) + "px";
+    const pts = [];
+    const n = 14;
+    for (let i = 0; i <= n; i++) pts.push((i / n * 100).toFixed(1) + "% " + (i % 2 ? bite() : "0px"));
+    for (let i = 1; i <= n / 2; i++) pts.push("calc(100% - " + (i % 2 ? bite() : "0px") + ") " + (i / (n / 2) * 100).toFixed(1) + "%");
+    for (let i = n - 1; i >= 0; i--) pts.push((i / n * 100).toFixed(1) + "% calc(100% - " + (i % 2 ? bite() : "0px") + ")");
+    for (let i = n / 2 - 1; i > 0; i--) pts.push((i % 2 ? bite() : "0px") + " " + (i / (n / 2) * 100).toFixed(1) + "%");
+    box2.style.setProperty("--shock-clip", "polygon(" + pts.join(", ") + ")");
+    box2.style.setProperty("--shock-tilt", (rnd(0.6, 1.4) * hits * (Math.random() < 0.5 ? -1 : 1)).toFixed(2) + "deg");
+    const r = () => Math.round(rnd(2, 24)) + "px";
+    box2.style.setProperty("--shock-radius", r() + " " + r() + " " + r() + " " + r());
+    box2.classList.add("shocked");
+  }
+  var wetness = /* @__PURE__ */ new WeakMap();
+  function wet(box2, amount = 1) {
+    const w = (wetness.get(box2) || 0) + amount;
+    wetness.set(box2, w);
+    if (w >= 5 && !box2.classList.contains("soggy")) {
+      box2.style.setProperty("--sog-x", rnd(-16, -9).toFixed(1) + "deg");
+      box2.style.setProperty("--sog-y", rnd(-7, 7).toFixed(1) + "deg");
+      box2.style.setProperty("--sog-r", rnd(-2, 2).toFixed(1) + "deg");
+      box2.classList.add("soggy");
+    }
+    return box2.classList.contains("soggy");
+  }
+
   // PWA/LocalChatter/src/effects/fire.ts
   var flameSprite = null;
   function getFlameSprite() {
@@ -340,9 +494,43 @@
     flameSprite = s;
     return s;
   }
+  function burnMessages() {
+    const body = document.body;
+    body.classList.remove("fx-burnout");
+    body.classList.add("fx-burning");
+    let out;
+    const lit = /* @__PURE__ */ new Map();
+    const scorch = setInterval(() => {
+      const now = performance.now();
+      document.querySelectorAll("#messages .msg:not(.charred)").forEach((m) => {
+        const since = lit.get(m);
+        if (since === void 0) lit.set(m, now);
+        else if (now - since >= 700) char(m);
+      });
+    }, 250);
+    return {
+      stop(_early, hard) {
+        clearInterval(scorch);
+        clearTimeout(out);
+        if (hard) {
+          body.classList.remove("fx-burning", "fx-burnout");
+          return;
+        }
+        body.classList.add("fx-burnout");
+        out = setTimeout(() => body.classList.remove("fx-burning", "fx-burnout"), 1e3);
+      }
+    };
+  }
   function startFire() {
     vibrate([60, 40, 60]);
-    if (reducedMotion()) return holdGlow("fx-fire-glow");
+    const bubbles = burnMessages();
+    if (reducedMotion()) {
+      const glow = holdGlow("fx-fire-glow");
+      return { stop(early2, hard) {
+        glow.stop(early2, hard);
+        bubbles.stop(early2, hard);
+      } };
+    }
     const o = overlayCanvas("fx-fire");
     const { ctx: ctx2, w, h, dpr } = o;
     const sprite = getFlameSprite();
@@ -352,7 +540,7 @@
     let stoppedAt = 0;
     let gone = false;
     const perFrame = Math.max(8, Math.round(w / (28 * dpr)));
-    function frame(now) {
+    function frame2(now) {
       if (gone) return;
       const t = now - start2;
       if (!stoppedAt) {
@@ -391,12 +579,13 @@
         ctx2.globalAlpha = p.life * 0.8;
         ctx2.drawImage(sprite, p.x - s / 2, p.y - s / 2, s, s);
       }
-      if (!stoppedAt || parts.length || fade > 0) requestAnimationFrame(frame);
+      if (!stoppedAt || parts.length || fade > 0) requestAnimationFrame(frame2);
       else o.canvas.remove();
     }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(frame2);
     return {
-      stop(_early, hard) {
+      stop(early2, hard) {
+        bubbles.stop(early2, hard);
         if (hard) {
           gone = true;
           o.canvas.remove();
@@ -408,19 +597,60 @@
   }
 
   // PWA/LocalChatter/src/effects/lightning.ts
-  function boltPath(x, y, len, angle, rough, depth, out) {
-    const pts = [[x, y]];
-    const steps = 14;
-    for (let i = 1; i <= steps; i++) {
-      x += Math.sin(angle) * len / steps + (Math.random() - 0.5) * rough;
-      y += Math.cos(angle) * len / steps;
-      pts.push([x, y]);
-      if (depth > 0 && Math.random() < 0.12) {
-        boltPath(x, y, len * 0.4, angle + (Math.random() < 0.5 ? -0.7 : 0.7), rough * 0.6, depth - 1, out);
-      }
+  var GROW_MS = 280;
+  function jag(a, b, rough, dpr) {
+    const dist = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const n = Math.max(2, Math.ceil(dist / (22 * dpr)));
+    const out = [];
+    for (let i = 1; i <= n; i++) {
+      const t = i / n;
+      const j = i === n ? 0 : (Math.random() - 0.5) * rough;
+      out.push([a[0] + (b[0] - a[0]) * t + j, a[1] + (b[1] - a[1]) * t]);
     }
-    out.push({ pts, width: depth + 1 });
     return out;
+  }
+  function branch(start2, from, dpr) {
+    const angle = (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
+    const len = (50 + Math.random() * 70) * dpr;
+    const end = [start2[0] + Math.sin(angle) * len, start2[1] + Math.cos(angle) * len];
+    return { pts: [start2, ...jag(start2, end, 14 * dpr, dpr)], width: 1, from };
+  }
+  function plan(w, h, dpr) {
+    const msgs = Array.from(document.querySelectorAll("#messages .msg")).map((el2) => ({ el: el2, r: el2.getBoundingClientRect() })).filter(({ r }) => r.height > 0 && r.bottom > 0 && r.top < innerHeight).sort((a, b) => a.r.top - b.r.top);
+    const hit = msgs.map(() => Math.random() < 0.5);
+    if (msgs.length && !hit.some(Boolean)) hit[Math.floor(Math.random() * msgs.length)] = true;
+    if (msgs.length > 1 && hit.every(Boolean)) hit[Math.floor(Math.random() * msgs.length)] = false;
+    const way = [[msgs.length ? (msgs[0].r.left + Math.random() * msgs[0].r.width) * dpr : w * (0.25 + Math.random() * 0.5), 0]];
+    const hits = [];
+    msgs.forEach(({ el: el2, r }, i) => {
+      const y = (r.top + r.height / 2) * dpr;
+      if (hit[i]) {
+        way.push([(r.left + r.width * (0.2 + Math.random() * 0.6)) * dpr, y]);
+        hits.push({ el: el2, y });
+      } else {
+        const x = r.left > innerWidth - r.right ? Math.max(6, r.left - 14 - Math.random() * 18) : Math.min(innerWidth - 6, r.right + 14 + Math.random() * 18);
+        way.push([x * dpr, y]);
+      }
+    });
+    const last = way[way.length - 1];
+    way.push([Math.min(w, Math.max(0, last[0] + (Math.random() - 0.5) * 80 * dpr)), h]);
+    const main = [way[0]];
+    for (let i = 1; i < way.length; i++) main.push(...jag(way[i - 1], way[i], 18 * dpr, dpr));
+    const bolts = [{ pts: main, width: 3, from: 0 }];
+    for (let k = 0; k < 3; k++) {
+      const at = 2 + Math.floor(Math.random() * Math.max(1, main.length - 4));
+      if (main[at]) bolts.push(branch(main[at], at, dpr));
+    }
+    return { bolts, hits, skipped: msgs.length - hits.length };
+  }
+  function jolt(el2) {
+    el2.classList.remove("struck");
+    void el2.offsetWidth;
+    el2.classList.add("struck");
+    setTimeout(() => {
+      el2.classList.remove("struck");
+      shock(el2);
+    }, 850);
   }
   function strike(canvases) {
     vibrate([40, 80, 40]);
@@ -428,11 +658,14 @@
     const o = overlayCanvas("fx-lightning");
     canvases.add(o.canvas);
     const { ctx: ctx2, w, h, dpr } = o;
-    const bolts = boltPath(w * (0.25 + Math.random() * 0.5), 0, h * 0.85, (Math.random() - 0.5) * 0.3, 40 * dpr, 2, []);
-    const strikes = calm ? [0] : [0, 380];
-    const END_MS = calm ? 1400 : 1100;
+    const { bolts, hits, skipped } = plan(w, h, dpr);
+    document.dispatchEvent(new CustomEvent("localchatter:strike", { detail: { hit: hits.length, skipped } }));
+    const main = bolts[0].pts;
+    const flashes = calm ? [] : [GROW_MS, GROW_MS + 380];
+    const END_MS = GROW_MS + (calm ? 1400 : 1100);
     const start2 = performance.now();
-    function drawBolt(alpha) {
+    const struck = /* @__PURE__ */ new Set();
+    function drawBolts(alpha, upTo) {
       ctx2.save();
       ctx2.globalAlpha = alpha;
       ctx2.lineCap = "round";
@@ -440,13 +673,15 @@
       ctx2.shadowColor = "rgba(160, 200, 255, 1)";
       ctx2.shadowBlur = 24 * dpr;
       bolts.forEach((b) => {
-        ctx2.strokeStyle = "rgba(200, 225, 255, 1)";
-        ctx2.lineWidth = b.width * 2.5 * dpr;
+        if (b.from >= upTo) return;
+        const pts = b === bolts[0] ? b.pts.slice(0, upTo + 1) : b.pts;
         ctx2.beginPath();
-        b.pts.forEach((p, i) => {
+        pts.forEach((p, i) => {
           if (i) ctx2.lineTo(p[0], p[1]);
           else ctx2.moveTo(p[0], p[1]);
         });
+        ctx2.strokeStyle = "rgba(200, 225, 255, 1)";
+        ctx2.lineWidth = b.width * 2.5 * dpr;
         ctx2.stroke();
         ctx2.strokeStyle = "#ffffff";
         ctx2.lineWidth = b.width * dpr;
@@ -454,27 +689,38 @@
       });
       ctx2.restore();
     }
-    function frame(now) {
+    function frame2(now) {
       if (!o.canvas.isConnected) return;
-      const t = now - start2;
+      const t = Math.max(0, now - start2);
       ctx2.clearRect(0, 0, w, h);
-      let a = 0;
-      strikes.forEach((s) => {
-        if (t >= s) a = Math.max(a, 1 - (t - s) / (calm ? 1400 : 650));
+      const upTo = Math.min(main.length - 1, Math.ceil((main.length - 1) * Math.min(1, t / GROW_MS)));
+      const tipY = main[upTo][1];
+      hits.forEach((hit) => {
+        if (!struck.has(hit) && tipY >= hit.y) {
+          struck.add(hit);
+          jolt(hit.el);
+        }
       });
-      a = Math.max(0, a);
-      if (!calm && a > 0) {
-        ctx2.fillStyle = "rgba(225, 235, 255, " + 0.55 * a + ")";
-        ctx2.fillRect(0, 0, w, h);
-      }
-      if (a > 0) drawBolt(calm ? a * 0.8 : a);
-      if (t < END_MS) requestAnimationFrame(frame);
+      let a = t < GROW_MS ? 1 : 0;
+      const fadeMs = calm ? 1400 : 650;
+      if (t >= GROW_MS) a = Math.max(0, 1 - (t - GROW_MS) / fadeMs);
+      flashes.forEach((f) => {
+        if (t < f) return;
+        const k = Math.max(0, 1 - (t - f) / fadeMs);
+        a = Math.max(a, k);
+        if (k > 0) {
+          ctx2.fillStyle = "rgba(225, 235, 255, " + 0.55 * k + ")";
+          ctx2.fillRect(0, 0, w, h);
+        }
+      });
+      if (a > 0) drawBolts(calm ? a * 0.8 : a, upTo);
+      if (t < END_MS) requestAnimationFrame(frame2);
       else {
         o.canvas.remove();
         canvases.delete(o.canvas);
       }
     }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(frame2);
   }
   function startLightning() {
     let stopped = false;
@@ -523,8 +769,8 @@
       const t = i / steps;
       let envelope = t < peakAt ? t / peakAt : Math.pow(1 - (t - peakAt) / (1 - peakAt), 1.6);
       envelope += 0.35 * Math.exp(-Math.pow((t - aftershock) / 0.06, 2));
-      const jolt = 0.65 + Math.random() * 0.35;
-      out.push(Math.min(1, envelope * jolt));
+      const jolt2 = 0.65 + Math.random() * 0.35;
+      out.push(Math.min(1, envelope * jolt2));
     }
     return rumblePattern(out);
   }
@@ -538,28 +784,455 @@
     }, 1650);
     if (reducedMotion()) {
       const g = holdGlow("fx-quake-glow");
-      return { stop(early, hard) {
+      return { stop(early2, hard) {
         clearTimeout(next);
-        if (early) vibrate(0);
-        g.stop(early, hard);
+        if (early2) vibrate(0);
+        g.stop(early2, hard);
       } };
     }
-    const root = document.body;
-    root.classList.remove("fx-shake");
-    void root.offsetWidth;
-    root.classList.add("fx-shake");
+    const root2 = document.body;
+    root2.classList.remove("fx-shake");
+    void root2.offsetWidth;
+    root2.classList.add("fx-shake");
     return {
-      stop(early) {
+      stop(early2) {
         clearTimeout(next);
-        if (early) vibrate(0);
-        root.classList.remove("fx-shake");
+        if (early2) vibrate(0);
+        root2.classList.remove("fx-shake");
+      }
+    };
+  }
+
+  // PWA/LocalChatter/src/effects/rain.ts
+  var MAX_LEVEL = 46;
+  var DRAIN_PER_S = 34;
+  function startRain() {
+    vibrate(20);
+    const calm = reducedMotion();
+    const o = overlayCanvas("fx-rain");
+    const { ctx: ctx2, w, h, dpr } = o;
+    const drops = [];
+    const bits = [];
+    const ripples = [];
+    let ledges = [];
+    let level = 0;
+    let stoppedAt = 0;
+    let last = performance.now();
+    let ledgeAt = 0;
+    const perSecond = Math.max(40, Math.round(w / dpr / 4));
+    function readLedges() {
+      ledges = Array.from(document.querySelectorAll("#messages .msg")).map((m) => ({ m, r: m.getBoundingClientRect() })).filter(({ r }) => r.height > 0 && r.bottom > 0 && r.top < innerHeight).map(({ m, r }) => ({ el: m, left: r.left * dpr, right: r.right * dpr, top: r.top * dpr, bottom: r.bottom * dpr }));
+    }
+    function floor() {
+      const bar = document.getElementById("composer");
+      const r = bar && bar.offsetParent ? bar.getBoundingClientRect() : null;
+      return (r ? r.top : innerHeight) * dpr;
+    }
+    function frame2(now) {
+      if (!o.canvas.isConnected) return;
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
+      last = now;
+      if (now - ledgeAt > 250) {
+        readLedges();
+        ledgeAt = now;
+      }
+      const surface = floor() - level;
+      if (!stoppedAt && !calm) {
+        let n = perSecond * dt;
+        while (n > 0) {
+          if (n >= 1 || Math.random() < n) drops.push({ x: Math.random() * w, y: -20 * dpr, vy: (700 + Math.random() * 400) * dpr, len: (10 + Math.random() * 12) * dpr });
+          n -= 1;
+        }
+      }
+      if (!stoppedAt && calm) {
+        level = Math.min(MAX_LEVEL * dpr, level + 4 * dpr * dt);
+        ledges.forEach((l) => wet(l.el, dt * 2));
+      }
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const d = drops[i];
+        const prev = d.y;
+        d.y += d.vy * dt;
+        const hit = ledges.find((l) => d.x >= l.left && d.x <= l.right && prev < l.top && d.y >= l.top);
+        if (hit) {
+          for (let k = 0; k < 4; k++) bits.push({ x: d.x, y: hit.top, vx: (Math.random() - 0.5) * 160 * dpr, vy: -(60 + Math.random() * 120) * dpr, life: 1 });
+          drops.splice(i, 1);
+          if (wet(hit.el) && Math.random() < 0.35) drops.push({ x: d.x, y: hit.bottom + 1, vy: 260 * dpr, len: 6 * dpr });
+        } else if (d.y >= surface) {
+          ripples.push({ x: d.x, r: 2 * dpr, life: 1 });
+          if (!stoppedAt) level = Math.min(MAX_LEVEL * dpr, level + 0.09 * dpr);
+          drops.splice(i, 1);
+        }
+      }
+      for (let i = bits.length - 1; i >= 0; i--) {
+        const b = bits[i];
+        b.vy += 900 * dpr * dt;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life -= dt * 2.2;
+        if (b.life <= 0) bits.splice(i, 1);
+      }
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        ripples[i].r += 40 * dpr * dt;
+        ripples[i].life -= dt * 2;
+        if (ripples[i].life <= 0) ripples.splice(i, 1);
+      }
+      if (stoppedAt) level = Math.max(0, level - DRAIN_PER_S * dpr * dt);
+      ctx2.clearRect(0, 0, w, h);
+      ctx2.strokeStyle = "rgba(150, 190, 255, .55)";
+      ctx2.lineWidth = 1.2 * dpr;
+      ctx2.beginPath();
+      drops.forEach((d) => {
+        ctx2.moveTo(d.x, d.y);
+        ctx2.lineTo(d.x - 1.5 * dpr, d.y - d.len);
+      });
+      ctx2.stroke();
+      ctx2.fillStyle = "rgba(170, 205, 255, .8)";
+      bits.forEach((b) => {
+        ctx2.globalAlpha = Math.max(0, b.life);
+        ctx2.fillRect(b.x, b.y, 2 * dpr, 2 * dpr);
+      });
+      ctx2.globalAlpha = 1;
+      if (level > 0.5) {
+        const base = floor();
+        const top = base - level;
+        const wave = calm ? 0 : 2.2 * dpr;
+        const g = ctx2.createLinearGradient(0, top, 0, base);
+        g.addColorStop(0, "rgba(110, 165, 235, .45)");
+        g.addColorStop(1, "rgba(45, 95, 185, .65)");
+        ctx2.fillStyle = g;
+        ctx2.beginPath();
+        ctx2.moveTo(0, base);
+        for (let x = 0; x <= w; x += 8 * dpr) ctx2.lineTo(x, top + Math.sin(x / (26 * dpr) + now / 260) * wave);
+        ctx2.lineTo(w, base);
+        ctx2.closePath();
+        ctx2.fill();
+        ctx2.strokeStyle = "rgba(220, 238, 255, .7)";
+        ctx2.lineWidth = 1.5 * dpr;
+        ctx2.beginPath();
+        for (let x = 0; x <= w; x += 8 * dpr) ctx2[x ? "lineTo" : "moveTo"](x, top + Math.sin(x / (26 * dpr) + now / 260) * wave);
+        ctx2.stroke();
+        ctx2.strokeStyle = "rgba(220, 238, 255, .5)";
+        ripples.forEach((rp) => {
+          ctx2.globalAlpha = rp.life;
+          ctx2.beginPath();
+          ctx2.ellipse(rp.x, top, rp.r, rp.r * 0.3, 0, 0, Math.PI * 2);
+          ctx2.stroke();
+        });
+        ctx2.globalAlpha = 1;
+      }
+      if (!stoppedAt || drops.length || bits.length || level > 0) requestAnimationFrame(frame2);
+      else o.canvas.remove();
+    }
+    requestAnimationFrame(frame2);
+    return {
+      stop(_early, hard) {
+        if (hard) {
+          o.canvas.remove();
+          return;
+        }
+        if (!stoppedAt) stoppedAt = performance.now();
+      }
+    };
+  }
+
+  // PWA/LocalChatter/src/chat/raw.ts
+  var raw = /* @__PURE__ */ new WeakMap();
+  var setRawText = (box2, text4) => {
+    raw.set(box2, text4);
+  };
+  var rawText = (box2) => raw.get(box2) || "";
+
+  // PWA/LocalChatter/src/effects/wall-rules.ts
+  var VARIANTS = ["any", "unique", "long"];
+  function hash2(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  var wallStrength = (seed) => 3 + hash2(seed) % 48;
+  var wallVariant = (seed) => VARIANTS[hash2(seed + "|variant") % VARIANTS.length];
+  function words(text4) {
+    return text4.toLowerCase().normalize("NFKC").split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean);
+  }
+  function lengthNeeded(level) {
+    if (level <= 0) return { chars: 0, word: 0 };
+    return { chars: Math.round(8 + level * 62), word: Math.round(4 + level * 9) };
+  }
+  var DESCRIBE = {
+    any: "an ordinary wall: every message did damage",
+    unique: "a unique-words wall: only messages with a word nobody had used yet did damage",
+    long: "a long-messages wall: the more broken it got, the longer a message (or one of its words) had to be"
+  };
+  function referee(variant, strength) {
+    const used = /* @__PURE__ */ new Set();
+    return (text4, planned) => {
+      const ws = words(text4);
+      if (variant === "unique") {
+        const fresh = ws.some((w) => !used.has(w));
+        ws.forEach((w) => used.add(w));
+        return fresh;
+      }
+      if (variant === "long") {
+        const need = lengthNeeded(planned / strength);
+        const chars = ws.join("").length;
+        const longest = ws.reduce((m, w) => Math.max(m, w.length), 0);
+        return chars >= need.chars || need.word > 0 && longest >= need.word;
+      }
+      return true;
+    };
+  }
+
+  // PWA/LocalChatter/src/effects/wall.ts
+  var DESCEND_PER_S = 11;
+  var KNOCK_BACK = 70;
+  var RISE_PER_S = 220;
+  var BRICK_H = 26;
+  var BRICK_W = 62;
+  var counts = (n) => n instanceof HTMLElement && n.classList.contains("msg") && !n.classList.contains("whisper") && !n.classList.contains("poll-msg") && !n.classList.contains("game-msg");
+  function bricks(w, h, dpr) {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const g = c.getContext("2d");
+    g.fillStyle = "#cbbfb2";
+    g.fillRect(0, 0, w, h);
+    const bh = BRICK_H * dpr, bw = BRICK_W * dpr, gap = 3 * dpr;
+    for (let row2 = 0, y = h - bh; y > -bh; row2++, y -= bh) {
+      for (let x = row2 % 2 ? -bw / 2 : 0; x < w; x += bw) {
+        g.fillStyle = `hsl(${8 + Math.random() * 12} ${42 + Math.random() * 18}% ${33 + Math.random() * 12}%)`;
+        g.fillRect(x + gap / 2, y + gap / 2, bw - gap, bh - gap);
+        g.fillStyle = "rgb(255 255 255 / .08)";
+        g.fillRect(x + gap / 2, y + gap / 2, bw - gap, 3 * dpr);
+      }
+    }
+    g.fillStyle = "rgb(0 0 0 / .35)";
+    g.fillRect(0, h - 4 * dpr, w, 4 * dpr);
+    return c;
+  }
+  function crack(g, x, h, dpr, hurt) {
+    g.strokeStyle = "rgb(25 12 6 / .85)";
+    g.lineWidth = (1.2 + hurt) * dpr;
+    for (let b = 0; b < 2 + Math.round(hurt * 3); b++) {
+      let px = x, py = h;
+      g.beginPath();
+      g.moveTo(px, py);
+      const len = (30 + Math.random() * 70 * (1 + hurt)) * dpr;
+      const dir = -Math.PI / 2 + (Math.random() - 0.5) * 1.6;
+      for (let d = 0; d < len; d += 9 * dpr) {
+        px += Math.cos(dir + (Math.random() - 0.5) * 1.2) * 9 * dpr;
+        py += Math.sin(dir + (Math.random() - 0.5) * 1.2) * 9 * dpr;
+        g.lineTo(px, py);
+      }
+      g.stroke();
+    }
+    g.save();
+    g.globalCompositeOperation = "destination-out";
+    g.beginPath();
+    g.ellipse(x, h, (8 + Math.random() * 14) * dpr, (6 + Math.random() * 10) * dpr, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+  function startWall(seed, done) {
+    vibrate([40, 30, 40]);
+    const calm = reducedMotion();
+    const strength = wallStrength(seed);
+    const variant = wallVariant(seed);
+    const judge = referee(variant, strength);
+    let planned = 0;
+    const o = overlayCanvas("fx-wall");
+    const { ctx: ctx2, w, h, dpr } = o;
+    const wallH = Math.round(Math.min(170, Math.max(110, innerHeight * 0.2)));
+    const tex = bricks(w, wallH * dpr, dpr);
+    const tg = tex.getContext("2d");
+    const composer = document.getElementById("composer");
+    const lowest = () => Math.min(innerHeight * 0.6, (composer && composer.offsetParent ? composer.getBoundingClientRect().top : innerHeight) - 90);
+    let bottom = calm ? wallH + 20 : Math.round(wallH * 0.3);
+    let shake = 0;
+    let hits = 0;
+    let mode = "up";
+    const shards = [];
+    const dust = [];
+    const ghosts = /* @__PURE__ */ new Set();
+    let last = performance.now();
+    function finish(by2) {
+      mode = "broken";
+      observer.disconnect();
+      vibrate([120, 40, 200]);
+      document.dispatchEvent(new CustomEvent("localchatter:game", { detail: { game: "wall", result: "broken", hits, by: by2, variant, sent } }));
+      if (calm) {
+        o.canvas.classList.add("fx-fade");
+        setTimeout(end, 700);
+        return;
+      }
+      const top = (bottom - wallH) * dpr;
+      for (let y = 0; y < tex.height; y += BRICK_H * dpr) {
+        for (let x = 0; x < w; x += BRICK_W * dpr) {
+          shards.push({ sx: x, sy: y, sw: BRICK_W * dpr, sh: BRICK_H * dpr, x, y: top + y, vx: (Math.random() - 0.5) * 260 * dpr, vy: (-80 - Math.random() * 220) * dpr, rot: 0, vr: (Math.random() - 0.5) * 8 });
+        }
+      }
+    }
+    function end() {
+      if (mode === "gone") return;
+      mode = "gone";
+      o.canvas.remove();
+      done();
+    }
+    function impact(x, by2) {
+      if (mode !== "up") return;
+      hits++;
+      if (hits >= strength) {
+        finish(by2);
+        return;
+      }
+      crack(tg, x * dpr, tex.height, dpr, Math.min(1, hits / strength));
+      if (!calm) {
+        bottom = Math.min(bottom, Math.max(24, bottom - KNOCK_BACK));
+        shake = 1;
+        for (let i = 0; i < 10; i++) dust.push({ x: x * dpr, y: bottom * dpr, vx: (Math.random() - 0.5) * 220 * dpr, vy: (Math.random() * 160 - 40) * dpr, life: 1 });
+      }
+      vibrate(25);
+    }
+    function bounce() {
+      if (mode !== "up") return;
+      if (!calm) shake = Math.max(shake, 0.25);
+    }
+    let sent = 0;
+    function launch(box2) {
+      if (mode !== "up" || planned >= strength) return;
+      sent++;
+      const who = (box2.querySelector(".who") || { textContent: "" }).textContent || "Someone";
+      const hurts = judge(rawText(box2), planned);
+      if (hurts) planned++;
+      const r = box2.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      if (calm || !r.height) {
+        if (hurts) impact(x, who);
+        else bounce();
+        return;
+      }
+      const ghost = box2.cloneNode(true);
+      ghost.classList.add("fx-ghost");
+      Object.assign(ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", maxWidth: "none", margin: "0" });
+      document.body.appendChild(ghost);
+      ghosts.add(ghost);
+      const rise = Math.max(0, r.top - bottom);
+      if (!hurts) ghost.classList.add("fx-dud");
+      const tilt = (Math.random() - 0.5) * 16;
+      const frames = hurts ? [
+        { transform: "translateY(0) scale(1)" },
+        { transform: `translateY(${-rise}px) scale(.85) rotate(${tilt}deg)`, offset: 0.92 },
+        { transform: `translateY(${-rise + 6}px) scale(.6)`, opacity: 0 }
+      ] : [
+        // Bounces off: up, a clink, then tumbles back down and fades.
+        { transform: "translateY(0) scale(1)" },
+        { transform: `translateY(${-rise}px) scale(.85) rotate(${tilt}deg)`, offset: 0.55 },
+        { transform: `translateY(${-rise * 0.55}px) scale(.7) rotate(${-tilt * 3}deg)`, opacity: 0 }
+      ];
+      const anim2 = ghost.animate(frames, { duration: hurts ? 320 + rise * 0.9 : 520 + rise * 1.4, easing: hurts ? "cubic-bezier(.5, 0, .9, .6)" : "ease-in-out", fill: "forwards" });
+      if (!hurts) setTimeout(bounce, (520 + rise * 1.4) * 0.55);
+      const land = () => {
+        ghost.remove();
+        ghosts.delete(ghost);
+      };
+      anim2.finished.then(() => {
+        land();
+        if (hurts) impact(x, who);
+      }, land);
+    }
+    const list3 = document.getElementById("messages");
+    const observer = new MutationObserver((recs) => recs.forEach((rec2) => rec2.addedNodes.forEach((n) => {
+      if (counts(n)) launch(n);
+    })));
+    if (list3) observer.observe(list3, { childList: true });
+    function frame2(now) {
+      if (mode === "gone") return;
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
+      last = now;
+      if (mode === "up" && !calm) bottom = Math.min(lowest(), bottom + DESCEND_PER_S * dt);
+      if (mode === "rising") bottom -= RISE_PER_S * dt;
+      shake = Math.max(0, shake - dt * 3);
+      ctx2.clearRect(0, 0, w, h);
+      if (mode === "broken" && !calm) {
+        shards.forEach((s) => {
+          s.vy += 1700 * dpr * dt;
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          s.rot += s.vr * dt;
+          ctx2.save();
+          ctx2.translate(s.x + s.sw / 2, s.y + s.sh / 2);
+          ctx2.rotate(s.rot);
+          ctx2.drawImage(tex, s.sx, s.sy, s.sw, s.sh, -s.sw / 2, -s.sh / 2, s.sw, s.sh);
+          ctx2.restore();
+        });
+        if (shards.every((s) => s.y > h)) {
+          end();
+          return;
+        }
+      } else {
+        const jx = shake ? (Math.random() - 0.5) * 10 * shake * dpr : 0;
+        ctx2.drawImage(tex, jx, (bottom - wallH) * dpr + (shake ? (Math.random() - 0.5) * 6 * shake * dpr : 0));
+        if (mode === "rising" && bottom <= 0) {
+          end();
+          return;
+        }
+      }
+      ctx2.fillStyle = "rgb(190 170 150)";
+      for (let i = dust.length - 1; i >= 0; i--) {
+        const d = dust[i];
+        d.vy += 500 * dpr * dt;
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        d.life -= dt * 1.6;
+        if (d.life <= 0) {
+          dust.splice(i, 1);
+          continue;
+        }
+        ctx2.globalAlpha = d.life;
+        ctx2.fillRect(d.x, d.y, 3 * dpr, 3 * dpr);
+      }
+      ctx2.globalAlpha = 1;
+      requestAnimationFrame(frame2);
+    }
+    requestAnimationFrame(frame2);
+    return {
+      stop(_early, hard) {
+        observer.disconnect();
+        ghosts.forEach((g) => g.remove());
+        if (hard || mode === "broken") {
+          if (hard) {
+            mode = "gone";
+            o.canvas.remove();
+          }
+          return;
+        }
+        document.dispatchEvent(new CustomEvent("localchatter:game", { detail: { game: "wall", result: "stopped", hits, variant, sent } }));
+        if (calm) {
+          o.canvas.classList.add("fx-fade");
+          setTimeout(() => {
+            mode = "gone";
+            o.canvas.remove();
+          }, 700);
+          return;
+        }
+        mode = "rising";
       }
     };
   }
 
   // PWA/LocalChatter/src/effects/zalgo.ts
-  var TARGETS = [".topbar", "#messages", "#effects-tray", "#stage", "#banner"];
-  var zalgo = { active: false, observer: null, nodes: /* @__PURE__ */ new Map() };
+  var TARGETS = [".topbar", "#messages", "#effects-tray", "#banner"];
+  var zalgo = {
+    active: false,
+    observer: null,
+    nodes: /* @__PURE__ */ new Map(),
+    timer: void 0,
+    /** Live regions muted while the text keeps changing, with what they were. */
+    muted: []
+  };
+  var BOIL_MS = 140;
   var zalgoActive = () => zalgo.active;
   function randomMark() {
     let c;
@@ -568,9 +1241,9 @@
     } while (c === 847);
     return String.fromCharCode(c);
   }
-  function zalgoify(text2, strength) {
+  function zalgoify(text4, strength) {
     let out = "";
-    Array.from(text2).forEach((ch) => {
+    Array.from(text4).forEach((ch) => {
       out += ch;
       if (/\s/.test(ch)) return;
       const n = 1 + Math.floor(Math.random() * strength);
@@ -587,20 +1260,49 @@
     const known2 = zalgo.nodes.get(node);
     if (known2 && node.nodeValue === known2.mangled) return;
     const strength = node.parentElement && node.parentElement.closest("#effects-tray") ? 8 : 5;
-    const rec = { orig: node.nodeValue || "", mangled: zalgoify(node.nodeValue || "", strength) };
-    zalgo.nodes.set(node, rec);
-    node.nodeValue = rec.mangled;
+    const rec2 = { orig: node.nodeValue || "", mangled: zalgoify(node.nodeValue || "", strength) };
+    zalgo.nodes.set(node, rec2);
+    node.nodeValue = rec2.mangled;
   }
-  function corruptTree(root) {
-    if (root.nodeType === Node.TEXT_NODE) {
-      corrupt(root);
+  function corruptTree(root2) {
+    if (root2.nodeType === Node.TEXT_NODE) {
+      corrupt(root2);
       return;
     }
-    if (root.nodeType !== Node.ELEMENT_NODE) return;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    if (root2.nodeType !== Node.ELEMENT_NODE) return;
+    const walker = document.createTreeWalker(root2, NodeFilter.SHOW_TEXT);
     const list3 = [];
     while (walker.nextNode()) list3.push(walker.currentNode);
     list3.forEach(corrupt);
+  }
+  function boil() {
+    const surge = 3 + Math.round(4 + 3 * Math.sin(Date.now() / 700));
+    zalgo.nodes.forEach((rec2, node) => {
+      if (!node.isConnected) {
+        zalgo.nodes.delete(node);
+        return;
+      }
+      if (node.nodeValue !== rec2.mangled) return;
+      if (Math.random() < 0.25) return;
+      const extra = node.parentElement && node.parentElement.closest("#effects-tray") ? 3 : 0;
+      rec2.mangled = zalgoify(rec2.orig, surge + extra);
+      node.nodeValue = rec2.mangled;
+    });
+  }
+  function muteLiveRegions() {
+    TARGETS.forEach((sel) => document.querySelectorAll(sel).forEach((root2) => {
+      [root2, ...Array.from(root2.querySelectorAll("[aria-live]"))].forEach((e) => {
+        const live = e.getAttribute("aria-live");
+        if (live && live !== "off") {
+          zalgo.muted.push([e, live]);
+          e.setAttribute("aria-live", "off");
+        }
+      });
+    }));
+  }
+  function unmuteLiveRegions() {
+    zalgo.muted.forEach(([e, live]) => e.setAttribute("aria-live", live));
+    zalgo.muted = [];
   }
   function startZalgo() {
     if (zalgo.active) return;
@@ -617,16 +1319,21 @@
       observer.observe(e, { childList: true, subtree: true, characterData: true });
     }));
     zalgo.observer = observer;
+    muteLiveRegions();
+    if (!reducedMotion()) zalgo.timer = setInterval(boil, BOIL_MS);
   }
   function stopZalgo() {
     if (!zalgo.active) return;
     zalgo.active = false;
+    clearInterval(zalgo.timer);
+    zalgo.timer = void 0;
     if (zalgo.observer) zalgo.observer.disconnect();
     zalgo.observer = null;
-    zalgo.nodes.forEach((rec, node) => {
-      if (node.isConnected && node.nodeValue === rec.mangled) node.nodeValue = rec.orig;
+    zalgo.nodes.forEach((rec2, node) => {
+      if (node.isConnected && node.nodeValue === rec2.mangled) node.nodeValue = rec2.orig;
     });
     zalgo.nodes.clear();
+    unmuteLiveRegions();
     document.body.classList.remove("fx-zalgo");
   }
   function startZalgoEffect() {
@@ -641,24 +1348,42 @@
     earthquake: "earthquake",
     quake: "earthquake",
     lightning: "lightning",
-    zalgo: "zalgo"
+    zalgo: "zalgo",
+    blackhole: "blackhole",
+    blur: "blur",
+    rain: "rain",
+    wall: "wall"
   };
+  var GAMES = ["wall"];
   var MAX_S = 600;
-  var DEFAULT_MS = { fire: 2200, earthquake: 1600, lightning: 1100, zalgo: 1e4 };
+  var DEFAULT_MS = {
+    fire: 2200,
+    earthquake: 1600,
+    lightning: 1100,
+    zalgo: 1e4,
+    blackhole: 1e4,
+    blur: 1e4,
+    rain: 12e3,
+    wall: MAX_S * 1e3
+  };
   var STARTERS = {
     fire: startFire,
     earthquake: startQuake,
     lightning: startLightning,
-    zalgo: startZalgoEffect
+    zalgo: startZalgoEffect,
+    blackhole: startBlackhole,
+    blur: startBlur,
+    rain: startRain,
+    wall: startWall
   };
-  function parseEffect(text2) {
-    const m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text2 || ""));
+  function parseEffect(text4) {
+    const m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text4 || ""));
     if (!m) return null;
     const name = COMMANDS[m[1].toLowerCase()];
     if (!name) return null;
-    const raw = m[2];
-    if (!raw) return { name, arg: null, argText: "" };
-    const a = raw.toLowerCase();
+    const raw2 = m[2];
+    if (!raw2) return { name, arg: null, argText: "" };
+    const a = raw2.toLowerCase();
     if (a === "off" || a === "stop") return { name, arg: "off", argText: "off" };
     if (a === "on" || a === "forever") return { name, arg: "on", argText: "on" };
     const d = /^(\d{1,4})(s|m)?$/.exec(a);
@@ -671,18 +1396,25 @@
   function announce(name, on) {
     document.dispatchEvent(new CustomEvent("localchatter:fx", { detail: { name, active: on } }));
   }
-  function stopEffect(name, early, hard = false) {
+  function stopEffect(name, early2, hard = false) {
     const a = active[name];
     if (!a) return;
     clearTimeout(a.timer);
     delete active[name];
     try {
-      a.ctrl.stop(early, hard);
+      a.ctrl.stop(early2, hard);
     } catch {
     }
     announce(name, false);
   }
-  function play(name, arg = null) {
+  function finished(name, ctrl) {
+    const a = active[name];
+    if (!a || a.ctrl !== ctrl) return;
+    clearTimeout(a.timer);
+    delete active[name];
+    announce(name, false);
+  }
+  function play(name, arg = null, seed = "") {
     if (arg === "off") {
       stopEffect(name, true);
       return true;
@@ -690,9 +1422,11 @@
     let a = active[name];
     if (!a) {
       Object.keys(active).forEach((other) => stopEffect(other, true, true));
-      let ctrl;
+      let ctrl = null;
       try {
-        ctrl = STARTERS[name]();
+        ctrl = STARTERS[name](seed || String(Math.random()), () => {
+          if (ctrl) finished(name, ctrl);
+        });
       } catch {
         return false;
       }
@@ -710,6 +1444,127 @@
   var activeNames = () => Object.keys(active);
   var canVibrate = "vibrate" in navigator;
 
+  // PWA/LocalChatter/src/state.ts
+  var DISPLAY = new URLSearchParams(location.search).has("display");
+  var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
+  var state = {
+    ws: null,
+    relay: "",
+    name: "",
+    me: null,
+    peers: /* @__PURE__ */ new Map(),
+    maxBytes: DEFAULT_MAX_BYTES,
+    /** The user wants to be connected (reconnect if it drops). */
+    wanted: false,
+    retry: 0,
+    retryTimer: 0,
+    role: "member",
+    debug: false,
+    soundOn: true,
+    /** True while drawing messages that arrived in the background (not replayed). */
+    catchingUp: false
+  };
+  var ROLES = {
+    member: { description: "Chat as normal." },
+    monitor: { description: "Also sees system messages, such as role changes.", viewSystem: true },
+    spy: { description: "Can spy on chosen people to see whispers to and from them (/spy <names>).", spy: true },
+    display: { description: "A big-screen view for a TV or spare screen: shows the chat, effects and sounds, with no message box. Turn it on in Settings or open the app's /Display link.", display: true },
+    admin: {
+      description: "Sees system messages and who really sent spoofed messages, has a soundboard, and can use debug mode.",
+      viewSystem: true,
+      debug: true,
+      impersonate: true,
+      seeSpoofer: true,
+      soundboard: true
+    }
+  };
+  function can(perm) {
+    return !!(ROLES[state.role] || ROLES.member)[perm];
+  }
+  function nameOf2(id2) {
+    if (state.me && id2 === state.me.id) return state.me.name;
+    const p = id2 ? state.peers.get(id2) : void 0;
+    return p ? p.name : "someone";
+  }
+  function connected() {
+    return !!state.ws && state.ws.readyState === WebSocket.OPEN && !!state.me;
+  }
+
+  // PWA/LocalChatter/src/features/banner.ts
+  var SPEEDS = { slow: 30, normal: 60, medium: 60, fast: 120 };
+  var DEFAULT_SPEED = 60;
+  var MAX_TEXT = 300;
+  var PAUSE_MS = 1500;
+  function parseBanner(text4) {
+    const m = /^\s*\/banner\b\s*([\s\S]*)$/i.exec(String(text4 || ""));
+    if (!m) return null;
+    let rest = m[1].trim();
+    if (/^(off|clear|stop)$/i.test(rest)) return { off: true };
+    if (SPEEDS[rest.toLowerCase()] || /^\d{1,3}px(?:\/s)?$/i.test(rest)) return null;
+    let speed = DEFAULT_SPEED;
+    let speedText = "";
+    const first = /^(\S+)\s+([\s\S]+)$/.exec(rest);
+    if (first) {
+      const word = first[1].toLowerCase();
+      const px = /^(\d{1,3})px(?:\/s)?$/.exec(word);
+      if (SPEEDS[word]) {
+        speed = SPEEDS[word];
+        speedText = word;
+        rest = first[2];
+      } else if (px) {
+        speed = Math.min(600, Math.max(5, parseInt(px[1], 10)));
+        speedText = speed + "px";
+        rest = first[2];
+      }
+    }
+    rest = rest.replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
+    return rest ? { off: false, text: rest, speed, speedText } : null;
+  }
+  var banner2 = $("display-banner");
+  var label = $("display-banner-text");
+  var current = null;
+  var anim = null;
+  function layout() {
+    if (anim) {
+      anim.cancel();
+      anim = null;
+    }
+    if (!current) return;
+    const calm = reducedMotion();
+    banner2.classList.toggle("calm", calm);
+    const room = banner2.firstElementChild.clientWidth;
+    const dist = label.scrollWidth - room;
+    banner2.classList.toggle("overflowing", dist > 0 && !calm);
+    if (dist <= 0 || calm || !label.animate) return;
+    const travel = dist / current.speed * 1e3;
+    const total = PAUSE_MS * 2 + travel * 2;
+    const at = (x, offset2) => ({ transform: "translateX(" + x + "px)", offset: offset2 });
+    anim = label.animate([
+      at(0, 0),
+      at(0, PAUSE_MS / total),
+      at(-dist, (PAUSE_MS + travel) / total),
+      at(-dist, (2 * PAUSE_MS + travel) / total),
+      at(0, 1)
+    ], { duration: total, iterations: Infinity, easing: "linear" });
+  }
+  function showBanner(b) {
+    if (!DISPLAY) return;
+    if (b.off) {
+      current = null;
+      banner2.hidden = true;
+      layout();
+      return;
+    }
+    current = { text: b.text, speed: b.speed };
+    label.textContent = b.text;
+    banner2.hidden = false;
+    requestAnimationFrame(layout);
+  }
+  if (DISPLAY && "ResizeObserver" in window) new ResizeObserver(() => requestAnimationFrame(layout)).observe(banner2);
+  function bannerConfirmation(b) {
+    return el("p", "system", b.off ? "📢 You took down the display banner." : "📢 Banner on the displays: “" + b.text + "”" + (b.speedText ? " (" + b.speedText + ")" : ""));
+  }
+
   // PWA/LocalChatter/src/features/whispers.ts
   function whisperNames(to) {
     return to.map((t) => state.me && t.id === state.me.id ? "you" : t.name).join(", ");
@@ -724,9 +1579,9 @@
     const to = [];
     const missing = [];
     wanted.forEach((n) => {
-      const found = Array.from(state.peers.values()).find((p) => p.name.toLowerCase() === n.toLowerCase());
-      if (found) {
-        if (to.indexOf(found) < 0) to.push(found);
+      const found2 = Array.from(state.peers.values()).find((p) => p.name.toLowerCase() === n.toLowerCase());
+      if (found2) {
+        if (to.indexOf(found2) < 0) to.push(found2);
       } else missing.push(n);
     });
     if (missing.length) {
@@ -780,11 +1635,11 @@
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
   }
-  function base64ToBlob(b64, type) {
+  function base64ToBlob(b64, type2) {
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type });
+    return new Blob([bytes], { type: type2 });
   }
   function vibrate2(pattern) {
     try {
@@ -884,8 +1739,8 @@
   function cleanName2(name) {
     return String(name || "").replace(/\.[a-z0-9]{1,5}$/i, "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 60) || "sound";
   }
-  function isAudioType(type, name) {
-    return /^audio\//.test(type || "") || /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i.test(name || "");
+  function isAudioType(type2, name) {
+    return /^audio\//.test(type2 || "") || /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i.test(name || "");
   }
   function guessType(name) {
     const ext = ((/\.([a-z0-9]+)$/i.exec(name || "") || [])[1] || "").toLowerCase();
@@ -959,7 +1814,7 @@
     });
   }
   function list2() {
-    return all().then((items) => items.sort((a, b) => {
+    return all().then((items2) => items2.sort((a, b) => {
       if (a.source !== b.source) return a.source === "library" ? -1 : 1;
       return a.name.localeCompare(b.name);
     }));
@@ -1025,9 +1880,9 @@
   function playBlob(blob) {
     const c = audioContext();
     if (!c || c.state !== "running") return playElement(URL.createObjectURL(blob));
-    return blob.arrayBuffer().then((buf) => c.decodeAudioData(buf)).then((audio) => {
+    return blob.arrayBuffer().then((buf) => c.decodeAudioData(buf)).then((audio2) => {
       const src = c.createBufferSource();
-      src.buffer = audio;
+      src.buffer = audio2;
       src.connect(c.destination);
       playing.add(src);
       src.onended = () => playing.delete(src);
@@ -1055,7 +1910,7 @@
   }
   function resolve(sound) {
     return get(String(sound.id || "")).catch(() => void 0).then((hit) => {
-      if (hit && (hit.blob || hit.url)) return { source: "cache", play: () => playEntry(hit) };
+      if (hit && (hit.blob || hit.url)) return { source: "cache", play: () => playEntry(hit), blob: hit.blob, url: hit.url };
       if (sound.data) {
         let blob;
         try {
@@ -1065,11 +1920,11 @@
         }
         if (blob) {
           const b = blob;
-          return addBlob(b, sound.name, "received", sound.url).catch(() => null).then(() => ({ source: "message", play: () => playBlob(b) }));
+          return addBlob(b, sound.name, "received", sound.url).catch(() => null).then(() => ({ source: "message", play: () => playBlob(b), blob: b, url: safeUrl(sound.url) }));
         }
       }
       const url = safeUrl(sound.url);
-      if (url) return { source: "link", play: () => playElement(url) };
+      if (url) return { source: "link", play: () => playElement(url), url };
       return { source: "none", play: null };
     });
   }
@@ -1080,32 +1935,68 @@
     message: "from the message",
     link: "from a link"
   };
+  var isVoice = (name) => /^voice message\b/i.test(name);
+  var extFor = (type2) => ({ "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/wav": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "audio/aac": "aac", "audio/flac": "flac" })[type2.split(";")[0]] || "audio";
+  function soundActions(r, snd, status3) {
+    const wrap = el("div", "sound-actions");
+    const save2 = el("button", "sound-act", "💾");
+    save2.type = "button";
+    save2.title = "Save to my sounds";
+    save2.setAttribute("aria-label", "Save " + snd.name + " to my sounds");
+    save2.addEventListener("click", () => {
+      const saving = r.blob ? addBlob(r.blob, snd.name, "library", r.url) : r.url ? addFromUrl(r.url, snd.name) : null;
+      if (!saving) return;
+      saving.then((e) => {
+        status3.textContent = "Saved to your sounds as “" + e.name + "” (play it with /sound " + e.name + ")";
+        save2.disabled = true;
+        document.dispatchEvent(new CustomEvent("localchatter:library"));
+      }, (err) => {
+        status3.textContent = err.message;
+      });
+    });
+    wrap.appendChild(save2);
+    if (r.blob) {
+      const blob = r.blob;
+      const dl = el("a", "sound-act", "⬇");
+      dl.title = "Download";
+      dl.setAttribute("aria-label", "Download " + snd.name);
+      dl.download = snd.name.replace(/[\\/:*?"<>|]/g, "").trim() + "." + extFor(blob.type || snd.type || "");
+      dl.href = "#";
+      dl.addEventListener("click", () => {
+        const url = URL.createObjectURL(blob);
+        dl.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 3e4);
+      });
+      wrap.appendChild(dl);
+    }
+    return wrap;
+  }
   function soundEvent(name, source, played, reason = "") {
     document.dispatchEvent(new CustomEvent("localchatter:sound", { detail: { name, source, played, reason } }));
   }
-  function renderSound(msg, mine, who) {
+  function renderSound(msg, mine2, who) {
     const missed = state.catchingUp;
     const snd = msg.sound;
-    const box2 = el("article", "msg" + (mine ? " mine" : ""));
-    if (!mine) colourBubble(box2, msg.as || msg.from);
+    const box2 = el("article", "msg" + (mine2 ? " mine" : ""));
+    if (!mine2) colourBubble(box2, msg.as || msg.from);
     const meta = el("div", "meta");
     meta.appendChild(el("span", "who", who));
-    const spoofer = !mine && spoofedBy(msg);
+    const spoofer = !mine2 && spoofedBy(msg);
     if (spoofer) meta.appendChild(el("span", "spoof", "really sent by " + spoofer.name));
     meta.appendChild(el("time", null, formatTime(msg.at || Date.now())));
     box2.appendChild(meta);
     const body = el("div", "sound");
-    const label = el("div");
-    label.appendChild(el("div", "sound-name", "🔊 " + snd.name));
-    const status = el("div", "sound-status", "Loading…");
-    label.appendChild(status);
-    body.appendChild(label);
+    const label3 = el("div");
+    label3.appendChild(el("div", "sound-name", (isVoice(snd.name) ? "🎙 " : "🔊 ") + snd.name));
+    const status3 = el("div", "sound-status", "Loading…");
+    label3.appendChild(status3);
+    body.appendChild(label3);
     box2.appendChild(body);
     append(box2);
     function unavailable(reason) {
       box2.classList.add("unavailable");
       body.textContent = "";
-      body.appendChild(el("div", "text", "🔇 " + (mine ? "You" : who) + ' tried to play "' + snd.name + `", but it isn't available on this device.`));
+      body.appendChild(el("div", "text", "🔇 " + (mine2 ? "You" : who) + ' tried to play "' + snd.name + `", but it isn't available on this device.`));
       soundEvent(snd.name, "none", false, reason);
     }
     void resolve(snd).then((r) => {
@@ -1118,21 +2009,23 @@
       const btn = el("button", "play", "▶");
       btn.type = "button";
       btn.setAttribute("aria-label", "Play " + snd.name);
-      body.insertBefore(btn, label);
+      body.insertBefore(btn, label3);
+      body.appendChild(soundActions(r, snd, status3));
       const where = SOURCE_TEXT[source];
       const go = () => {
-        status.textContent = "Playing " + where;
+        status3.textContent = "Playing " + where;
         playIt().then(() => {
-          status.textContent = "Played " + where;
+          status3.textContent = "Played " + where;
           soundEvent(snd.name, source, true);
         }).catch((err) => {
           if (err && err.name === "NotAllowedError") {
-            status.textContent = "Tap ▶ to play (" + where + ")";
+            status3.textContent = "Tap ▶ to play (" + where + ")";
+            if (DISPLAY) $("stage-tap").hidden = false;
             soundEvent(snd.name, source, false, "blocked");
           } else if (source === "link") {
             unavailable("link failed");
           } else {
-            status.textContent = "Couldn't play this sound here";
+            status3.textContent = "Couldn't play this sound here";
             soundEvent(snd.name, source, false, "error");
           }
         });
@@ -1142,11 +2035,11 @@
         go();
       });
       if (missed) {
-        status.textContent = "Sent while you were away · tap ▶ to play";
+        status3.textContent = "Sent while you were away · tap ▶ to play";
         soundEvent(snd.name, source, false, "missed");
       } else if (state.soundOn) go();
       else {
-        status.textContent = "Sounds are off · tap ▶ to play";
+        status3.textContent = "Sounds are off · tap ▶ to play";
         soundEvent(snd.name, source, false, "muted");
       }
     });
@@ -1161,50 +2054,44 @@
       if (!sendChat({ sound })) systemLine('Not connected: "' + entry.name + `" wasn't sent`);
     });
   }
-  function displaySound(sound) {
-    void resolve(sound).then((r) => {
-      if (!r.play || !state.soundOn) return;
-      r.play().then(() => soundEvent(sound.name, r.source, true), (err) => {
-        const blocked = !!err && err.name === "NotAllowedError";
-        if (blocked) $("stage-tap").hidden = false;
-        soundEvent(sound.name, r.source, false, blocked ? "blocked" : "error");
-      });
-    });
-  }
 
   // PWA/LocalChatter/src/chat/message.ts
   var INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
   function spoofedBy(msg) {
     return msg.as && msg.from && msg.as.id !== msg.from.id && can("seeSpoofer") ? msg.from : null;
   }
-  function renderMessage(msg, mine) {
-    const shown = msg.as || msg.from;
-    const who = mine ? msg.as ? "You (as " + msg.as.name + ")" : "You" : shown && shown.name || "Someone";
+  function renderMessage(msg, mine2) {
+    const shown2 = msg.as || msg.from;
+    const who = mine2 ? msg.as ? "You (as " + msg.as.name + ")" : "You" : shown2 && shown2.name || "Someone";
     const effect = !msg.file && !msg.sound ? parseEffect(msg.text) : null;
-    if (DISPLAY) {
-      if (effect) play(effect.name, effect.arg);
-      else if (msg.sound) displaySound(msg.sound);
+    const bannerCmd = !msg.file && !msg.sound ? parseBanner(msg.text) : null;
+    if (bannerCmd) {
+      if (DISPLAY) showBanner(bannerCmd);
+      else if (mine2) append(bannerConfirmation(bannerCmd));
       return null;
     }
-    if (msg.sound) return renderSound(msg, mine, who);
+    if (msg.sound) return renderSound(msg, mine2, who);
     if (effect) {
       renderEffect(effect, msg, who);
       return null;
     }
-    const box2 = el("article", "msg" + (mine ? " mine" : ""));
-    if (!mine) colourBubble(box2, shown);
+    const box2 = el("article", "msg" + (mine2 ? " mine" : ""));
+    if (!mine2) colourBubble(box2, shown2);
     const meta = el("div", "meta");
     meta.appendChild(el("span", "who", who));
     const inLang = !isDefault(msg.lang) ? msg.lang : "";
     if (inLang) {
-      box2.classList.add("in-lang");
+      box2.dataset.lang = inLang;
+      if (mine2) box2.dataset.mine = "";
       box2.style.setProperty("--lang-hue", String(hue(inLang)));
-      if (!mine && !understands(inLang)) box2.classList.add("foreign");
-      meta.appendChild(el("span", "lang-tag", "🗣 " + nameOf(inLang)));
+      const tag = el("span", "lang-tag", "🗣 " + nameOf(inLang));
+      meta.appendChild(tag);
+      showLanguage(box2, tag, mine2 || understands(inLang));
+      if (!mine2 && !understands(inLang)) box2.classList.add("foreign");
     }
     if (msg.via === "nfc") meta.appendChild(el("span", "via", "via NFC tag"));
     if (msg.via === "qr") meta.appendChild(el("span", "via", "via QR code"));
-    const spoofer = !mine && spoofedBy(msg);
+    const spoofer = !mine2 && spoofedBy(msg);
     if (spoofer) meta.appendChild(el("span", "spoof", "really sent by " + spoofer.name));
     if (msg.to) {
       box2.classList.add("whisper");
@@ -1214,23 +2101,24 @@
     meta.appendChild(el("time", null, formatTime(msg.at || Date.now())));
     box2.appendChild(meta);
     if (msg.text) {
-      box2.appendChild(mine ? el("div", "text", msg.text) : langText("div", "text", msg.text, inLang || "default", msg.id || msg.text));
-      if (!mine && !inLang && !understands("default")) box2.classList.add("foreign");
+      box2.appendChild(mine2 ? el("div", "text", msg.text) : langText("div", "text", msg.text, inLang || "default", msg.id || msg.text));
+      if (!mine2 && !inLang && !understands("default")) box2.classList.add("foreign");
     }
     if (msg.file) box2.appendChild(fileView(msg.file.name, msg.file.type, msg.file.size, msg.file.data));
+    setRawText(box2, msg.text || "");
     append(box2);
     return box2;
   }
-  function fileView(name, type, size, data) {
+  function fileView(name, type2, size, data) {
     let url;
     try {
-      url = URL.createObjectURL(base64ToBlob(data, type));
+      url = URL.createObjectURL(base64ToBlob(data, type2));
     } catch {
       url = null;
     }
     if (!url) return el("div", "text", "[file could not be read]");
     const href = url;
-    if (INLINE_IMAGE.test(type)) {
+    if (INLINE_IMAGE.test(type2)) {
       const img = el("img");
       img.src = href;
       img.alt = name;
@@ -1255,6 +2143,1270 @@
     v.appendChild(img);
     v.addEventListener("click", () => v.remove());
     document.body.appendChild(v);
+  }
+
+  // PWA/LocalChatter/src/polls/model.ts
+  var polls = /* @__PURE__ */ new Map();
+  var early = /* @__PURE__ */ new Map();
+  var device = load(KEY.device) || (() => {
+    const id2 = randomId().slice(0, 18);
+    save(KEY.device, id2);
+    return id2;
+  })();
+  var keeps = (p, had, v) => !!had && (p.quiz ? had.at <= v.at : had.at > v.at);
+  function vote(p, v) {
+    if (p.cleared || p.closed || v.option < 0 || v.option >= p.options.length) return false;
+    const had = p.votes.get(v.voter);
+    if (keeps(p, had, v)) return false;
+    p.votes.set(v.voter, v);
+    return true;
+  }
+  function voteLater(id2, v) {
+    const list3 = early.get(id2) || [];
+    list3.push(v);
+    early.set(id2, list3);
+  }
+  function merge(w, at) {
+    let p = polls.get(w.id);
+    const isNew = !p;
+    if (!p) {
+      p = {
+        id: w.id,
+        question: w.question,
+        options: w.options.slice(0, 10),
+        secret: !!w.secret,
+        closed: false,
+        cleared: false,
+        author: w.author,
+        owner: w.owner || "",
+        at: w.at || at || Date.now(),
+        votes: /* @__PURE__ */ new Map(),
+        quiz: !!w.quiz,
+        correct: w.quiz && w.correct ? w.correct : []
+      };
+      polls.set(p.id, p);
+    }
+    const target = p;
+    (w.votes || []).forEach((v) => {
+      const had = target.votes.get(v.voter);
+      if (v.option < target.options.length && !keeps(target, had, v) && !(had && had.at === v.at)) target.votes.set(v.voter, v);
+    });
+    (early.get(w.id) || []).forEach((v) => vote(target, v));
+    early.delete(w.id);
+    if (w.closed) target.closed = true;
+    return { poll: target, isNew };
+  }
+  function toWire(p) {
+    return {
+      id: p.id,
+      question: p.question,
+      options: p.options,
+      secret: p.secret,
+      closed: p.closed,
+      author: p.author,
+      owner: p.owner,
+      at: p.at,
+      votes: Array.from(p.votes.values()),
+      ...p.quiz ? { quiz: true, correct: p.correct } : {}
+    };
+  }
+  function active2() {
+    return Array.from(polls.values()).filter((p) => !p.cleared).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+  }
+  var numberOf = (p) => active2().indexOf(p) + 1;
+  function findPoll(ref) {
+    const list3 = active2();
+    if (/^#?\d+$/.test(ref)) return list3[parseInt(ref.replace("#", ""), 10) - 1];
+    const r = ref.toLowerCase();
+    return list3.find((p) => p.question.toLowerCase().startsWith(r)) || list3.find((p) => p.question.toLowerCase().includes(r));
+  }
+  function tally(p) {
+    const counts2 = p.options.map(() => 0);
+    const voters = p.options.map(() => []);
+    p.votes.forEach((v) => {
+      counts2[v.option]++;
+      voters[v.option].push(v.name);
+    });
+    return { counts: counts2, voters, total: p.votes.size };
+  }
+  var resultsShown = (p) => !p.secret && !p.quiz || p.closed;
+  var isCorrect = (p, option) => p.correct.indexOf(option) >= 0;
+  function marks(p) {
+    const right = [], wrong = [];
+    p.votes.forEach((v) => (isCorrect(p, v.option) ? right : wrong).push(v.name));
+    return { right, wrong };
+  }
+  var myVote = (p) => p.votes.get(device)?.option;
+
+  // PWA/LocalChatter/src/games/race/board.ts
+  var W = 500;
+  var H = 850;
+  var PIN_R = 5;
+  var PATH_HALF = 34;
+  var TOP = 110;
+  var BOTTOM = 800;
+  function rng2(seed) {
+    let h = 1779033703;
+    for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+    let a = h >>> 0;
+    return () => {
+      a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function segDist2(px, py, ax, ay, bx, by2) {
+    const dx = bx - ax, dy = by2 - ay;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const x = ax + t * dx - px, y = ay + t * dy - py;
+    return x * x + y * y;
+  }
+  var nearPath = (path, x, y, clear) => {
+    for (let i = 1; i < path.length; i++) {
+      if (segDist2(x, y, path[i - 1].x, path[i - 1].y, path[i].x, path[i].y) < clear * clear) return true;
+    }
+    return false;
+  };
+  function cup(cx, cy, inner, depth) {
+    const pins = [];
+    const half = inner / 2 + PIN_R;
+    const step = 2 * PIN_R + 1;
+    for (let x = -half; x <= half + 0.01; x += step) pins.push({ x: cx + x, y: cy, cup: true });
+    for (let y = step; y <= depth; y += step) {
+      pins.push({ x: cx - half - (y > depth - step ? 3 : 0), y: cy - y, cup: true });
+      pins.push({ x: cx + half + (y > depth - step ? 3 : 0), y: cy - y, cup: true });
+    }
+    return pins;
+  }
+  function makeBoard(seed) {
+    const rand = rng2(seed + "|board");
+    const path = [];
+    let px = 70 + rand() * (W - 140);
+    for (let y = 0; y <= H + 40; y += 45) {
+      path.push({ x: px, y });
+      px = Math.min(W - PATH_HALF - 12, Math.max(PATH_HALF + 12, px + (rand() - 0.5) * 90));
+    }
+    const pins = [];
+    const cups = [];
+    const nCups = 2 + Math.floor(rand() * 3);
+    for (let tries = 0; cups.length < nCups && tries < 200; tries++) {
+      const inner = 26 + rand() * 16;
+      const x = 40 + rand() * (W - 80), y = 260 + rand() * 470;
+      const reach = inner / 2 + 2 * PIN_R + 6;
+      if (nearPath(path, x, y - 20, PATH_HALF + reach + 14)) continue;
+      if (cups.some((c) => (c.x - x) * (c.x - x) + (c.y - y) * (c.y - y) < 150 * 150)) continue;
+      cups.push({ x, y, r: reach + 30 });
+      pins.push(...cup(x, y, inner, 26 + rand() * 10));
+    }
+    const spots = Array.from({ length: 3 + Math.floor(rand() * 3) }, () => ({ x: rand() * W, y: TOP + rand() * (BOTTOM - TOP), s: 0.5 + rand() * 0.7, k: 90 + rand() * 120 }));
+    const density = (x, y) => {
+      let d = 0.12;
+      for (const p of spots) d += p.s / (1 + ((x - p.x) * (x - p.x) + (y - p.y) * (y - p.y)) / (p.k * p.k));
+      return d > 1 ? 1 : d;
+    };
+    const scattered = [];
+    for (let i = 0; i < 2600; i++) {
+      const x = 8 + rand() * (W - 16), y = TOP + rand() * (BOTTOM - TOP);
+      const gap = 96 - 58 * density(x, y);
+      if (nearPath(path, x, y, PATH_HALF + PIN_R)) continue;
+      if (cups.some((c) => (c.x - x) * (c.x - x) + (c.y - 20 - y) * (c.y - 20 - y) < c.r * c.r)) continue;
+      if (scattered.some((p) => (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) < gap * gap)) continue;
+      scattered.push({ x, y, cup: false });
+    }
+    return { pins: pins.concat(scattered), path };
+  }
+
+  // PWA/LocalChatter/src/games/race/sim.ts
+  var HZ = 120;
+  var DT = 1 / HZ;
+  var MAX_SPEED = 900;
+  var READY = Math.round(1.6 * HZ);
+  var STUCK_MOVE = 14;
+  var STUCK_STEPS = Math.round(1.4 * HZ);
+  var MAX_AGE = 25 * HZ;
+  var QUIET = 6 * HZ;
+  var EMPTY_ROUND = 45 * HZ;
+  var PROMPT = 3 * HZ;
+  var wordsOf = (text4) => text4.split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean);
+  function physicsOf(text4) {
+    const words2 = wordsOf(text4);
+    const n = Math.max(1, words2.length);
+    const avg = words2.length ? words2.reduce((t, w) => t + w.length, 0) / words2.length : 1;
+    const r = Math.min(40, 10 + 7 * Math.sqrt(n - 1));
+    const density = Math.min(16, 0.5 + avg * avg / 16);
+    const root2 = Math.sqrt(density);
+    return {
+      r,
+      density,
+      mass: density * r * r,
+      gravity: 360 * (1 + 0.25 * root2),
+      drag: 1.3 / (1 + 0.5 * density),
+      bounce: 0.75 / (1 + 0.18 * density)
+    };
+  }
+  var heft = (b) => Math.min(1, (b.density - 0.5) / 15.5);
+  var World = class {
+    /** entries: sorted by the relay's time; stopStep: when someone stopped it. */
+    constructor(seed, start2, entries, stopStep = Infinity) {
+      this.start = start2;
+      this.entries = entries;
+      this.stopStep = stopStep;
+      this.step = 0;
+      this.phase = "pins";
+      this.round = 1;
+      this.roundStart = READY;
+      this.lastDrop = 0;
+      this.inRound = /* @__PURE__ */ new Set();
+      this.balls = [];
+      this.burns = [];
+      this.winner = null;
+      this.phaseStep = 0;
+      this.count = 0;
+      this.next = 0;
+      this.rand = rng2(seed);
+      this.board = makeBoard(seed);
+    }
+    /** The step an entry arrives at (by the relay's clock). */
+    stepOf(at) {
+      return Math.max(0, Math.ceil((at - this.start) / 1e3 * HZ));
+    }
+    setPhase(p) {
+      this.phase = p;
+      this.phaseStep = this.step;
+    }
+    get over() {
+      return this.phase === "won" || this.phase === "failed" || this.phase === "stopped";
+    }
+    /** Runs the race forward to the given step. */
+    advance(to) {
+      while (this.step < to && !this.over) this.tick();
+    }
+    tick() {
+      const s = ++this.step;
+      if (s >= this.stopStep) {
+        this.setPhase("stopped");
+        return;
+      }
+      if (this.phase === "pins" && s >= READY) this.setPhase("running");
+      if (this.phase === "prompt" && s - this.phaseStep >= PROMPT) {
+        this.round++;
+        this.roundStart = s;
+        this.inRound.clear();
+        this.setPhase("running");
+      }
+      while (this.next < this.entries.length && this.stepOf(this.entries[this.next].at) <= s && this.phase === "running") {
+        const e = this.entries[this.next++];
+        if (this.inRound.has(e.from.id)) continue;
+        this.inRound.add(e.from.id);
+        this.drop(e);
+      }
+      if (this.phase !== "running") return;
+      this.physics();
+      if (!this.balls.length && (this.inRound.size ? s - this.lastDrop >= QUIET : s - this.roundStart >= EMPTY_ROUND)) {
+        this.setPhase(this.round === 1 ? "prompt" : "failed");
+      }
+    }
+    drop(e) {
+      const ph = physicsOf(e.text);
+      this.balls.push({
+        n: this.count++,
+        entry: e,
+        ...ph,
+        x: ph.r + this.rand() * (W - 2 * ph.r),
+        y: -ph.r - this.rand() * 30,
+        vx: (this.rand() - 0.5) * 80,
+        vy: 30 + this.rand() * 40,
+        age: 0,
+        round: this.round,
+        ax: 0,
+        ay: -1e9,
+        aStep: 0
+      });
+      this.lastDrop = this.step;
+    }
+    burn(b) {
+      this.balls.splice(this.balls.indexOf(b), 1);
+      this.burns.push({ ball: b, step: this.step });
+      this.lastDrop = Math.max(this.lastDrop, this.step - QUIET + 2 * HZ);
+    }
+    physics() {
+      const balls2 = this.balls;
+      for (const b of balls2) {
+        b.vy += b.gravity * DT;
+        b.vx *= 1 - b.drag * DT;
+        b.vy *= 1 - b.drag * DT;
+        const sp2 = b.vx * b.vx + b.vy * b.vy;
+        if (sp2 > MAX_SPEED * MAX_SPEED) {
+          const k = MAX_SPEED / Math.sqrt(sp2);
+          b.vx *= k;
+          b.vy *= k;
+        }
+        b.x += b.vx * DT;
+        b.y += b.vy * DT;
+        b.age++;
+        const e = b.bounce;
+        for (const p of this.board.pins) {
+          if (p.y < b.y - b.r - PIN_R || p.y > b.y + b.r + PIN_R) continue;
+          const dx = b.x - p.x, dy = b.y - p.y;
+          const min = b.r + PIN_R;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= min * min || d2 === 0) continue;
+          const d = Math.sqrt(d2);
+          const nx = dx / d, ny = dy / d;
+          b.x += nx * (min - d);
+          b.y += ny * (min - d);
+          const vn = b.vx * nx + b.vy * ny;
+          if (vn < 0) {
+            b.vx -= (1 + e) * vn * nx;
+            b.vy -= (1 + e) * vn * ny;
+            b.vx += (this.rand() - 0.5) * 30 * e;
+          }
+        }
+        if (b.x < b.r) {
+          b.x = b.r;
+          b.vx = Math.abs(b.vx) * e;
+        }
+        if (b.x > W - b.r) {
+          b.x = W - b.r;
+          b.vx = -Math.abs(b.vx) * e;
+        }
+      }
+      for (let i = 0; i < balls2.length; i++) {
+        for (let j = i + 1; j < balls2.length; j++) {
+          const a = balls2[i], b = balls2[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const min = a.r + b.r;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= min * min || d2 === 0) continue;
+          const d = Math.sqrt(d2);
+          const nx = dx / d, ny = dy / d;
+          const push = (min - d) / (a.mass + b.mass);
+          a.x -= nx * push * b.mass;
+          a.y -= ny * push * b.mass;
+          b.x += nx * push * a.mass;
+          b.y += ny * push * a.mass;
+          const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+          if (vn < 0) {
+            const e = Math.min(a.bounce, b.bounce);
+            const imp = -(1 + e) * vn / (1 / a.mass + 1 / b.mass);
+            a.vx -= imp / a.mass * nx;
+            a.vy -= imp / a.mass * ny;
+            b.vx += imp / b.mass * nx;
+            b.vy += imp / b.mass * ny;
+          }
+        }
+      }
+      for (const b of balls2.slice()) {
+        if (b.y - b.r > H) {
+          this.winner = b;
+          this.setPhase("won");
+          return;
+        }
+        const mx = b.x - b.ax, my = b.y - b.ay;
+        if (mx * mx + my * my > STUCK_MOVE * STUCK_MOVE) {
+          b.ax = b.x;
+          b.ay = b.y;
+          b.aStep = b.age;
+        }
+        if (b.age - b.aStep >= STUCK_STEPS || b.age >= MAX_AGE) this.burn(b);
+      }
+    }
+  };
+
+  // PWA/LocalChatter/src/games/hangman.ts
+  var MAX_WRONG = 6;
+  var games = /* @__PURE__ */ new Map();
+  var norm = (c) => c.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+  var isLetter = (c) => new RegExp("^\\p{L}$", "u").test(norm(c));
+  function lettersOf(g) {
+    return new Set(Array.from(g.phrase).map(norm).filter(isLetter));
+  }
+  var wrongGuesses = (g) => {
+    const l = lettersOf(g);
+    return g.guessed.filter((c) => !l.has(c));
+  };
+  var found = (g, c) => !isLetter(c) || g.guessed.indexOf(norm(c)) >= 0;
+  function settle(g) {
+    if (g.state !== "open") return;
+    if (Array.from(lettersOf(g)).every((c) => g.guessed.indexOf(c) >= 0)) g.state = "won";
+    else if (wrongGuesses(g).length >= MAX_WRONG) g.state = "lost";
+  }
+  function guessIn(text4) {
+    const first = Array.from(String(text4 || "").trim())[0] || "";
+    return first && isLetter(first) ? norm(first) : "";
+  }
+  function guess(g, letter, by2) {
+    if (g.state !== "open" || g.cleared || !letter || g.guessed.indexOf(letter) >= 0) return null;
+    g.guessed.push(letter);
+    const hit = lettersOf(g).has(letter);
+    g.last = { letter, by: by2, hit };
+    settle(g);
+    return hit;
+  }
+  function mergeGame(w, at) {
+    let g = games.get(w.id);
+    const isNew = !g;
+    if (!g) {
+      g = { id: w.id, phrase: w.phrase, author: w.author, owner: w.owner || "", at: w.at || at || Date.now(), guessed: [], state: "open", cleared: false };
+      games.set(g.id, g);
+    }
+    const target = g;
+    Array.from(w.guessed || "").map(norm).forEach((c) => {
+      if (isLetter(c) && target.guessed.indexOf(c) < 0) target.guessed.push(c);
+    });
+    settle(target);
+    return { game: target, isNew };
+  }
+  var toWire2 = (g) => ({
+    id: g.id,
+    kind: "hangman",
+    phrase: g.phrase,
+    author: g.author,
+    owner: g.owner,
+    at: g.at,
+    guessed: g.guessed.join("")
+  });
+  var shown = () => Array.from(games.values()).filter((g) => !g.cleared && g.state !== "won").sort((a, b) => a.at - b.at);
+  var open = () => Array.from(games.values()).filter((g) => !g.cleared && g.state === "open");
+  var mine = (g) => g.owner === device;
+
+  // PWA/LocalChatter/src/games/card.ts
+  var onClear = null;
+  var setClear = (fn) => {
+    onClear = fn;
+  };
+  var cards = /* @__PURE__ */ new Map();
+  var SVG = "http://www.w3.org/2000/svg";
+  function gallows(wrong) {
+    const svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("viewBox", "0 0 100 120");
+    svg.setAttribute("class", "hm-gallows");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", wrong + " of " + MAX_WRONG + " wrong guesses");
+    const parts = [
+      "M10 115 H70 M25 115 V8 H70 V20",
+      // the gallows
+      "circle",
+      "M70 42 V75",
+      "M70 50 L55 64",
+      "M70 50 L85 64",
+      "M70 75 L57 95",
+      "M70 75 L83 95"
+    ];
+    parts.forEach((d, i) => {
+      if (i > wrong) return;
+      const shape = d === "circle" ? document.createElementNS(SVG, "circle") : document.createElementNS(SVG, "path");
+      if (d === "circle") {
+        shape.setAttribute("cx", "70");
+        shape.setAttribute("cy", "31");
+        shape.setAttribute("r", "11");
+      } else shape.setAttribute("d", d);
+      shape.setAttribute("class", i ? "hm-part" : "hm-frame");
+      svg.appendChild(shape);
+    });
+    return svg;
+  }
+  function phrase(g, mode) {
+    const box2 = el("p", "hm-phrase");
+    const reveal = g.state !== "open" || mode === "chat" && mine(g);
+    g.phrase.split(/\s+/).forEach((word) => {
+      const w = el("span", "hm-word");
+      Array.from(word).forEach((c) => {
+        const got = found(g, c);
+        const letter = el("span", "hm-letter" + (got ? "" : reveal ? " hm-missing" : " hm-blank"), got || reveal ? c : "");
+        w.appendChild(letter);
+      });
+      box2.appendChild(w);
+    });
+    box2.setAttribute("aria-label", Array.from(g.phrase).map((c) => found(g, c) || g.state !== "open" ? c : "blank").join(" "));
+    return box2;
+  }
+  function fill(node, g, mode) {
+    const wrong = wrongGuesses(g);
+    node.replaceChildren();
+    node.classList.toggle("lost", g.state === "lost");
+    const head = el("div", "poll-head");
+    head.appendChild(el("span", "poll-kind", "🪢 Hangman"));
+    head.appendChild(el("span", "poll-state", g.state === "open" ? "Open" : g.state === "won" ? "Solved!" : "Lost"));
+    node.appendChild(head);
+    node.appendChild(el("p", "poll-from", "from " + (mode === "chat" && mine(g) ? "you" : g.author.name)));
+    const body = el("div", "hm-body");
+    body.appendChild(gallows(wrong.length));
+    body.appendChild(phrase(g, mode));
+    node.appendChild(body);
+    node.appendChild(el("p", "hm-wrong", "Wrong (" + wrong.length + "/" + MAX_WRONG + "): " + (wrong.join(" ") || "—")));
+    if (g.last && g.state === "open") node.appendChild(el("p", "hm-last", g.last.by + " guessed " + g.last.letter + (g.last.hit ? " ✓" : " ✗")));
+    const foot = g.state === "lost" ? "💀 Out of guesses. The phrase was “" + g.phrase + "”." : mode === "chat" && mine(g) ? "Your phrase: everyone else's messages are guesses." : "Send a message: its first letter is your guess.";
+    node.appendChild(el("p", "poll-foot", foot));
+    if (mode === "chat" && !g.cleared) {
+      const row2 = el("div", "poll-actions");
+      const b = el("button", "link-button", "Clear from displays");
+      b.type = "button";
+      b.addEventListener("click", () => {
+        if (onClear) onClear(g);
+      });
+      row2.appendChild(b);
+      node.appendChild(row2);
+    }
+  }
+  function gameCard(g, mode) {
+    const node = el("div", "poll-card game-card hangman in-" + mode);
+    node.dataset.game = g.id;
+    fill(node, g, mode);
+    const set = cards.get(g.id) || /* @__PURE__ */ new Set();
+    set.add({ node, mode });
+    cards.set(g.id, set);
+    return node;
+  }
+  function refreshGame(g) {
+    const set = cards.get(g.id);
+    if (!set) return;
+    set.forEach((c) => {
+      if (c.node.isConnected) fill(c.node, g, c.mode);
+      else set.delete(c);
+    });
+  }
+  function explode(g) {
+    const set = cards.get(g.id);
+    cards.delete(g.id);
+    if (!set) return;
+    set.forEach(({ node }) => {
+      if (!node.isConnected) return;
+      const target = node.closest(".game-msg") || node;
+      const r = target.getBoundingClientRect();
+      if (!reducedMotion()) confetti(r);
+      const out = target.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(1.15)" }], { duration: 260, fill: "forwards" });
+      out.finished.then(() => target.remove(), () => target.remove());
+    });
+  }
+  var COLOURS = ["#f43f5e", "#f59e0b", "#22c55e", "#3b82f6", "#a855f7", "#14b8a6", "#facc15"];
+  function confetti(r) {
+    const o = overlayCanvas("fx-confetti");
+    const { ctx: ctx2, w, h, dpr } = o;
+    const bits = Array.from({ length: 160 }, () => ({
+      x: (r.left + Math.random() * r.width) * dpr,
+      y: (r.top + Math.random() * r.height) * dpr,
+      vx: (Math.random() - 0.5) * 520 * dpr,
+      vy: (-150 - Math.random() * 450) * dpr,
+      rot: Math.random() * 6,
+      vr: (Math.random() - 0.5) * 14,
+      sway: Math.random() * 6,
+      size: (5 + Math.random() * 5) * dpr,
+      colour: COLOURS[Math.floor(Math.random() * COLOURS.length)]
+    }));
+    let last = performance.now();
+    function frame2(now) {
+      const dt = Math.min(0.05, (now - last) / 1e3);
+      last = now;
+      ctx2.clearRect(0, 0, w, h);
+      bits.forEach((b) => {
+        b.vy = Math.min(b.vy + 900 * dpr * dt, 260 * dpr);
+        b.vx *= 1 - 1.5 * dt;
+        b.x += (b.vx + Math.sin(now / 300 + b.sway) * 40 * dpr) * dt;
+        b.y += b.vy * dt;
+        b.rot += b.vr * dt;
+        ctx2.save();
+        ctx2.translate(b.x, b.y);
+        ctx2.rotate(b.rot);
+        ctx2.fillStyle = b.colour;
+        ctx2.fillRect(-b.size / 2, -b.size / 4, b.size, b.size / 2);
+        ctx2.restore();
+      });
+      if (bits.some((b) => b.y < h + 20 * dpr)) requestAnimationFrame(frame2);
+      else o.canvas.remove();
+    }
+    requestAnimationFrame(frame2);
+  }
+
+  // PWA/LocalChatter/src/games/race/view.ts
+  var root = null;
+  var board = null;
+  var label2 = null;
+  var balls = /* @__PURE__ */ new Map();
+  var burning = /* @__PURE__ */ new Set();
+  function layout2() {
+    if (!board) return;
+    const bar = document.getElementById("composer");
+    const bottom = bar && bar.offsetParent ? bar.getBoundingClientRect().top : innerHeight;
+    const scale = Math.min(innerWidth / W, bottom / H);
+    board.style.transform = `translate(${(innerWidth - W * scale) / 2}px, ${bottom - H * scale}px) scale(${scale})`;
+  }
+  function openBoard(world) {
+    closeBoard();
+    root = el("div", "race");
+    root.setAttribute("aria-hidden", "true");
+    board = el("div", "race-board");
+    board.style.width = W + "px";
+    board.style.height = H + "px";
+    world.board.pins.forEach((p) => {
+      const pin = el("i", "race-pin" + (p.cup ? " cup" : ""));
+      Object.assign(pin.style, { left: p.x - PIN_R + "px", top: p.y - PIN_R + "px", width: 2 * PIN_R + "px", height: 2 * PIN_R + "px", animationDelay: Math.round(p.y * 0.9) + "ms" });
+      pin.dataset.y = String(p.y);
+      board.appendChild(pin);
+    });
+    label2 = el("div", "race-banner");
+    label2.setAttribute("role", "status");
+    root.append(board, label2);
+    document.body.appendChild(root);
+    layout2();
+    addEventListener("resize", layout2);
+  }
+  function closeBoard() {
+    removeEventListener("resize", layout2);
+    if (root) root.remove();
+    root = board = label2 = null;
+    balls.clear();
+    burning.clear();
+  }
+  function banner3(text4, ms = 2600) {
+    if (!label2) return;
+    label2.textContent = text4;
+    label2.classList.remove("show");
+    void label2.offsetWidth;
+    label2.classList.add("show");
+    if (ms) setTimeout(() => {
+      if (label2 && label2.textContent === text4) label2.classList.remove("show");
+    }, ms);
+  }
+  function ballEl(b) {
+    let node = balls.get(b.entry.seq);
+    if (node) return node;
+    node = el("div", "race-ball");
+    const mine2 = !!state.me && b.entry.from.id === state.me.id;
+    if (mine2) node.classList.add("mine");
+    else colourBubble(node, b.entry.from);
+    node.appendChild(el("b", null, mine2 ? "You" : b.entry.from.name));
+    node.appendChild(el("span", null, b.entry.text));
+    Object.assign(node.style, { width: 2 * b.r + "px", height: 2 * b.r + "px", fontSize: (b.r < 17 ? 10 : Math.max(9, b.r * 0.42)) + "px", borderWidth: 1.5 + heft(b) * 4 + "px" });
+    node.title = b.entry.text;
+    if (b.r < 17) node.classList.add("tiny");
+    node.style.setProperty("--heft", heft(b).toFixed(2));
+    board.appendChild(node);
+    balls.set(b.entry.seq, node);
+    return node;
+  }
+  function draw(world) {
+    if (!board) return;
+    const live = /* @__PURE__ */ new Set();
+    world.balls.forEach((b) => {
+      live.add(b.entry.seq);
+      ballEl(b).style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px)`;
+    });
+    world.burns.forEach(({ ball }) => {
+      if (burning.has(ball.entry.seq)) return;
+      burning.add(ball.entry.seq);
+      const node = ballEl(ball);
+      node.style.transform = `translate(${ball.x - ball.r}px, ${ball.y - ball.r}px)`;
+      node.classList.add("burning");
+      setTimeout(() => {
+        node.remove();
+      }, 1100);
+    });
+    balls.forEach((node, seq2) => {
+      if (!live.has(seq2) && !burning.has(seq2) && !(world.winner && world.winner.entry.seq === seq2)) {
+        node.remove();
+        balls.delete(seq2);
+      }
+    });
+  }
+  function celebrate(world, name) {
+    const w = world.winner;
+    const node = w && balls.get(w.entry.seq);
+    if (node && w) {
+      node.classList.add("winner");
+      node.style.transition = "transform .8s ease-in";
+      node.style.transform = `translate(${w.x - w.r}px, ${H + 3 * w.r}px)`;
+    }
+    const bar = board ? board.getBoundingClientRect() : null;
+    if (bar && !reducedMotion()) confetti(new DOMRect(bar.left, bar.bottom - 40, bar.width, 40));
+    banner3("🏆 " + name + " won the Drop Race!", 0);
+  }
+  function retract(after) {
+    if (!root) {
+      after();
+      return;
+    }
+    root.classList.add("out");
+    setTimeout(() => {
+      closeBoard();
+      after();
+    }, 1100);
+  }
+  function sadSweep(after) {
+    if (!root || !board) {
+      after();
+      return;
+    }
+    banner3("Nobody made it through 😞", 0);
+    const face = el("div", "race-sad", "😞");
+    root.appendChild(face);
+    const size = Math.min(innerWidth, innerHeight) * 0.6;
+    const ms = reducedMotion() ? 1200 : 3600;
+    const anim2 = face.animate(
+      [{ transform: `translate(-50%, ${-size}px)` }, { transform: `translate(-50%, ${innerHeight + size * 0.2}px)` }],
+      { duration: ms, easing: "cubic-bezier(.4, 0, .7, 1)", fill: "forwards" }
+    );
+    const speed = (innerHeight + size * 1.2) / ms;
+    board.querySelectorAll(".race-pin, .race-ball").forEach((n) => {
+      const y = n.getBoundingClientRect().top;
+      setTimeout(() => n.classList.add("swept"), Math.max(0, (y + size * 0.9) / speed));
+    });
+    anim2.finished.then(() => {
+      closeBoard();
+      after();
+    }, () => {
+      closeBoard();
+      after();
+    });
+  }
+
+  // PWA/LocalChatter/src/games/race/index.ts
+  var DELAY_MS = 700;
+  var race = null;
+  var offset = -Infinity;
+  var seq = 0;
+  var entered = 0;
+  var send = (msg) => sendRaw({ type: "game", ...msg });
+  var serverNow = () => Date.now() + (offset === -Infinity ? 0 : offset);
+  var nameOf3 = (id2, name) => state.me && id2 === state.me.id ? "You" : name;
+  var raceRunning = () => !!race && !race.ended;
+  function rebuild(r) {
+    const stopStep = r.stopAt ? Math.max(1, Math.ceil((r.stopAt - r.start) / 1e3 * HZ)) : Infinity;
+    const world = new World(r.id, r.start, r.entries, stopStep);
+    world.advance(r.world.step);
+    r.world = world;
+  }
+  function placeholder() {
+    refreshLanguages();
+    const t = $("text");
+    if (raceRunning() && race && entered < roundOpen(race.world)) t.placeholder = "🎯 Your Drop Race entry";
+  }
+  var roundOpen = (w) => w.phase === "prompt" ? w.round + 1 : w.round;
+  function raceEntry(text4) {
+    if (!race || race.ended || DISPLAY || /^\s*\//.test(text4)) return false;
+    const round = roundOpen(race.world);
+    if (entered >= round) return false;
+    if (!send({ op: "drop", id: race.id, text: text4 })) return false;
+    entered = round;
+    placeholder();
+    systemLine("🎯 Your message is in the Drop Race: watch it fall!");
+    return true;
+  }
+  function raceCommand(rest) {
+    if (/^(off|stop)$/i.test(rest)) {
+      if (!raceRunning() || !race) {
+        systemLine("There's no Drop Race running.");
+        return;
+      }
+      if (!send({ op: "stop", id: race.id })) systemLine("Not connected");
+      return;
+    }
+    if (raceRunning()) {
+      systemLine("A Drop Race is already running. /droprace off stops it.");
+      return;
+    }
+    if (!send({ op: "race", id: randomId() })) systemLine("Not connected: race not started.");
+  }
+  function handleRace(msg) {
+    if (msg.at) offset = Math.max(offset, msg.at - Date.now());
+    if (!msg.id || !msg.at || !msg.from) return;
+    if (msg.op === "race") {
+      if (raceRunning()) return;
+      const entries = [];
+      const r = { id: msg.id, start: msg.at, by: "", entries, stopAt: 0, world: new World(msg.id, msg.at, entries), seen: /* @__PURE__ */ new Set(), ended: false };
+      race = r;
+      entered = 0;
+      openBoard(r.world);
+      banner3("🎯 Drop Race! Send a message: it drops from the top", 3500);
+      systemLine("🎯 " + nameOf3(msg.from.id, msg.from.name) + " started a Drop Race! Your next message is your entry: it drops from the top, and the first to reach the bottom wins. Longer words are heavier.");
+      placeholder();
+      requestAnimationFrame(frame);
+      return;
+    }
+    if (!race || msg.id !== race.id || race.ended) return;
+    if (msg.op === "drop" && msg.text) {
+      const e = { from: msg.from, text: msg.text, at: msg.at, seq: seq++ };
+      race.entries.push(e);
+      race.entries.sort((a, b) => a.at - b.at || a.seq - b.seq);
+      if (race.world.stepOf(e.at) <= race.world.step) rebuild(race);
+    } else if (msg.op === "stop" && !race.stopAt) {
+      race.stopAt = msg.at;
+      rebuild(race);
+      race.by = nameOf3(msg.from.id, msg.from.name);
+    }
+  }
+  function frame() {
+    const r = race;
+    if (!r || r.ended) return;
+    const target = Math.floor((serverNow() - DELAY_MS - r.start) / 1e3 * HZ);
+    r.world.advance(target);
+    draw(r.world);
+    react(r);
+    if (!r.ended) requestAnimationFrame(frame);
+  }
+  function react(r) {
+    const w = r.world;
+    const once = (key) => r.seen.has(key) ? false : (r.seen.add(key), true);
+    if (w.phase === "prompt" && once("prompt")) {
+      banner3("Nobody made it! Send another message for round 2", 3200);
+      systemLine("🔥 Nobody made it through the Drop Race. Send another message for round 2!");
+      placeholder();
+    }
+    if (w.phase === "running" && w.round === 2 && once("round2")) {
+      banner3("Round 2: go!", 1800);
+      placeholder();
+    }
+    if (!w.over) return;
+    r.ended = true;
+    placeholder();
+    const done = () => {
+      if (race === r) race = null;
+      placeholder();
+    };
+    if (w.phase === "won" && w.winner) {
+      const who = nameOf3(w.winner.entry.from.id, w.winner.entry.from.name);
+      celebrate(w, who);
+      systemLine("🏆 " + who + " won the Drop Race with “" + w.winner.entry.text + "”!");
+      setTimeout(() => retract(done), 4e3);
+    } else if (w.phase === "failed") {
+      systemLine("😞 Nobody made it through the Drop Race, twice. Nobody wins.");
+      sadSweep(done);
+    } else {
+      systemLine("🎯 " + r.by + " stopped the Drop Race.");
+      retract(done);
+    }
+  }
+
+  // PWA/LocalChatter/src/games/index.ts
+  var send2 = (msg) => sendRaw({ type: "game", ...msg });
+  var board2 = $("poll-board");
+  function updateBoard() {
+    if (!DISPLAY) return;
+    const list3 = shown();
+    board2.querySelectorAll("[data-game]").forEach((c) => {
+      if (!list3.some((g) => g.id === c.dataset.game) && !c.getAnimations().length) c.remove();
+    });
+    list3.forEach((g) => {
+      if (!board2.querySelector('[data-game="' + CSS.escape(g.id) + '"]')) board2.appendChild(gameCard(g, "board"));
+    });
+    board2.hidden = !board2.children.length;
+  }
+  function placeInChat(g) {
+    if (DISPLAY || g.state === "won") return;
+    const box2 = el("div", "msg game-msg" + (g.owner === device ? " mine" : ""));
+    box2.appendChild(gameCard(g, "chat"));
+    append(box2);
+  }
+  function changed(g, by2) {
+    if (g.state === "won") {
+      explode(g);
+      show(() => systemNotice("🎉 Hangman solved: “" + g.phrase + "”! " + by2 + " found the last letter."));
+    } else {
+      refreshGame(g);
+      if (g.state === "lost") show(() => systemNotice("💀 Hangman lost: the phrase was “" + g.phrase + "”."));
+    }
+    updateBoard();
+  }
+  function chatGuess(msg, sender) {
+    if (msg.to || msg.file || msg.sound || !sender || /^\s*\//.test(msg.text || "")) return;
+    const letter = guessIn(msg.text);
+    if (!letter) return;
+    const meSending = !!state.me && sender.id === state.me.id;
+    open().forEach((g) => {
+      if (sender.id === g.author.id || meSending && g.owner === device) return;
+      if (guess(g, letter, meSending ? "You" : sender.name) !== null) changed(g, meSending ? "You" : sender.name);
+    });
+  }
+  function startHangman(text4) {
+    const phrase2 = text4.replace(/\s+/g, " ").trim().slice(0, 120);
+    if (!Array.from(phrase2).some(isLetter)) return "Give a word or phrase to guess, e.g. /hangman Under the weather";
+    if (!connected() || !state.me) return "Not connected: game not started.";
+    const w = { id: randomId(), kind: "hangman", phrase: phrase2, author: state.me, owner: device, at: Date.now() };
+    send2({ op: "new", game: w });
+    placeInChat(mergeGame(w).game);
+    updateBoard();
+    return "";
+  }
+  function clearLocal(g) {
+    g.cleared = true;
+    refreshGame(g);
+    updateBoard();
+  }
+  function clearGames(list3, all2) {
+    if (!list3.length) {
+      systemLine("There are no hangman games on the displays.");
+      return;
+    }
+    if (!send2(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
+      systemLine("Not connected: nothing cleared");
+      return;
+    }
+    list3.forEach(clearLocal);
+    systemLine("🧹 You cleared " + (all2 ? "the hangman games" : "the hangman game") + " from the displays.");
+  }
+  setClear((g) => clearGames([g], false));
+  function hangmanCommand(rest) {
+    const m = /^clear\b\s*(.*)$/i.exec(rest);
+    if (m) {
+      const list3 = shown();
+      const n = parseInt(m[1], 10);
+      if (!m[1] || /^all$/i.test(m[1])) clearGames(list3, true);
+      else if (list3[n - 1]) clearGames([list3[n - 1]], false);
+      else systemLine("There's no hangman game " + m[1] + ". Type /hangman to see them.");
+      return;
+    }
+    if (!rest) {
+      const list3 = shown();
+      if (!list3.length) {
+        systemLine("No hangman games are running. Start one with /hangman <phrase>: everyone else's messages are guesses (their first letter).");
+        return;
+      }
+      systemLine("🪢 Hangman games running (" + list3.length + "):");
+      list3.forEach(placeInChat);
+      return;
+    }
+    const err = startHangman(rest);
+    if (err) systemLine(err);
+  }
+  function handleGame(msg) {
+    if (msg.op === "race" || msg.op === "drop" || msg.op === "stop") {
+      handleRace(msg);
+      return;
+    }
+    const g = msg.id ? games.get(msg.id) : void 0;
+    if (msg.op === "new" && msg.game) {
+      const r = mergeGame(msg.game, msg.at);
+      if (r.isNew) show(() => placeInChat(r.game));
+      updateBoard();
+    } else if (msg.op === "clear") {
+      const list3 = msg.all ? shown() : g && !g.cleared ? [g] : [];
+      list3.forEach(clearLocal);
+      if (list3.length) show(() => systemNotice("🧹 " + (msg.from ? msg.from.name : "Someone") + " cleared " + (msg.all ? "the hangman games" : "a hangman game") + " from the displays."));
+    } else if (msg.op === "sync") {
+      if (msg.to) cancelReminder(msg.to);
+      const forMe = !!state.me && msg.to === state.me.id;
+      const added = [];
+      (msg.games || []).forEach((w) => {
+        const had = games.get(w.id);
+        if (had && had.cleared) return;
+        const r = mergeGame(w);
+        if (r.isNew) added.push(r.game);
+        else refreshGame(r.game);
+      });
+      if (added.length) {
+        show(() => {
+          if (forMe && msg.from) systemNotice("🪢 " + msg.from.name + " reminded you about " + (added.length === 1 ? "a hangman game" : added.length + " hangman games") + ":");
+          added.forEach(placeInChat);
+        });
+      }
+      updateBoard();
+    }
+  }
+  var reminders = /* @__PURE__ */ new Map();
+  function cancelReminder(id2) {
+    clearTimeout(reminders.get(id2));
+    reminders.delete(id2);
+  }
+  function remindAboutGames(peer) {
+    if (!shown().length || state.me && peer.id === state.me.id) return;
+    cancelReminder(peer.id);
+    reminders.set(peer.id, setTimeout(() => {
+      reminders.delete(peer.id);
+      const list3 = shown().map(toWire2);
+      if (list3.length && state.peers.has(peer.id)) send2({ op: "sync", to: peer.id, games: list3 });
+    }, (DISPLAY ? 150 : 450) + Math.random() * 900));
+  }
+  document.addEventListener("localchatter:game", (ev) => {
+    const d = ev.detail;
+    if (d.game !== "wall") return;
+    const plural2 = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+    const tally2 = d.sent > d.hits ? " (" + plural2(d.sent, "message") + " thrown at it, " + d.hits + " did damage)" : "";
+    if (d.result === "broken") systemLine("💥 The wall broke after " + plural2(d.hits, "hit") + tally2 + "! " + d.by + " landed the final blow. It was " + DESCRIBE[d.variant] + ".");
+    else systemLine("🧱 The wall went back up after " + plural2(d.hits, "hit") + tally2 + ". It was " + DESCRIBE[d.variant] + ".");
+  });
+  button("race-new").addEventListener("click", () => raceCommand(""));
+  var dialog = $("hangman-dialog");
+  button("hangman-new").addEventListener("click", () => {
+    input("hangman-phrase").value = "";
+    $("hangman-status").textContent = "";
+    dialog.showModal();
+  });
+  button("hangman-cancel").addEventListener("click", () => dialog.close());
+  $("hangman-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = startHangman(input("hangman-phrase").value);
+    if (err) {
+      $("hangman-status").textContent = err;
+      return;
+    }
+    dialog.close();
+  });
+
+  // PWA/LocalChatter/src/polls/card.ts
+  var actions = null;
+  var setActions = (a) => {
+    actions = a;
+  };
+  var cards2 = /* @__PURE__ */ new Map();
+  var plural = (n, word) => n + " " + word + (n === 1 ? "" : "s");
+  var button2 = (cls, text4, onClick) => {
+    const b = el("button", cls, text4);
+    b.type = "button";
+    b.addEventListener("click", onClick);
+    return b;
+  };
+  function state2(p) {
+    if (p.cleared) return p.closed || !p.secret && !p.quiz ? "Ended" : "Ended without results";
+    return p.closed ? "Closed" : "Open";
+  }
+  function kind(p) {
+    return p.quiz ? "🧠 Quiz" : p.secret ? "🔒 Secret poll" : "📊 Poll";
+  }
+  function footer(p, total, mode) {
+    const votes = plural(total, p.quiz ? "answer" : "vote");
+    if (resultsShown(p)) return votes + (p.closed || p.cleared ? " · final results" : " · updates live");
+    if (p.cleared) return votes + " · it was cleared before the results were shown";
+    const closer = mode === "chat" && p.owner === device ? "you close it" : p.author.name + " closes it";
+    return votes + " so far · 🔒 " + (p.quiz ? "answers" : "results") + " when " + closer;
+  }
+  function fill2(node, p, mode) {
+    const t = tally(p);
+    const shown2 = resultsShown(p);
+    const mine2 = myVote(p);
+    const owner = p.owner === device;
+    const canVote = mode === "chat" && !p.closed && !p.cleared && !(p.quiz && (mine2 !== void 0 || owner));
+    const over = p.closed || p.cleared;
+    const top = Math.max(1, ...t.counts);
+    node.replaceChildren();
+    node.classList.toggle("closed", over);
+    node.classList.toggle("secret", p.secret);
+    node.classList.toggle("quiz", p.quiz);
+    const verdict = p.quiz && mode === "chat" && mine2 !== void 0 ? isCorrect(p, mine2) ? "right" : "wrong" : "";
+    node.classList.toggle("right", verdict === "right");
+    node.classList.toggle("wrong", verdict === "wrong");
+    const head = el("div", "poll-head");
+    if (!p.cleared) head.appendChild(el("span", "poll-num", "#" + numberOf(p)));
+    head.appendChild(el("span", "poll-kind", kind(p)));
+    head.appendChild(el("span", "poll-state", state2(p)));
+    node.appendChild(head);
+    node.appendChild(el("p", "poll-q", p.question));
+    node.appendChild(el("p", "poll-from", "from " + (owner ? "you" : p.author.name)));
+    if (verdict) node.appendChild(el("p", "quiz-verdict", verdict === "right" ? "✅ You got it right!" : "❌ Not quite." + (over ? "" : " The answer is shown when the quiz closes.")));
+    const list3 = el("ol", "poll-options");
+    p.options.forEach((label3, i) => {
+      const row2 = el("li", "poll-option");
+      const pct = shown2 && t.total ? Math.round(t.counts[i] / t.total * 100) : 0;
+      const answer = p.quiz && isCorrect(p, i) && (shown2 || owner && mode === "chat");
+      const win = shown2 && !p.quiz && over && t.total > 0 && t.counts[i] === top;
+      const body = canVote ? button2("poll-choice", "", () => {
+        if (actions) actions.vote(p, i);
+      }) : el("div", "poll-choice");
+      if (body instanceof HTMLButtonElement) body.setAttribute("aria-pressed", String(mine2 === i));
+      if (mine2 === i) row2.classList.add("picked");
+      if (win) row2.classList.add("winner");
+      if (answer) row2.classList.add("answer");
+      const bar = el("span", "poll-bar");
+      bar.style.width = pct + "%";
+      body.appendChild(bar);
+      body.appendChild(el("span", "poll-label", (mine2 === i ? "✓ " : "") + label3 + (answer ? " ✔ correct" : "")));
+      if (shown2) body.appendChild(el("span", "poll-count", t.counts[i] + (t.total ? " · " + pct + "%" : "")));
+      row2.appendChild(body);
+      if (shown2 && !p.secret && !p.quiz && t.voters[i].length) row2.appendChild(el("span", "poll-voters", t.voters[i].join(", ")));
+      list3.appendChild(row2);
+    });
+    node.appendChild(list3);
+    if (p.quiz && shown2) {
+      const m = marks(p);
+      const who = el("div", "quiz-results");
+      who.appendChild(el("p", "quiz-right", "✅ Right (" + m.right.length + "): " + (m.right.join(", ") || "nobody")));
+      who.appendChild(el("p", "quiz-wrong", "❌ Wrong (" + m.wrong.length + "): " + (m.wrong.join(", ") || "nobody")));
+      node.appendChild(who);
+    }
+    node.appendChild(el("p", "poll-foot", footer(p, t.total, mode)));
+    if (mode === "chat" && !p.cleared) {
+      const row2 = el("div", "poll-actions");
+      if (!p.closed && owner) row2.appendChild(button2("link-button", p.quiz ? "Close and show answers" : p.secret ? "Close and show results" : "Close poll", () => {
+        if (actions) actions.close(p);
+      }));
+      row2.appendChild(button2("link-button", "Clear from displays", () => {
+        if (actions) actions.clear(p);
+      }));
+      node.appendChild(row2);
+    }
+  }
+  function card(p, mode) {
+    const node = el("div", "poll-card in-" + mode);
+    node.dataset.poll = p.id;
+    fill2(node, p, mode);
+    const set = cards2.get(p.id) || /* @__PURE__ */ new Set();
+    set.add({ node, mode });
+    cards2.set(p.id, set);
+    return node;
+  }
+  function refresh(p) {
+    const set = cards2.get(p.id);
+    if (!set) return;
+    set.forEach((c) => {
+      if (c.node.isConnected) fill2(c.node, p, c.mode);
+      else if (!c.node.closest(".fx-ghost")) set.delete(c);
+    });
+  }
+  function refreshAll(all2) {
+    for (const p of all2) refresh(p);
+  }
+
+  // PWA/LocalChatter/src/polls/index.ts
+  var send3 = (msg) => sendRaw({ type: "poll", ...msg });
+  var quote = (p) => "“" + p.question + "”";
+  var by = (from) => from ? from.name : "Someone";
+  function redraw(also) {
+    refreshAll(also ? [...active2(), also] : active2());
+    updateBoard2();
+  }
+  function placeInChat2(p) {
+    if (DISPLAY) return;
+    const box2 = el("div", "msg poll-msg" + (p.owner === device ? " mine" : ""));
+    box2.appendChild(card(p, "chat"));
+    append(box2);
+  }
+  var board3 = $("poll-board");
+  function updateBoard2() {
+    if (!DISPLAY) return;
+    const list3 = active2();
+    board3.querySelectorAll("[data-poll]").forEach((c) => {
+      if (!list3.some((p) => p.id === c.dataset.poll)) c.remove();
+    });
+    list3.forEach((p, i) => {
+      const node = board3.querySelector('[data-poll="' + CSS.escape(p.id) + '"]') || card(p, "board");
+      if (board3.children[i] !== node) board3.insertBefore(node, board3.children[i] || null);
+    });
+    board3.hidden = !board3.children.length;
+  }
+  function createPoll(question, options, secret, correct) {
+    if (!connected() || !state.me) return false;
+    const w = { id: randomId(), question, options, secret, author: state.me, owner: device, at: Date.now() };
+    if (correct && correct.length) {
+      w.quiz = true;
+      w.correct = correct;
+      w.secret = false;
+    }
+    send3({ op: "new", poll: w });
+    const { poll } = merge(w);
+    placeInChat2(poll);
+    redraw();
+    return true;
+  }
+  function castVote(p, option) {
+    if (!state.me || !send3({ op: "vote", id: p.id, voter: device, option })) {
+      systemLine("Not connected: vote not sent");
+      return;
+    }
+    if (vote(p, { voter: device, name: state.me.name, option, at: Date.now() })) redraw();
+  }
+  function closePoll(p) {
+    if (p.owner !== device) {
+      systemLine("Only " + p.author.name + ", who started it, can close the poll " + quote(p) + ".");
+      return;
+    }
+    if (p.closed) {
+      systemLine("The poll " + quote(p) + " is already closed.");
+      return;
+    }
+    if (!send3({ op: "close", id: p.id, voter: device })) {
+      systemLine("Not connected: poll not closed");
+      return;
+    }
+    p.closed = true;
+    redraw();
+    systemLine("📊 You closed " + (p.quiz ? "the quiz " : "the poll ") + quote(p) + (p.quiz ? ": the answers are on the displays." : p.secret ? ": the results are on the displays." : "."));
+  }
+  function clearLocal2(p) {
+    p.cleared = true;
+    redraw(p);
+  }
+  function clearPolls(list3, all2) {
+    if (!list3.length) {
+      systemLine("There are no polls on the displays.");
+      return;
+    }
+    if (!send3(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
+      systemLine("Not connected: nothing cleared");
+      return;
+    }
+    list3.forEach(clearLocal2);
+    systemLine("🧹 You cleared " + (all2 ? "all the polls" : "the poll " + quote(list3[0])) + " from the displays.");
+  }
+  setActions({ vote: castVote, close: closePoll, clear: (p) => clearPolls([p], false) });
+  function handlePoll(msg) {
+    const p = msg.id ? polls.get(msg.id) : void 0;
+    switch (msg.op) {
+      case "new": {
+        if (!msg.poll) return;
+        const r = merge(msg.poll, msg.at);
+        if (r.isNew) show(() => placeInChat2(r.poll));
+        redraw();
+        return;
+      }
+      case "vote": {
+        if (!msg.id || !msg.voter || msg.option === void 0) return;
+        const v = { voter: msg.voter, name: by(msg.from), option: msg.option, at: msg.at || Date.now() };
+        if (!p) voteLater(msg.id, v);
+        else if (vote(p, v)) redraw();
+        return;
+      }
+      case "close":
+        if (!p || p.closed || p.cleared || msg.voter !== p.owner) return;
+        p.closed = true;
+        redraw();
+        show(() => systemNotice("📊 " + by(msg.from) + " closed " + (p.quiz ? "the quiz " : "the poll ") + quote(p) + "."));
+        return;
+      case "clear": {
+        const list3 = msg.all ? active2() : p && !p.cleared ? [p] : [];
+        if (!list3.length) return;
+        list3.forEach(clearLocal2);
+        show(() => systemNotice("🧹 " + by(msg.from) + " cleared " + (msg.all ? "all the polls" : "the poll " + quote(list3[0])) + " from the displays."));
+        return;
+      }
+      case "sync":
+        if (msg.to) cancelReminder2(msg.to);
+        remembered(msg.polls || [], msg.to === (state.me && state.me.id) ? msg.from : void 0);
+    }
+  }
+  function remembered(list3, reminder) {
+    const added = [];
+    list3.forEach((w) => {
+      const had = polls.get(w.id);
+      if (had && had.cleared) return;
+      const r = merge(w);
+      if (r.isNew) added.push(r.poll);
+    });
+    if (!added.length) {
+      redraw();
+      return;
+    }
+    show(() => {
+      if (reminder) systemNotice("📊 " + reminder.name + " reminded you about " + (added.length === 1 ? "a poll that's" : added.length + " polls that are") + " running:");
+      added.forEach(placeInChat2);
+    });
+    redraw();
+  }
+  var reminders2 = /* @__PURE__ */ new Map();
+  function cancelReminder2(id2) {
+    clearTimeout(reminders2.get(id2));
+    reminders2.delete(id2);
+  }
+  function remindNewcomer(peer) {
+    if (!active2().length || state.me && peer.id === state.me.id) return;
+    cancelReminder2(peer.id);
+    const wait = (DISPLAY ? 100 : 400) + Math.random() * 900;
+    reminders2.set(peer.id, setTimeout(() => {
+      reminders2.delete(peer.id);
+      const list3 = active2().map(toWire);
+      if (list3.length && state.peers.has(peer.id)) send3({ op: "sync", to: peer.id, polls: list3 });
+    }, wait));
   }
 
   // PWA/LocalChatter/src/net/handle.ts
@@ -1292,6 +3444,8 @@
         state.peers.set(peer.id, peer);
         renderPeople();
         show(() => systemNotice(peer.name + " joined"));
+        remindNewcomer(peer);
+        remindAboutGames(peer);
         break;
       }
       case "leave": {
@@ -1315,6 +3469,7 @@
         break;
       }
       case "chat": {
+        chatGuess(msg, msg.from);
         if (msg.to) {
           const seen = whisperVisibility(msg);
           if (!seen) break;
@@ -1324,6 +3479,12 @@
         show(() => renderMessage(msg, false));
         break;
       }
+      case "poll":
+        handlePoll(msg);
+        break;
+      case "game":
+        handleGame(msg);
+        break;
       case "error":
         if (msg.message) systemLine(msg.message);
         break;
@@ -1356,10 +3517,10 @@
     }, HIDE_AFTER_MS);
   }
   function onStatus(connectedNow) {
-    const changed = connectedNow !== isConnected;
+    const changed2 = connectedNow !== isConnected;
     isConnected = connectedNow;
     if (!connectedNow) showHeader();
-    else if (changed) pokeHeader();
+    else if (changed2) pokeHeader();
   }
   tab.addEventListener("click", pokeHeader);
   topbar.addEventListener("pointerdown", pokeHeader);
@@ -1441,8 +3602,8 @@
   });
 
   // PWA/LocalChatter/src/features/soundboard.ts
-  var soundStatus = (text2) => {
-    $("sound-status").textContent = text2;
+  var soundStatus = (text4) => {
+    $("sound-status").textContent = text4;
   };
   function refreshSoundboard() {
     return library().then((lib) => {
@@ -1473,7 +3634,7 @@
       const li = el("li");
       li.appendChild(el("span", "name", e.name));
       li.appendChild(el("span", "meta", e.linkOnly ? "link" : formatSize(e.size)));
-      const actions = [
+      const actions2 = [
         ["▶", "Preview " + e.name + " (only on this device)", () => {
           unlock();
           playEntry(e).catch(() => soundStatus(`Couldn't play "` + e.name + '".'));
@@ -1486,8 +3647,8 @@
           if (window.confirm('Delete "' + e.name + '" from this device?')) void remove2(e.id).then(refreshSoundboard);
         }]
       ];
-      actions.forEach(([label, aria, fn]) => {
-        const b = el("button", null, label);
+      actions2.forEach(([label3, aria, fn]) => {
+        const b = el("button", null, label3);
         b.type = "button";
         b.setAttribute("aria-label", aria);
         b.addEventListener("click", fn);
@@ -1597,12 +3758,12 @@
     if (!can("viewSystem")) return;
     const me = state.me && state.me.id;
     const name = (p) => p && p.id === me ? "You" : p && p.name || "Someone";
-    let text2;
-    if (msg.kind === "role") text2 = name(msg.from) + " changed role: " + msg.old + " → " + msg.role;
-    else if (msg.kind === "effect") text2 = name(msg.from) + " triggered " + msg.name + " for " + (msg.to === "all" ? "everyone" : msg.to === me ? "you" : nameOf2(msg.to));
-    else if (msg.kind === "debug") text2 = name(msg.from) + " turned debug mode " + (msg.on ? "on" : "off");
+    let text4;
+    if (msg.kind === "role") text4 = name(msg.from) + " changed role: " + msg.old + " → " + msg.role;
+    else if (msg.kind === "effect") text4 = name(msg.from) + " triggered " + msg.name + " for " + (msg.to === "all" ? "everyone" : msg.to === me ? "you" : nameOf2(msg.to));
+    else if (msg.kind === "debug") text4 = name(msg.from) + " turned debug mode " + (msg.on ? "on" : "off");
     else return;
-    systemNotice("🛡️ " + text2, "audit");
+    systemNotice("🛡️ " + text4, "audit");
   }
   var debugToggle = input("debug-toggle");
   debugToggle.addEventListener("change", () => setDebug(debugToggle.checked));
@@ -1620,7 +3781,7 @@
   }
   function decodeRecord(record) {
     const data = record.data;
-    const text2 = (enc) => {
+    const text4 = (enc) => {
       try {
         return new TextDecoder(enc || "utf-8").decode(data);
       } catch {
@@ -1631,10 +3792,10 @@
       case "empty":
         return "";
       case "text":
-        return text2(record.encoding);
+        return text4(record.encoding);
       case "url":
       case "absolute-url":
-        return text2();
+        return text4();
       case "smart-poster":
         try {
           return (record.toRecords ? record.toRecords() : []).map(decodeRecord).filter(Boolean).join("\n");
@@ -1642,11 +3803,11 @@
           return "";
         }
       case "mime":
-        if (/^text\/|json|xml|vcard/i.test(record.mediaType || "")) return text2();
+        if (/^text\/|json|xml|vcard/i.test(record.mediaType || "")) return text4();
         return "[" + (record.mediaType || "binary") + " data, " + formatSize(data ? data.byteLength : 0) + "]";
       default: {
         if (!data) return "";
-        const s = text2();
+        const s = text4();
         return /[\u0000-\u0008\u000e-\u001f�]/.test(s) ? "[" + record.recordType + " record]" : s;
       }
     }
@@ -1657,14 +3818,14 @@
     return "Empty NFC tag" + (event.serialNumber ? " (" + event.serialNumber + ")" : "");
   }
   function onTag(event) {
-    const text2 = tagMessage(event).slice(0, 4e3);
-    const key = (event.serialNumber || "") + "|" + text2;
+    const text4 = tagMessage(event).slice(0, 4e3);
+    const key = (event.serialNumber || "") + "|" + text4;
     const now = Date.now();
     if (key === nfc.last && now - nfc.lastAt < 4e3) return;
     nfc.last = key;
     nfc.lastAt = now;
     vibrate2(50);
-    if (!sendChat({ text: text2, via: "nfc" })) systemLine("Not connected: NFC tag wasn't sent");
+    if (!sendChat({ text: text4, via: "nfc" })) systemLine("Not connected: NFC tag wasn't sent");
   }
   function stopNfc() {
     if (nfc.abort) nfc.abort.abort();
@@ -1702,10 +3863,10 @@
     detector: null,
     canvas: null
   };
-  var dialog = $("qr");
+  var dialog2 = $("qr");
   var video = $("qr-video");
-  var qrStatus = (text2) => {
-    $("qr-status").textContent = text2;
+  var qrStatus = (text4) => {
+    $("qr-status").textContent = text4;
   };
   function loadJsQr() {
     if (window.jsQR) return Promise.resolve();
@@ -1722,11 +3883,11 @@
     return BarcodeDetector.getSupportedFormats().then((f) => f.indexOf("qr_code") >= 0 ? new BarcodeDetector({ formats: ["qr_code"] }) : null).catch(() => null);
   }
   function openQr() {
-    if (dialog.open) return;
+    if (dialog2.open) return;
     qrStatus("Starting camera…");
-    dialog.showModal();
+    dialog2.showModal();
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false }).then((stream) => {
-      if (!dialog.open) {
+      if (!dialog2.open) {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -1768,9 +3929,9 @@
       scanSoon();
       return;
     }
-    void decodeFrame().then((text2) => {
+    void decodeFrame().then((text4) => {
       if (!qr.stream) return;
-      if (text2 && text2.trim()) onQr(text2);
+      if (text4 && text4.trim()) onQr(text4);
       else scanSoon();
     });
   }
@@ -1782,14 +3943,14 @@
   }
   function closeQr() {
     stopCamera();
-    if (dialog.open) dialog.close();
+    if (dialog2.open) dialog2.close();
   }
-  function onQr(text2) {
+  function onQr(text4) {
     vibrate2(50);
     closeQr();
-    if (!sendChat({ text: text2.slice(0, 4e3), via: "qr" })) systemLine("Not connected: the QR code wasn't sent");
+    if (!sendChat({ text: text4.slice(0, 4e3), via: "qr" })) systemLine("Not connected: the QR code wasn't sent");
   }
-  dialog.addEventListener("close", stopCamera);
+  dialog2.addEventListener("close", stopCamera);
   $("qr-close").addEventListener("click", closeQr);
 
   // PWA/LocalChatter/src/scan/menu.ts
@@ -1811,9 +3972,9 @@
       toggleNfc();
       return;
     }
-    const open = menu.hidden;
-    menu.hidden = !open;
-    scan.setAttribute("aria-expanded", String(open));
+    const open2 = menu.hidden;
+    menu.hidden = !open2;
+    scan.setAttribute("aria-expanded", String(open2));
   });
   $("scan-qr").addEventListener("click", () => {
     closeScanMenu();
@@ -1824,20 +3985,164 @@
     toggleNfc();
   });
 
+  // PWA/LocalChatter/src/polls/commands.ts
+  var MAX_OPTIONS = 10;
+  var HELP = 'Start a poll with /poll <question> | <option> | <option>, e.g. /poll Lunch? | Pizza | Tacos. Add "secret" first (/poll secret …) to hide the results until you close it. /poll close <number> closes yours; /poll clear <number> or /poll clear all takes polls off the displays.';
+  var QUIZ_HELP = "Start a quiz with /quiz <question> | <option> | <option>, marking the right answer(s) with *, e.g. /quiz Capital of France? | *Paris | Lyon | Nice. Close it with /poll close to show who got it right.";
+  function startPoll(question, choices, secret, quiz = false) {
+    const q = question.replace(/\s+/g, " ").trim().slice(0, 200);
+    const opts = choices.map((c) => ({ text: c.text.replace(/\s+/g, " ").trim().slice(0, 100), correct: c.correct })).filter((c) => c.text);
+    const what = quiz ? "quiz" : "poll";
+    if (!q) return "Write a question for the " + what + ".";
+    if (opts.length < 2) return "A " + what + " needs at least two options.";
+    if (opts.length > MAX_OPTIONS) return "A " + what + " can have up to " + MAX_OPTIONS + " options.";
+    const seen = new Set(opts.map((o) => o.text.toLowerCase()));
+    if (seen.size !== opts.length) return "Each option needs to be different.";
+    const correct = opts.map((o, i) => o.correct ? i : -1).filter((i) => i >= 0);
+    if (quiz && !correct.length) return "Mark at least one right answer.";
+    if (quiz && correct.length === opts.length) return "At least one answer needs to be wrong.";
+    return createPoll(q, opts.map((o) => o.text), secret, quiz ? correct : void 0) ? "" : "Not connected: " + what + " not sent.";
+  }
+  function pollCommand(rest) {
+    const m = /^(close|end|clear)\b\s*(.*)$/i.exec(rest);
+    if (m) {
+      manage(m[1].toLowerCase(), m[2].trim());
+      return;
+    }
+    if (!rest) {
+      const list3 = active2();
+      if (!list3.length) {
+        systemLine("No polls are running. " + HELP);
+        return;
+      }
+      systemLine("📊 Polls running (" + list3.length + "):");
+      list3.forEach(placeInChat2);
+      return;
+    }
+    const secret = /^secret\b/i.test(rest);
+    const parts = rest.replace(/^(secret|public)\b\s*/i, "").split("|");
+    if (parts.length < 3) {
+      systemLine(HELP);
+      return;
+    }
+    const err = startPoll(parts[0], parts.slice(1).map((text4) => ({ text: text4, correct: false })), secret);
+    if (err) systemLine(err);
+  }
+  function quizCommand(rest) {
+    const parts = rest.split("|");
+    if (parts.length < 3) {
+      systemLine(QUIZ_HELP);
+      return;
+    }
+    const choices = parts.slice(1).map((t) => ({ text: t.trim().replace(/^\*\s*/, ""), correct: /^\s*\*/.test(t) }));
+    const err = startPoll(parts[0], choices, false, true);
+    if (err) systemLine(err + (/right answer/.test(err) ? " Put * before it, e.g. | *Paris" : ""));
+  }
+  function manage(verb, ref) {
+    if (verb === "clear") {
+      if (!ref || /^all$/i.test(ref)) {
+        clearPolls(active2(), true);
+        return;
+      }
+      const p2 = findPoll(ref);
+      if (p2) clearPolls([p2], false);
+      else systemLine("There's no poll " + ref + " on the displays. Type /poll to see them.");
+      return;
+    }
+    const p = ref ? findPoll(ref) : active2().filter((x) => x.owner === device && !x.closed).pop();
+    if (p) closePoll(p);
+    else systemLine(ref ? "There's no poll " + ref + ". Type /poll to see them." : "You have no open polls to close.");
+  }
+  var dialog3 = $("poll-dialog");
+  var form = $("poll-form");
+  var optionsBox = $("poll-options");
+  var status = $("poll-status");
+  var type = () => (form.querySelector('input[name="poll-type"]:checked') || { value: "poll" }).value;
+  function addOption() {
+    if (optionsBox.children.length >= MAX_OPTIONS) return;
+    const n = optionsBox.children.length + 1;
+    const row2 = el("div", "poll-field");
+    const field = document.createElement("input");
+    field.maxLength = 100;
+    field.placeholder = "Option " + n;
+    field.setAttribute("aria-label", field.placeholder);
+    const tick = el("label", "poll-correct");
+    const box2 = document.createElement("input");
+    box2.type = "checkbox";
+    box2.setAttribute("aria-label", "Option " + n + " is a right answer");
+    tick.append(box2, " Right");
+    row2.append(field, tick);
+    optionsBox.appendChild(row2);
+    button("poll-add").hidden = optionsBox.children.length >= MAX_OPTIONS;
+  }
+  function setType(t) {
+    const r = form.querySelector('input[name="poll-type"][value="' + t + '"]');
+    if (r) r.checked = true;
+    form.classList.toggle("is-quiz", t === "quiz");
+    $("poll-title").textContent = t === "quiz" ? "New quiz" : "New poll";
+  }
+  function openForm(t) {
+    input("poll-question").value = "";
+    optionsBox.replaceChildren();
+    addOption();
+    addOption();
+    setType(t);
+    status.textContent = "";
+    dialog3.showModal();
+    input("poll-question").focus();
+  }
+  button("poll-new").addEventListener("click", () => openForm("poll"));
+  button("quiz-new").addEventListener("click", () => openForm("quiz"));
+  form.addEventListener("change", () => setType(type()));
+  button("poll-add").addEventListener("click", () => {
+    addOption();
+    (optionsBox.lastElementChild?.querySelector("input")).focus();
+  });
+  button("poll-cancel").addEventListener("click", () => dialog3.close());
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const choices = Array.from(optionsBox.children).map((row2) => {
+      const [text4, tick] = Array.from(row2.querySelectorAll("input"));
+      return { text: text4.value, correct: tick.checked };
+    });
+    const t = type();
+    const err = startPoll(input("poll-question").value, choices, t === "secret", t === "quiz");
+    if (err) {
+      status.textContent = err;
+      return;
+    }
+    dialog3.close();
+  });
+
   // PWA/LocalChatter/src/features/commands.ts
   function runCommand(value) {
-    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak)\b\s*([\s\S]*)$/i.exec(value);
+    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll|quiz|hangman|droprace)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     const cmd = m[1].toLowerCase();
-    const raw = m[2];
-    const rest = raw.trim();
+    const raw2 = m[2];
+    const rest = raw2.trim();
     switch (cmd) {
       case "sound":
         soundCommand(rest);
         return true;
+      case "banner":
+        bannerCommand(value);
+        return true;
+      case "poll":
+        pollCommand(rest);
+        return true;
+      case "quiz":
+        quizCommand(rest);
+        return true;
+      case "hangman":
+        hangmanCommand(rest);
+        return true;
+      case "droprace":
+        raceCommand(rest);
+        return true;
       case "whisper":
       case "w":
-        whisperCommand(raw);
+        whisperCommand(raw2);
         return true;
       case "spy":
         spyCommand(rest);
@@ -1872,6 +4177,13 @@
       return;
     }
     setRole(rest);
+  }
+  function bannerCommand(value) {
+    if (!parseBanner(value)) {
+      systemLine("Put a banner on the displays with /banner <text>, e.g. /banner fast Doors open at 7pm. Speeds: slow, normal, fast or e.g. 40px (per second). /banner off takes it down.");
+      return;
+    }
+    if (!sendChat({ text: value.trim() })) systemLine("Not connected: banner not sent");
   }
   function debugCommand(rest) {
     if (!can("debug")) {
@@ -1936,33 +4248,356 @@
     systemLine("You now write in " + (speaking() || "Default") + ".");
   }
 
-  // PWA/LocalChatter/src/ui/composer.ts
+  // PWA/LocalChatter/src/features/voice.ts
+  var MAX_MS = 2 * 60 * 1e3;
+  var TYPES = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+  var voiceSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && typeof MediaRecorder !== "undefined";
+  var panel = $("voice");
+  var recView = $("voice-recording");
+  var reviewView = $("voice-review");
+  var mic = button("mic");
+  var send4 = button("send");
   var text = $("text");
-  var form = $("composer");
+  var audio = $("voice-audio");
+  var nameBox = input("voice-name");
+  var voiceStatus = (t) => {
+    $("voice-status").textContent = t;
+  };
+  var rec = null;
+  var clip = null;
+  var clock = (ms) => {
+    const s = Math.round(ms / 1e3);
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  };
+  function syncMic() {
+    const empty = !text.value.trim();
+    const showMic = voiceSupported && empty && panel.hidden;
+    mic.hidden = !showMic;
+    send4.hidden = showMic || !panel.hidden && empty;
+  }
+  function show2(view) {
+    panel.hidden = !view;
+    recView.hidden = view !== "recording";
+    reviewView.hidden = view !== "review";
+    syncMic();
+  }
+  function stopTracks(r) {
+    clearInterval(r.tick);
+    if (r.meter) cancelAnimationFrame(r.meter);
+    r.stream.getTracks().forEach((t) => t.stop());
+    if (r.ctx) r.ctx.close().catch(() => {
+    });
+  }
+  function startMeter(r) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx2 = new AC();
+    const analyser = ctx2.createAnalyser();
+    analyser.fftSize = 512;
+    ctx2.createMediaStreamSource(r.stream).connect(analyser);
+    const data = new Uint8Array(analyser.fftSize);
+    const bar = $("voice-level");
+    const draw2 = () => {
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (const v of data) sum += ((v - 128) / 128) ** 2;
+      bar.style.transform = "scaleX(" + Math.min(1, Math.sqrt(sum / data.length) * 4).toFixed(3) + ")";
+      r.meter = requestAnimationFrame(draw2);
+    };
+    r.ctx = ctx2;
+    draw2();
+  }
+  function startRecording() {
+    if (rec) return;
+    discardClip();
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then((stream) => {
+      const type2 = TYPES.find((t) => MediaRecorder.isTypeSupported(t)) || "";
+      const recorder = type2 ? new MediaRecorder(stream, { mimeType: type2 }) : new MediaRecorder(stream);
+      const r = { recorder, stream, chunks: [], started: Date.now(), discard: false };
+      rec = r;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size) r.chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        stopTracks(r);
+        rec = null;
+        if (r.discard || !r.chunks.length) {
+          show2(null);
+          return;
+        }
+        const blob = new Blob(r.chunks, { type: (recorder.mimeType || type2 || "audio/webm").split(";")[0] });
+        review(blob, Date.now() - r.started);
+      };
+      recorder.start(250);
+      $("voice-time").textContent = "0:00";
+      r.tick = setInterval(() => {
+        const ms = Date.now() - r.started;
+        $("voice-time").textContent = clock(ms) + " / " + clock(MAX_MS);
+        if (ms >= MAX_MS) recorder.stop();
+      }, 250);
+      startMeter(r);
+      show2("recording");
+    }).catch((err) => {
+      systemLine(err && err.name === "NotAllowedError" ? "Microphone access was blocked. Allow it for this site in your browser settings, then try again." : err && err.name === "NotFoundError" ? "No microphone was found." : "Couldn't start recording: " + (err && err.message || "unknown error"));
+    });
+  }
+  function review(blob, ms) {
+    clip = { blob, ms, url: URL.createObjectURL(blob) };
+    audio.src = clip.url;
+    nameBox.value = "Voice message (" + clock(ms) + ")";
+    voiceStatus("");
+    button("voice-save").disabled = false;
+    show2("review");
+  }
+  function discardClip() {
+    if (clip) URL.revokeObjectURL(clip.url);
+    clip = null;
+    audio.removeAttribute("src");
+  }
+  var clipName = () => nameBox.value.trim() || "Voice message (" + clock(clip ? clip.ms : 0) + ")";
+  function sendClip() {
+    if (!clip) return;
+    const c = clip;
+    addBlob(c.blob, clipName(), "received").then((entry) => toMessage(entry, true, state.maxBytes)).then((sound) => {
+      if (!sound.data) {
+        voiceStatus("That recording is too long to send.");
+        return;
+      }
+      if (!sendChat({ sound })) {
+        voiceStatus("Not connected: not sent yet.");
+        return;
+      }
+      audio.pause();
+      discardClip();
+      show2(null);
+    }, (err) => voiceStatus(err.message));
+  }
+  function saveClip() {
+    if (!clip) return;
+    addBlob(clip.blob, clipName(), "library").then((e) => {
+      voiceStatus("Saved to your sounds as “" + e.name + "”. Play it any time with /sound " + e.name + ".");
+      button("voice-save").disabled = true;
+      void refreshSoundboard();
+    }, (err) => voiceStatus(err.message));
+  }
+  mic.addEventListener("click", startRecording);
+  $("voice-stop").addEventListener("click", () => {
+    if (rec) rec.recorder.stop();
+  });
+  $("voice-cancel").addEventListener("click", () => {
+    if (rec) {
+      rec.discard = true;
+      rec.recorder.stop();
+    }
+  });
+  $("voice-send").addEventListener("click", sendClip);
+  $("voice-save").addEventListener("click", saveClip);
+  $("voice-again").addEventListener("click", () => {
+    audio.pause();
+    startRecording();
+  });
+  $("voice-discard").addEventListener("click", () => {
+    audio.pause();
+    discardClip();
+    show2(null);
+  });
+  text.addEventListener("input", syncMic);
+  document.addEventListener("localchatter:library", () => {
+    void refreshSoundboard();
+  });
+  syncMic();
+
+  // PWA/LocalChatter/src/features/command-list.ts
+  var COMMANDS2 = [
+    { name: "whisper", aliases: ["w"], args: "<names>: <message>", hint: "Message only the people you name", standalone: false },
+    { name: "fire", args: "[30 | 2m | on | off]", hint: "Set the chat on fire", standalone: true },
+    { name: "earthquake", aliases: ["quake"], args: "[30 | 2m | on | off]", hint: "Shake everyone's screen", standalone: true },
+    { name: "lightning", args: "[30 | 2m | on | off]", hint: "Lightning strikes the chat", standalone: true },
+    { name: "zalgo", args: "[30 | 2m | on | off]", hint: "Corrupt the chat (10 s unless you say)", standalone: true },
+    { name: "blackhole", args: "[30 | 2m | on | off]", hint: "Everything that arrives gets sucked into a black hole (and is gone)", standalone: true },
+    { name: "blur", args: "[30 | 2m | on | off]", hint: "Everything slowly fades into a fuzzy cloud", standalone: true },
+    { name: "wall", args: "[30 | 2m | off]", hint: "Game: knock down a wall with your messages", standalone: true },
+    { name: "rain", args: "[30 | 2m | on | off]", hint: "Rain on the chat, puddling on the message bar", standalone: true },
+    { name: "poll", args: "[secret] <question> | <option> | <option> · close · clear [n | all]", hint: "Ask everyone a question; results show on the displays", standalone: true },
+    { name: "quiz", args: "<question> | *<right answer> | <option>…", hint: "A quiz: * marks the right answer(s)", standalone: false },
+    { name: "droprace", args: "[off]", hint: "Game: everyone's next message drops through the pins; first to the bottom wins", standalone: true },
+    { name: "hangman", args: "<phrase> · clear [n | all]", hint: "Start a game of hangman: everyone's messages are guesses", standalone: true },
+    { name: "banner", args: "[slow | fast | 40px] <text> | off", hint: "Put a banner across the top of the displays", standalone: false },
+    { name: "sound", args: "[name]", hint: "Play a sound for everyone, or list the ones you have", standalone: true },
+    { name: "speak", args: "<language | default>", hint: "Write your messages in a language", standalone: true },
+    { name: "languages", aliases: ["langs"], args: "[add | remove <names> | reset]", hint: "The languages you understand", standalone: true },
+    { name: "role", args: "[member | monitor | spy | admin | display]", hint: "See or change your role", standalone: true },
+    { name: "spy", args: "[<names> | all | off]", hint: "Spy role: see whispers to and from people", standalone: true },
+    { name: "debug", args: "[on | off]", hint: "Admins: target effects and send as others", standalone: true }
+  ];
+  function matching(typed) {
+    const t = typed.toLowerCase();
+    const out = [];
+    COMMANDS2.forEach((cmd) => {
+      const as = [cmd.name, ...cmd.aliases || []].find((n) => n.startsWith(t));
+      if (as) out.push({ cmd, as });
+    });
+    return out;
+  }
+  function find(name) {
+    const n = name.toLowerCase();
+    return COMMANDS2.find((c) => c.name === n || (c.aliases || []).indexOf(n) >= 0);
+  }
+
+  // PWA/LocalChatter/src/ui/autocomplete.ts
+  var text2 = $("text");
+  var popup = $("autocomplete");
+  var items = [];
+  var active3 = 0;
+  var dismissedFor = null;
+  text2.setAttribute("aria-autocomplete", "list");
+  text2.setAttribute("aria-controls", "autocomplete");
+  text2.setAttribute("aria-expanded", "false");
+  var isOpen2 = () => !popup.hidden;
+  function close() {
+    popup.hidden = true;
+    items = [];
+    text2.setAttribute("aria-expanded", "false");
+    text2.removeAttribute("aria-activedescendant");
+  }
+  function row(cmd, as, typed, i, usageOnly) {
+    const li = el("li", "ac-item");
+    li.id = "ac-" + i;
+    li.setAttribute("role", "option");
+    const head = el("div", "ac-head");
+    const name = el("span", "ac-name");
+    name.appendChild(el("strong", null, "/" + as.slice(0, typed.length)));
+    name.appendChild(document.createTextNode(as.slice(typed.length)));
+    head.appendChild(name);
+    if (cmd.args) head.appendChild(el("span", "ac-args", cmd.args));
+    li.appendChild(head);
+    const aliases = [cmd.name, ...cmd.aliases || []].filter((n) => n !== as).map((n) => "/" + n);
+    li.appendChild(el("div", "ac-hint", cmd.hint + (aliases.length ? " · also " + aliases.join(", ") : "")));
+    if (!usageOnly) {
+      li.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        active3 = i;
+        complete();
+      });
+    } else {
+      li.classList.add("usage");
+    }
+    return li;
+  }
+  function highlight() {
+    Array.from(popup.children).forEach((c, i) => c.setAttribute("aria-selected", String(i === active3)));
+    const current2 = popup.children[active3];
+    if (current2) {
+      text2.setAttribute("aria-activedescendant", current2.id);
+      current2.scrollIntoView({ block: "nearest" });
+    }
+  }
+  function update() {
+    const value = text2.value;
+    if (dismissedFor !== null && value === dismissedFor) return;
+    dismissedFor = null;
+    const m = /^\/(\S*)(\s?)/.exec(value);
+    if (!m || value.indexOf("\n") >= 0) {
+      close();
+      return;
+    }
+    const typed = m[1];
+    popup.textContent = "";
+    if (m[2]) {
+      const cmd = find(typed);
+      if (!cmd) {
+        close();
+        return;
+      }
+      items = [];
+      popup.appendChild(row(cmd, typed.toLowerCase(), typed, 0, true));
+    } else {
+      items = matching(typed);
+      if (!items.length) {
+        close();
+        return;
+      }
+      if (active3 >= items.length) active3 = 0;
+      items.forEach((it, i) => popup.appendChild(row(it.cmd, it.as, typed, i, false)));
+    }
+    popup.hidden = false;
+    text2.setAttribute("aria-expanded", "true");
+    if (items.length) highlight();
+    else text2.removeAttribute("aria-activedescendant");
+  }
+  function complete() {
+    const it = items[active3];
+    if (!it) return;
+    text2.value = "/" + it.as + " ";
+    text2.focus();
+    text2.dispatchEvent(new Event("input"));
+  }
+  function autocompleteKey(e) {
+    if (!isOpen2() || e.isComposing) return false;
+    if (e.key === "Escape") {
+      dismissedFor = text2.value;
+      close();
+      return true;
+    }
+    if (!items.length) return false;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      active3 = (active3 + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+      highlight();
+      return true;
+    }
+    if (e.key === "Tab" || e.key === "Enter" && !e.shiftKey) {
+      const exact = find(text2.value.slice(1));
+      if (e.key === "Enter" && exact && exact.standalone) {
+        close();
+        return false;
+      }
+      complete();
+      return true;
+    }
+    return false;
+  }
+  text2.addEventListener("input", () => {
+    active3 = text2.value.length <= 1 ? 0 : active3;
+    update();
+  });
+  text2.addEventListener("blur", () => setTimeout(() => {
+    if (document.activeElement !== text2) close();
+  }, 150));
+  text2.addEventListener("focus", update);
+
+  // PWA/LocalChatter/src/ui/composer.ts
+  var text3 = $("text");
+  var form2 = $("composer");
   function autosize() {
-    text.style.height = "auto";
-    text.style.height = Math.min(text.scrollHeight, 160) + "px";
+    text3.style.height = "auto";
+    text3.style.height = Math.min(text3.scrollHeight, 160) + "px";
   }
   function prefill(value) {
     closeDashboard();
-    text.value = value;
-    text.focus();
+    text3.value = value;
+    text3.focus();
     autosize();
   }
-  text.addEventListener("input", autosize);
-  text.addEventListener("keydown", (e) => {
+  text3.addEventListener("input", autosize);
+  text3.addEventListener("keydown", (e) => {
+    if (autocompleteKey(e)) {
+      e.preventDefault();
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
-      form.requestSubmit();
+      form2.requestSubmit();
     }
   });
-  form.addEventListener("submit", (e) => {
+  form2.addEventListener("submit", (e) => {
     e.preventDefault();
-    const value = text.value;
+    const value = text3.value;
     if (!value.trim()) return;
     if (runCommand(value) || sendChat({ text: value })) {
-      text.value = "";
+      text3.value = "";
       autosize();
+      update();
+      syncMic();
     }
   });
   function sendFile(file) {
@@ -1988,7 +4623,7 @@
     Array.from(fileInput.files || []).forEach(sendFile);
     fileInput.value = "";
   });
-  text.addEventListener("paste", (e) => {
+  text3.addEventListener("paste", (e) => {
     const files2 = e.clipboardData && e.clipboardData.files;
     if (files2 && files2.length) {
       e.preventDefault();
@@ -1997,13 +4632,13 @@
   });
 
   // PWA/LocalChatter/src/ui/status.ts
-  function setStatus(kind, text2) {
+  function setStatus(kind2, text4) {
     const s = $("status");
-    s.dataset.state = kind;
-    s.textContent = text2;
-    $("header-tab").dataset.state = kind;
-    const isOn = kind === "on";
-    ["send", "attach", "effects", "scan"].forEach((id2) => {
+    s.dataset.state = kind2;
+    s.textContent = text4;
+    $("header-tab").dataset.state = kind2;
+    const isOn = kind2 === "on";
+    ["send", "mic", "attach", "effects", "scan"].forEach((id2) => {
       button(id2).disabled = !isOn;
     });
     if (!isOn) {
@@ -2011,7 +4646,7 @@
       closeScanMenu();
     }
     dashboard.classList.toggle("offline", !isOn);
-    if (kind === "off") stopNfc();
+    if (kind2 === "off") stopNfc();
     onStatus(isOn);
   }
   function onlineText() {
@@ -2058,12 +4693,12 @@
   }
 
   // PWA/LocalChatter/src/ui/settings.ts
-  var nameBox = input("name");
+  var nameBox2 = input("name");
   var relayBox = input("relay");
   var langsBox = input("langs");
   var speakBox = select("speak");
   function openSettings() {
-    nameBox.value = state.name;
+    nameBox2.value = state.name;
     relayBox.value = state.relay;
     langsBox.value = known().join(", ");
     fillSpeak(known(), speaking());
@@ -2073,19 +4708,28 @@
     renderPeople();
     openDashboard("settings");
   }
-  function fillSpeak(langs, current) {
+  function fillSpeak(langs, current2) {
     speakBox.textContent = "";
     speakBox.appendChild(new Option("Default", ""));
     langs.filter((n) => !isDefault(n)).forEach((n) => speakBox.appendChild(new Option(n, n)));
-    speakBox.value = current;
-    if (speakBox.value !== current) speakBox.value = "";
+    speakBox.value = current2;
+    if (speakBox.value !== current2) speakBox.value = "";
   }
   langsBox.addEventListener("input", () => fillSpeak(split(langsBox.value), speakBox.value));
+  langsBox.addEventListener("change", () => {
+    setKnown(split(langsBox.value));
+    fillSpeak(known(), speaking());
+    refreshLanguages();
+  });
+  speakBox.addEventListener("change", () => {
+    setSpeaking(speakBox.value);
+    refreshLanguages();
+  });
   $("open-settings").addEventListener("click", openSettings);
   $("status").addEventListener("click", openSettings);
   $("settings-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const name = nameBox.value.trim().slice(0, 32);
+    const name = nameBox2.value.trim().slice(0, 32);
     const relay = normaliseRelay(relayBox.value);
     if (relayBox.value.trim() && !relay) {
       relayBox.setCustomValidity("Enter an address like wss://192.168.1.50:8443/ws");
@@ -2100,7 +4744,7 @@
       state.name = name;
       if (state.ws && state.ws.readyState === WebSocket.OPEN && state.me) state.ws.send(JSON.stringify({ type: "rename", name }));
     }
-    const changed = relay !== state.relay;
+    const changed2 = relay !== state.relay;
     state.relay = relay;
     save(KEY.relay, relay);
     closeDashboard();
@@ -2109,7 +4753,7 @@
       setStatus("off", "No server set");
       return;
     }
-    if (changed || !state.ws) {
+    if (changed2 || !state.ws) {
       banner(null);
       state.retry = 0;
       connect();
@@ -2212,6 +4856,7 @@
   }
   function sendChat(payload) {
     if (!connected() || !state.ws || !state.me) return false;
+    if (payload.text && !payload.to && !payload.file && !payload.sound && raceEntry(payload.text)) return true;
     const msg = payload;
     msg.type = "chat";
     msg.id = randomId();
@@ -2223,6 +4868,7 @@
     state.ws.send(JSON.stringify(msg));
     msg.at = Date.now();
     renderMessage(msg, true);
+    chatGuess(msg, state.me);
     return true;
   }
 
@@ -2232,16 +4878,16 @@
   function addStop(name, arg, how) {
     if (DISPLAY) return;
     removeStop(name);
-    const ms = arg === "on" ? Infinity : typeof arg === "number" ? arg * 1e3 : DEFAULT_MS[name];
-    const button2 = el("button");
-    button2.type = "button";
-    button2.dataset.stop = name;
-    button2.appendChild(el("span", null, "■ Stop " + EFFECT_LINES[name][0] + " " + EFFECT_TITLES[name]));
+    const ms = arg === "on" || arg === null && GAMES.includes(name) ? Infinity : typeof arg === "number" ? arg * 1e3 : DEFAULT_MS[name];
+    const button3 = el("button");
+    button3.type = "button";
+    button3.dataset.stop = name;
+    button3.appendChild(el("span", null, "■ Stop " + EFFECT_LINES[name][0] + " " + EFFECT_TITLES[name]));
     const left = el("span", "left");
-    button2.appendChild(left);
-    button2.addEventListener("click", () => sendStop(name));
-    dock.appendChild(button2);
-    const entry = { how, endsAt: Date.now() + ms, button: button2, left };
+    button3.appendChild(left);
+    button3.addEventListener("click", () => sendStop(name));
+    dock.appendChild(button3);
+    const entry = { how, endsAt: Date.now() + ms, button: button3, left };
     if (ms !== Infinity) entry.timer = setTimeout(() => removeStop(name), ms);
     stops[name] = entry;
     tickStops();
@@ -2310,10 +4956,10 @@
       const fx = parseEffect("/" + f.effect + (f.arg ? " " + f.arg : ""));
       if (!fx) return;
       const li = el("li");
-      const label = el("span", "fav-label");
-      label.appendChild(el("span", "fav-name", effectPhrase(fx)[0] + " " + EFFECT_TITLES[f.effect] + (f.arg ? " " + f.arg : "")));
-      label.appendChild(el("span", "fav-from", f.from ? "from " + f.from : "yours"));
-      li.appendChild(label);
+      const label3 = el("span", "fav-label");
+      label3.appendChild(el("span", "fav-name", effectPhrase(fx)[0] + " " + EFFECT_TITLES[f.effect] + (f.arg ? " " + f.arg : "")));
+      label3.appendChild(el("span", "fav-from", f.from ? "from " + f.from : "yours"));
+      li.appendChild(label3);
       const go = el("button", "fav-go", f.from ? "Echo" : "Resend");
       go.type = "button";
       go.title = f.from ? "Play " + f.from + "'s effect for everyone again" : "Send it to everyone again";
@@ -2335,21 +4981,39 @@
     fire: ["🔥", "set the chat on fire"],
     earthquake: ["🌍", "started an earthquake"],
     lightning: ["⚡", "called down lightning"],
-    zalgo: ["👹", "corrupted the chat"]
+    zalgo: ["👹", "corrupted the chat"],
+    blackhole: ["🕳️", "opened a black hole"],
+    blur: ["🌫️", "blurred everything"],
+    rain: ["🌧️", "made it rain"],
+    wall: ["🧱", "called in a wall"]
   };
   var EFFECT_OFF = {
     fire: ["🧯", "put out the fire"],
     earthquake: ["🌍", "stopped the earthquake"],
     lightning: ["⚡", "stopped the lightning"],
-    zalgo: ["✨", "restored the chat"]
+    zalgo: ["✨", "restored the chat"],
+    blackhole: ["🕳️", "closed the black hole"],
+    blur: ["👓", "cleared the fog"],
+    rain: ["🌤️", "stopped the rain"],
+    wall: ["🧱", "called off the wall"]
   };
-  var EFFECT_TITLES = { fire: "Fire", earthquake: "Earthquake", lightning: "Lightning", zalgo: "Zalgo" };
+  var EFFECT_TITLES = {
+    fire: "Fire",
+    earthquake: "Earthquake",
+    lightning: "Lightning",
+    zalgo: "Zalgo",
+    blackhole: "Black hole",
+    blur: "Blur",
+    rain: "Rain",
+    wall: "Wall"
+  };
   function effectPhrase(fx) {
     const line = EFFECT_LINES[fx.name];
     if (fx.arg === "off") return EFFECT_OFF[fx.name];
     if (fx.arg === "on") return [line[0], line[1] + " until someone sends /" + fx.name + " off"];
     if (typeof fx.arg === "number") return [line[0], line[1] + " for " + formatDuration(fx.arg)];
-    if (fx.name === "zalgo") return [line[0], line[1] + " for " + formatDuration(DEFAULT_MS.zalgo / 1e3)];
+    if (fx.name === "wall") return [line[0], line[1] + ": send messages to knock it down!"];
+    if (fx.name === "zalgo" || fx.name === "blackhole" || fx.name === "blur" || fx.name === "rain") return [line[0], line[1] + " for " + formatDuration(DEFAULT_MS[fx.name] / 1e3)];
     return line;
   }
   function renderEffect(fx, msg, who) {
@@ -2362,9 +5026,9 @@
     if (spoofer) notes.push("really sent by " + spoofer.name);
     const p = el("p", "system effect-line");
     p.appendChild(el("span", null, line[0] + " " + who + " " + line[1] + (notes.length ? " (" + notes.join(", ") + ")" : "")));
-    const shown = msg.as || msg.from;
-    const mine = who.indexOf("You") === 0;
-    const fav = { effect: fx.name, arg: fx.argText || "", from: mine || !shown ? null : shown.name };
+    const shown2 = msg.as || msg.from;
+    const mine2 = who.indexOf("You") === 0;
+    const fav = { effect: fx.name, arg: fx.argText || "", from: mine2 || !shown2 ? null : shown2.name };
     const star = el("button", "star");
     star.type = "button";
     star.dataset.favKey = favKey(fav);
@@ -2374,8 +5038,8 @@
     paintStars();
     if (fx.arg === "off") removeStop(fx.name);
     if (state.catchingUp) return;
-    play(fx.name, fx.arg);
-    if (fx.arg !== "off" && mine) addStop(fx.name, fx.arg, { to: msg.to || null });
+    play(fx.name, fx.arg, msg.id || "");
+    if (fx.arg !== "off" && mine2) addStop(fx.name, fx.arg, { to: msg.to || null });
   }
 
   // PWA/LocalChatter/src/features/background.ts
@@ -2484,37 +5148,138 @@
     if (navigator.wakeLock) navigator.wakeLock.request("screen").catch(() => {
     });
   }
+  var toggle = input("display-on");
+  toggle.checked = DISPLAY;
+  toggle.addEventListener("change", () => location.assign(toggle.checked ? "Display/" : "./"));
   function startDisplay() {
     document.body.classList.add("display-mode");
-    $("stage").hidden = false;
     const tap = $("stage-tap");
     tap.hidden = unlocked();
     tap.addEventListener("click", () => {
       unlock();
       tap.hidden = true;
     });
-    const exit = $("exit-display");
-    exit.hidden = false;
-    exit.addEventListener("click", () => location.assign("./"));
     keepScreenOn();
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) keepScreenOn();
     });
   }
 
+  // PWA/LocalChatter/src/features/updates.ts
+  var BUILD_TIME = "2026-11-08T09:07:41.224Z";
+  var CHECK_EVERY_MS = 30 * 1e3;
+  var status2 = (text4) => {
+    $("update-status").textContent = text4;
+  };
+  function formatBuild(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleString([], { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+  var registration = null;
+  var lastCheck = 0;
+  var updateReady = false;
+  var chatIsEmpty = () => !document.querySelector("#messages .msg, #messages .effect-line");
+  function reloadIntoNewVersion() {
+    try {
+      sessionStorage.setItem("localchatter-reloaded", String(Date.now()));
+    } catch {
+    }
+    location.reload();
+  }
+  function offerReload() {
+    const frag = document.createDocumentFragment();
+    frag.appendChild(document.createTextNode("A new version of LocalChatter is ready. "));
+    const b = el("button", "link-button", "Reload now");
+    b.type = "button";
+    b.addEventListener("click", reloadIntoNewVersion);
+    frag.appendChild(b);
+    frag.appendChild(document.createTextNode(" (this clears the chat on this device)."));
+    banner(frag);
+  }
+  function onNewVersion() {
+    if (updateReady) return;
+    updateReady = true;
+    status2("A new version has been downloaded.");
+    let recent = 0;
+    try {
+      recent = Number(sessionStorage.getItem("localchatter-reloaded")) || 0;
+    } catch {
+    }
+    if (chatIsEmpty() && Date.now() - recent > 1e4) {
+      reloadIntoNewVersion();
+      return;
+    }
+    status2("A new version is ready: reload to use it.");
+    offerReload();
+  }
+  function activeVersion() {
+    const sw = navigator.serviceWorker.controller;
+    if (!sw) return Promise.resolve("");
+    return new Promise((resolve2) => {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = (e) => resolve2(String(e.data || ""));
+      sw.postMessage("version", [channel.port2]);
+      setTimeout(() => resolve2(""), 2e3);
+    });
+  }
+  function compareWithActive() {
+    void activeVersion().then((v) => {
+      if (v && v > BUILD_TIME) onNewVersion();
+    });
+  }
+  function checkForUpdates(manual = false) {
+    if (!registration) {
+      if (manual) status2("Updates need the app to be opened from its web address (not from a file).");
+      return;
+    }
+    if (!manual && Date.now() - lastCheck < CHECK_EVERY_MS) return;
+    lastCheck = Date.now();
+    if (!navigator.onLine) {
+      status2("Offline: will check for updates when you're back online.");
+      return;
+    }
+    if (updateReady) return;
+    status2("Checking for updates…");
+    const reg = registration;
+    reg.update().then(() => {
+      if (updateReady) return;
+      if (reg.installing || reg.waiting) status2("Downloading the new version…");
+      else status2("Up to date (checked " + (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ").");
+    }).catch(() => status2("Couldn't check for updates right now."));
+  }
+  function setupUpdates() {
+    $("version").textContent = formatBuild(BUILD_TIME);
+    $("version").title = BUILD_TIME;
+    $("check-update").addEventListener("click", () => checkForUpdates(true));
+    if (!("serviceWorker" in navigator) || location.protocol === "file:") {
+      status2("Opened from a file: updates and offline use need the app's web address.");
+      return;
+    }
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hadController) onNewVersion();
+      else compareWithActive();
+    });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+      registration = reg;
+      compareWithActive();
+      checkForUpdates();
+    }).catch(() => status2("Couldn't set up offline use and updates."));
+    window.addEventListener("online", () => checkForUpdates());
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) checkForUpdates();
+    });
+  }
+
   // PWA/LocalChatter/src/main.ts
   window.LocalChatterFX = effects_exports;
   function readSetupLink() {
-    const hash2 = location.hash.slice(1);
-    if (!hash2) return;
-    const relay = normaliseRelay(new URLSearchParams(hash2).get("relay"));
+    const hash3 = location.hash.slice(1);
+    if (!hash3) return;
+    const relay = normaliseRelay(new URLSearchParams(hash3).get("relay"));
     if (relay) save(KEY.relay, relay);
     history.replaceState(null, "", location.pathname + location.search);
-  }
-  function registerServiceWorker() {
-    if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
-    navigator.serviceWorker.register("sw.js").catch(() => {
-    });
   }
   function start() {
     readSetupLink();
@@ -2535,7 +5300,7 @@
       setRole("display", true);
       startDisplay();
     } else setRole(ROLES[savedRole] && savedRole !== "display" ? savedRole : "member", true);
-    registerServiceWorker();
+    setupUpdates();
     if (state.relay && !firstRun) {
       connect();
     } else {

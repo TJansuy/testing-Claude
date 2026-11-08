@@ -110,7 +110,7 @@ export function explode(g: Hangman): void {
 }
 
 const COLOURS = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#14b8a6', '#facc15'];
-function confetti(r: DOMRect): void {
+export function confetti(r: DOMRect): void {
   const o = overlayCanvas('fx-confetti');
   const { ctx, w, h, dpr } = o;
   const bits = Array.from({ length: 160 }, () => ({

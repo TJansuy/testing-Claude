@@ -2,7 +2,7 @@
 "use strict";
 (() => {
   // PWA/LocalChatter/src/sw.ts
-  var CACHE = "localchatter-2026-11-08T08:41:58.944Z";
+  var CACHE = "localchatter-2026-11-08T08:55:37.022Z";
   var ASSETS = [
     "./",
     "index.html",
@@ -18,6 +18,7 @@
     "styles/effects-more.css",
     "styles/polls.css",
     "styles/games.css",
+    "styles/race.css",
     "styles/display.css",
     "styles/voice.css",
     "manifest.webmanifest",
@@ -50,7 +51,7 @@
     );
   });
   self.addEventListener("message", (event) => {
-    if (event.data === "version" && event.ports[0]) event.ports[0].postMessage("2026-11-08T08:41:58.944Z");
+    if (event.data === "version" && event.ports[0]) event.ports[0].postMessage("2026-11-08T08:55:37.022Z");
   });
   self.addEventListener("notificationclick", (event) => {
     event.notification.close();

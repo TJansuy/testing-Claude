@@ -35,6 +35,33 @@ breaks, the bricks tumble off the bottom of the screen and the game ends.
 - With **Reduce motion**, the wall stays still, cracks as it's hit, and fades
   away when it breaks.
 
+## Drop Race
+
+`/droprace` (or 🎯 **Drop Race**) turns the screen into a pinboard: metal pins
+come out of the background, and while the race runs **the next message each
+person sends is their entry**. Instead of going to the chat, it drops from the
+top of the board and bounces its way down through the pins and the other
+messages. The first to drop out of the bottom wins: "🏆 Bob won the Drop Race
+with “hello there”!", with confetti.
+
+- **One entry each per round.** Your messages after that go to the chat as normal.
+- **Longer words are heavier**: a message with long words falls faster and
+  bounces less. Long messages make bigger bubbles, and a big enough one can get
+  wedged between the pins.
+- **Stuck on the pins?** A message that stops moving for a moment catches fire and
+  burns away, so the others can get past.
+- **Nobody made it?** If every entry burns, everyone is asked for another message
+  and the race runs again. If that fails too, nobody wins: a giant unhappy face
+  comes down the screen and sweeps away the pins and whatever's left.
+- `/droprace off` stops it (anyone); the pins sink back. One race at a time.
+- Every screen plays the same race and agrees on the winner, whatever its size:
+  the board is the same shape everywhere, the bounces follow the same seeded
+  rules, and each entry drops at the time the relay received it. To make sure
+  every entry has arrived before its turn, each screen plays the race about
+  ¾ of a second behind.
+- People who join during a race don't see it; their messages go to the chat.
+- Drop Race needs a relay from this version or later (rebuild the Docker container).
+
 ## Hangman
 
 `/hangman Under the weather` (or 🪢 **Hangman**) starts a game with that word or

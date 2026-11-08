@@ -12,6 +12,7 @@ import { device } from '../polls/model';
 import { connected, DISPLAY, state } from '../state';
 import type { ChatMessage, GameMessage, Peer, WireGame } from '../types';
 import { randomId } from '../util';
+import { handleRace, raceCommand } from './race';
 import { DESCRIBE, WallVariant } from '../effects/wall-rules';
 import { explode, gameCard, refreshGame, setClear } from './card';
 import { games, guess, guessIn, Hangman, isLetter, mergeGame, open, shown, toWire } from './hangman';
@@ -108,6 +109,7 @@ export function hangmanCommand(rest: string): void {
 }
 
 export function handleGame(msg: GameMessage): void {
+  if (msg.op === 'race' || msg.op === 'drop' || msg.op === 'stop') { handleRace(msg); return; }
   const g = msg.id ? games.get(msg.id) : undefined;
   if (msg.op === 'new' && msg.game) {
     const r = mergeGame(msg.game, msg.at);
@@ -160,6 +162,9 @@ document.addEventListener('localchatter:game', (ev) => {
   if (d.result === 'broken') systemLine('💥 The wall broke after ' + plural(d.hits, 'hit') + tally + '! ' + d.by + ' landed the final blow. It was ' + DESCRIBE[d.variant] + '.');
   else systemLine('🧱 The wall went back up after ' + plural(d.hits, 'hit') + tally + '. It was ' + DESCRIBE[d.variant] + '.');
 });
+
+// ---- Drop Race from the ✨ tray
+button('race-new').addEventListener('click', () => raceCommand(''));
 
 // ---- The New hangman form
 const dialog = $<HTMLDialogElement>('hangman-dialog');

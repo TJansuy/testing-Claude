@@ -10,6 +10,7 @@ import { certBanner, renderPeople, setStatus } from '../ui/status';
 import { openSettings } from '../ui/settings';
 import { randomId } from '../util';
 import { chatGuess } from '../games';
+import { raceEntry } from '../games/race';
 import { handle } from './handle';
 
 export function connect(): void {
@@ -79,6 +80,8 @@ export function sendRaw(obj: object): boolean {
 /** Sends a chat message and shows it here. Returns false when not connected. */
 export function sendChat(payload: OutgoingChat): boolean {
   if (!connected() || !state.ws || !state.me) return false;
+  // During a Drop Race, your first plain message each round is your entry instead.
+  if (payload.text && !payload.to && !payload.file && !payload.sound && raceEntry(payload.text)) return true;
   const msg = payload as ChatMessage;
   msg.type = 'chat';
   msg.id = randomId();

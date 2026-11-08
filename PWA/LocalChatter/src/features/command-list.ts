@@ -24,6 +24,7 @@ export const COMMANDS: CommandInfo[] = [
   { name: 'rain', args: '[30 | 2m | on | off]', hint: 'Rain on the chat, puddling on the message bar', standalone: true },
   { name: 'poll', args: '[secret] <question> | <option> | <option> · close · clear [n | all]', hint: 'Ask everyone a question; results show on the displays', standalone: true },
   { name: 'quiz', args: '<question> | *<right answer> | <option>…', hint: 'A quiz: * marks the right answer(s)', standalone: false },
+  { name: 'droprace', args: '[off]', hint: 'Game: everyone\'s next message drops through the pins; first to the bottom wins', standalone: true },
   { name: 'hangman', args: '<phrase> · clear [n | all]', hint: 'Start a game of hangman: everyone\'s messages are guesses', standalone: true },
   { name: 'banner', args: '[slow | fast | 40px] <text> | off', hint: 'Put a banner across the top of the displays', standalone: false },
   { name: 'sound', args: '[name]', hint: 'Play a sound for everyone, or list the ones you have', standalone: true },

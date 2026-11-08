@@ -60,4 +60,6 @@ special support for them. Polls have their own message type (new poll, vote,
 close, clear, and the reminder for someone who joins); the relay checks and
 passes these on like everything else, but keeps no polls and counts no votes.
 Hangman games work the same way (new game, clear, and the reminder); the
-guesses are just chat messages, which each app reads.
+guesses are just chat messages, which each app reads. Drop Race messages
+(start, entry, stop) are also sent back to the device that sent them, so every
+device times them by the relay's clock and plays the same race.

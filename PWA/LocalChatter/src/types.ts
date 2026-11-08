@@ -61,8 +61,10 @@ export interface PollMessage {
 export interface WireGame { id: string; kind: 'hangman'; phrase: string; author: Peer; owner: string; at?: number; guessed?: string }
 /** Games: new, clear (from the displays, by anyone), sync (remind someone who joined). */
 export interface GameMessage {
-  type: 'game'; op: 'new' | 'clear' | 'sync'; from?: Peer; at?: number;
+  type: 'game'; op: 'new' | 'clear' | 'sync' | 'race' | 'drop' | 'stop'; from?: Peer; at?: number;
   game?: WireGame; id?: string; all?: boolean; to?: string; games?: WireGame[];
+  /** Drop Race: the entry's text. */
+  text?: string;
 }
 
 export type ServerMessage = WelcomeMessage | PeerMessage | ChatMessage | SystemMessage | EffectMessage | PollMessage | GameMessage | ErrorMessage;

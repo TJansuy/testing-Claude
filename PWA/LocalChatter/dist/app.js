@@ -351,7 +351,7 @@
     const start2 = performance.now();
     let stoppedAt = 0;
     let last = start2;
-    function frame(now) {
+    function frame2(now) {
       if (!o.canvas.isConnected) return;
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
       last = now;
@@ -389,10 +389,10 @@
       ctx2.arc(cx, cy, R * 0.3, 0, Math.PI * 2);
       ctx2.fill();
       ctx2.globalAlpha = 1;
-      if (!stoppedAt || fade > 0) requestAnimationFrame(frame);
+      if (!stoppedAt || fade > 0) requestAnimationFrame(frame2);
       else o.canvas.remove();
     }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(frame2);
     return {
       stop(_early, hard) {
         observer.disconnect();
@@ -540,7 +540,7 @@
     let stoppedAt = 0;
     let gone = false;
     const perFrame = Math.max(8, Math.round(w / (28 * dpr)));
-    function frame(now) {
+    function frame2(now) {
       if (gone) return;
       const t = now - start2;
       if (!stoppedAt) {
@@ -579,10 +579,10 @@
         ctx2.globalAlpha = p.life * 0.8;
         ctx2.drawImage(sprite, p.x - s / 2, p.y - s / 2, s, s);
       }
-      if (!stoppedAt || parts.length || fade > 0) requestAnimationFrame(frame);
+      if (!stoppedAt || parts.length || fade > 0) requestAnimationFrame(frame2);
       else o.canvas.remove();
     }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(frame2);
     return {
       stop(early2, hard) {
         bubbles.stop(early2, hard);
@@ -689,7 +689,7 @@
       });
       ctx2.restore();
     }
-    function frame(now) {
+    function frame2(now) {
       if (!o.canvas.isConnected) return;
       const t = Math.max(0, now - start2);
       ctx2.clearRect(0, 0, w, h);
@@ -714,13 +714,13 @@
         }
       });
       if (a > 0) drawBolts(calm ? a * 0.8 : a, upTo);
-      if (t < END_MS) requestAnimationFrame(frame);
+      if (t < END_MS) requestAnimationFrame(frame2);
       else {
         o.canvas.remove();
         canvases.delete(o.canvas);
       }
     }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(frame2);
   }
   function startLightning() {
     let stopped = false;
@@ -790,15 +790,15 @@
         g.stop(early2, hard);
       } };
     }
-    const root = document.body;
-    root.classList.remove("fx-shake");
-    void root.offsetWidth;
-    root.classList.add("fx-shake");
+    const root2 = document.body;
+    root2.classList.remove("fx-shake");
+    void root2.offsetWidth;
+    root2.classList.add("fx-shake");
     return {
       stop(early2) {
         clearTimeout(next);
         if (early2) vibrate(0);
-        root.classList.remove("fx-shake");
+        root2.classList.remove("fx-shake");
       }
     };
   }
@@ -828,7 +828,7 @@
       const r = bar && bar.offsetParent ? bar.getBoundingClientRect() : null;
       return (r ? r.top : innerHeight) * dpr;
     }
-    function frame(now) {
+    function frame2(now) {
       if (!o.canvas.isConnected) return;
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
       last = now;
@@ -920,10 +920,10 @@
         });
         ctx2.globalAlpha = 1;
       }
-      if (!stoppedAt || drops.length || bits.length || level > 0) requestAnimationFrame(frame);
+      if (!stoppedAt || drops.length || bits.length || level > 0) requestAnimationFrame(frame2);
       else o.canvas.remove();
     }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(frame2);
     return {
       stop(_early, hard) {
         if (hard) {
@@ -1147,7 +1147,7 @@
       if (counts(n)) launch(n);
     })));
     if (list3) observer.observe(list3, { childList: true });
-    function frame(now) {
+    function frame2(now) {
       if (mode === "gone") return;
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1e3));
       last = now;
@@ -1194,9 +1194,9 @@
         ctx2.fillRect(d.x, d.y, 3 * dpr, 3 * dpr);
       }
       ctx2.globalAlpha = 1;
-      requestAnimationFrame(frame);
+      requestAnimationFrame(frame2);
     }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(frame2);
     return {
       stop(_early, hard) {
         observer.disconnect();
@@ -1264,13 +1264,13 @@
     zalgo.nodes.set(node, rec2);
     node.nodeValue = rec2.mangled;
   }
-  function corruptTree(root) {
-    if (root.nodeType === Node.TEXT_NODE) {
-      corrupt(root);
+  function corruptTree(root2) {
+    if (root2.nodeType === Node.TEXT_NODE) {
+      corrupt(root2);
       return;
     }
-    if (root.nodeType !== Node.ELEMENT_NODE) return;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    if (root2.nodeType !== Node.ELEMENT_NODE) return;
+    const walker = document.createTreeWalker(root2, NodeFilter.SHOW_TEXT);
     const list3 = [];
     while (walker.nextNode()) list3.push(walker.currentNode);
     list3.forEach(corrupt);
@@ -1290,8 +1290,8 @@
     });
   }
   function muteLiveRegions() {
-    TARGETS.forEach((sel) => document.querySelectorAll(sel).forEach((root) => {
-      [root, ...Array.from(root.querySelectorAll("[aria-live]"))].forEach((e) => {
+    TARGETS.forEach((sel) => document.querySelectorAll(sel).forEach((root2) => {
+      [root2, ...Array.from(root2.querySelectorAll("[aria-live]"))].forEach((e) => {
         const live = e.getAttribute("aria-live");
         if (live && live !== "off") {
           zalgo.muted.push([e, live]);
@@ -1538,7 +1538,7 @@
     if (dist <= 0 || calm || !label.animate) return;
     const travel = dist / current.speed * 1e3;
     const total = PAUSE_MS * 2 + travel * 2;
-    const at = (x, offset) => ({ transform: "translateX(" + x + "px)", offset });
+    const at = (x, offset2) => ({ transform: "translateX(" + x + "px)", offset: offset2 });
     anim = label.animate([
       at(0, 0),
       at(0, PAUSE_MS / total),
@@ -1986,11 +1986,11 @@
     meta.appendChild(el("time", null, formatTime(msg.at || Date.now())));
     box2.appendChild(meta);
     const body = el("div", "sound");
-    const label2 = el("div");
-    label2.appendChild(el("div", "sound-name", (isVoice(snd.name) ? "🎙 " : "🔊 ") + snd.name));
+    const label3 = el("div");
+    label3.appendChild(el("div", "sound-name", (isVoice(snd.name) ? "🎙 " : "🔊 ") + snd.name));
     const status3 = el("div", "sound-status", "Loading…");
-    label2.appendChild(status3);
-    body.appendChild(label2);
+    label3.appendChild(status3);
+    body.appendChild(label3);
     box2.appendChild(body);
     append(box2);
     function unavailable(reason) {
@@ -2009,7 +2009,7 @@
       const btn = el("button", "play", "▶");
       btn.type = "button";
       btn.setAttribute("aria-label", "Play " + snd.name);
-      body.insertBefore(btn, label2);
+      body.insertBefore(btn, label3);
       body.appendChild(soundActions(r, snd, status3));
       const where = SOURCE_TEXT[source];
       const go = () => {
@@ -2238,6 +2238,212 @@
   }
   var myVote = (p) => p.votes.get(device)?.option;
 
+  // PWA/LocalChatter/src/games/race/sim.ts
+  var W = 500;
+  var H = 850;
+  var HZ = 120;
+  var DT = 1 / HZ;
+  var PIN_R = 5;
+  var PIN_TOP = 150;
+  var PIN_ROWS = 10;
+  var ROW_GAP = 66;
+  var COL_GAP = 66;
+  var READY = Math.round(1.6 * HZ);
+  var STUCK_MOVE = 14;
+  var STUCK_STEPS = Math.round(1.4 * HZ);
+  var MAX_AGE = 25 * HZ;
+  var QUIET = 6 * HZ;
+  var EMPTY_ROUND = 45 * HZ;
+  var PROMPT = 3 * HZ;
+  var PINS = [];
+  for (let row2 = 0; row2 < PIN_ROWS; row2++) {
+    const off = row2 % 2 ? COL_GAP / 2 : 0;
+    for (let x = off + 10; x <= W - 10; x += COL_GAP) PINS.push({ x, y: PIN_TOP + row2 * ROW_GAP, row: row2 });
+  }
+  function rng2(seed) {
+    let h = 1779033703;
+    for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+    let a = h >>> 0;
+    return () => {
+      a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function weightOf(text4) {
+    const words2 = text4.split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean);
+    if (!words2.length) return 0;
+    const avg = words2.reduce((n, w) => n + w.length, 0) / words2.length;
+    return Math.min(1, Math.max(0, (avg - 3) / 6));
+  }
+  var radiusOf = (text4) => 16 + Math.min(20, text4.length * 0.4);
+  var World = class {
+    /** entries: sorted by the relay's time; stopStep: when someone stopped it. */
+    constructor(seed, start2, entries, stopStep = Infinity) {
+      this.start = start2;
+      this.entries = entries;
+      this.stopStep = stopStep;
+      this.step = 0;
+      this.phase = "pins";
+      this.round = 1;
+      this.roundStart = READY;
+      this.lastDrop = 0;
+      this.inRound = /* @__PURE__ */ new Set();
+      this.balls = [];
+      this.burns = [];
+      this.winner = null;
+      this.phaseStep = 0;
+      this.count = 0;
+      this.next = 0;
+      this.rand = rng2(seed);
+    }
+    /** The step an entry arrives at (by the relay's clock). */
+    stepOf(at) {
+      return Math.max(0, Math.ceil((at - this.start) / 1e3 * HZ));
+    }
+    setPhase(p) {
+      this.phase = p;
+      this.phaseStep = this.step;
+    }
+    get over() {
+      return this.phase === "won" || this.phase === "failed" || this.phase === "stopped";
+    }
+    /** Runs the race forward to the given step. */
+    advance(to) {
+      while (this.step < to && !this.over) this.tick();
+    }
+    tick() {
+      const s = ++this.step;
+      if (s >= this.stopStep) {
+        this.setPhase("stopped");
+        return;
+      }
+      if (this.phase === "pins" && s >= READY) this.setPhase("running");
+      if (this.phase === "prompt" && s - this.phaseStep >= PROMPT) {
+        this.round++;
+        this.roundStart = s;
+        this.inRound.clear();
+        this.setPhase("running");
+      }
+      while (this.next < this.entries.length && this.stepOf(this.entries[this.next].at) <= s && this.phase === "running") {
+        const e = this.entries[this.next++];
+        if (this.inRound.has(e.from.id)) continue;
+        this.inRound.add(e.from.id);
+        this.drop(e);
+      }
+      if (this.phase !== "running") return;
+      this.physics();
+      if (!this.balls.length && (this.inRound.size ? s - this.lastDrop >= QUIET : s - this.roundStart >= EMPTY_ROUND)) {
+        this.setPhase(this.round === 1 ? "prompt" : "failed");
+      }
+    }
+    drop(e) {
+      const r = radiusOf(e.text);
+      const weight = weightOf(e.text);
+      this.balls.push({
+        n: this.count++,
+        entry: e,
+        r,
+        weight,
+        mass: r * r * (0.6 + weight),
+        x: r + this.rand() * (W - 2 * r),
+        y: -r,
+        vx: (this.rand() - 0.5) * 60,
+        vy: 40,
+        age: 0,
+        round: this.round,
+        ax: 0,
+        ay: -1e9,
+        aStep: 0
+      });
+      this.lastDrop = this.step;
+    }
+    burn(b) {
+      this.balls.splice(this.balls.indexOf(b), 1);
+      this.burns.push({ ball: b, step: this.step });
+      this.lastDrop = Math.max(this.lastDrop, this.step - QUIET + 2 * HZ);
+    }
+    physics() {
+      const balls2 = this.balls;
+      for (const b of balls2) {
+        const g = 520 * (0.75 + 0.6 * b.weight);
+        const drag = 1.1 - 0.8 * b.weight;
+        b.vy += g * DT;
+        b.vx *= 1 - drag * DT;
+        b.vy *= 1 - drag * DT;
+        b.x += b.vx * DT;
+        b.y += b.vy * DT;
+        b.age++;
+        const e = 0.72 - 0.45 * b.weight;
+        for (const p of PINS) {
+          if (p.y < b.y - b.r - PIN_R || p.y > b.y + b.r + PIN_R) continue;
+          const dx = b.x - p.x, dy = b.y - p.y;
+          const min = b.r + PIN_R;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= min * min || d2 === 0) continue;
+          const d = Math.sqrt(d2);
+          const nx = dx / d, ny = dy / d;
+          b.x += nx * (min - d);
+          b.y += ny * (min - d);
+          const vn = b.vx * nx + b.vy * ny;
+          if (vn < 0) {
+            b.vx -= (1 + e) * vn * nx;
+            b.vy -= (1 + e) * vn * ny;
+            b.vx += (this.rand() - 0.5) * 30 * (1 - b.weight);
+          }
+        }
+        if (b.x < b.r) {
+          b.x = b.r;
+          b.vx = Math.abs(b.vx) * e;
+        }
+        if (b.x > W - b.r) {
+          b.x = W - b.r;
+          b.vx = -Math.abs(b.vx) * e;
+        }
+      }
+      for (let i = 0; i < balls2.length; i++) {
+        for (let j = i + 1; j < balls2.length; j++) {
+          const a = balls2[i], b = balls2[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const min = a.r + b.r;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= min * min || d2 === 0) continue;
+          const d = Math.sqrt(d2);
+          const nx = dx / d, ny = dy / d;
+          const push = (min - d) / (a.mass + b.mass);
+          a.x -= nx * push * b.mass;
+          a.y -= ny * push * b.mass;
+          b.x += nx * push * a.mass;
+          b.y += ny * push * a.mass;
+          const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+          if (vn < 0) {
+            const e = Math.min(0.72 - 0.45 * a.weight, 0.72 - 0.45 * b.weight);
+            const imp = -(1 + e) * vn / (1 / a.mass + 1 / b.mass);
+            a.vx -= imp / a.mass * nx;
+            a.vy -= imp / a.mass * ny;
+            b.vx += imp / b.mass * nx;
+            b.vy += imp / b.mass * ny;
+          }
+        }
+      }
+      for (const b of balls2.slice()) {
+        if (b.y - b.r > H) {
+          this.winner = b;
+          this.setPhase("won");
+          return;
+        }
+        const mx = b.x - b.ax, my = b.y - b.ay;
+        if (mx * mx + my * my > STUCK_MOVE * STUCK_MOVE) {
+          b.ax = b.x;
+          b.ay = b.y;
+          b.aStep = b.age;
+        }
+        if (b.age - b.aStep >= STUCK_STEPS || b.age >= MAX_AGE) this.burn(b);
+      }
+    }
+  };
+
   // PWA/LocalChatter/src/games/hangman.ts
   var MAX_WRONG = 6;
   var games = /* @__PURE__ */ new Map();
@@ -2420,7 +2626,7 @@
       colour: COLOURS[Math.floor(Math.random() * COLOURS.length)]
     }));
     let last = performance.now();
-    function frame(now) {
+    function frame2(now) {
       const dt = Math.min(0.05, (now - last) / 1e3);
       last = now;
       ctx2.clearRect(0, 0, w, h);
@@ -2437,25 +2643,282 @@
         ctx2.fillRect(-b.size / 2, -b.size / 4, b.size, b.size / 2);
         ctx2.restore();
       });
-      if (bits.some((b) => b.y < h + 20 * dpr)) requestAnimationFrame(frame);
+      if (bits.some((b) => b.y < h + 20 * dpr)) requestAnimationFrame(frame2);
       else o.canvas.remove();
     }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(frame2);
+  }
+
+  // PWA/LocalChatter/src/games/race/view.ts
+  var root = null;
+  var board = null;
+  var label2 = null;
+  var balls = /* @__PURE__ */ new Map();
+  var burning = /* @__PURE__ */ new Set();
+  function layout2() {
+    if (!board) return;
+    const bar = document.getElementById("composer");
+    const bottom = bar && bar.offsetParent ? bar.getBoundingClientRect().top : innerHeight;
+    const scale = Math.min(innerWidth / W, bottom / H);
+    board.style.transform = `translate(${(innerWidth - W * scale) / 2}px, ${bottom - H * scale}px) scale(${scale})`;
+  }
+  function openBoard() {
+    closeBoard();
+    root = el("div", "race");
+    root.setAttribute("aria-hidden", "true");
+    board = el("div", "race-board");
+    board.style.width = W + "px";
+    board.style.height = H + "px";
+    PINS.forEach((p) => {
+      const pin = el("i", "race-pin");
+      Object.assign(pin.style, { left: p.x - PIN_R + "px", top: p.y - PIN_R + "px", width: 2 * PIN_R + "px", height: 2 * PIN_R + "px", animationDelay: p.row * 70 + "ms" });
+      pin.dataset.y = String(p.y);
+      board.appendChild(pin);
+    });
+    label2 = el("div", "race-banner");
+    label2.setAttribute("role", "status");
+    root.append(board, label2);
+    document.body.appendChild(root);
+    layout2();
+    addEventListener("resize", layout2);
+  }
+  function closeBoard() {
+    removeEventListener("resize", layout2);
+    if (root) root.remove();
+    root = board = label2 = null;
+    balls.clear();
+    burning.clear();
+  }
+  function banner3(text4, ms = 2600) {
+    if (!label2) return;
+    label2.textContent = text4;
+    label2.classList.remove("show");
+    void label2.offsetWidth;
+    label2.classList.add("show");
+    if (ms) setTimeout(() => {
+      if (label2 && label2.textContent === text4) label2.classList.remove("show");
+    }, ms);
+  }
+  function ballEl(b) {
+    let node = balls.get(b.entry.seq);
+    if (node) return node;
+    node = el("div", "race-ball");
+    const mine2 = !!state.me && b.entry.from.id === state.me.id;
+    if (mine2) node.classList.add("mine");
+    else colourBubble(node, b.entry.from);
+    node.appendChild(el("b", null, mine2 ? "You" : b.entry.from.name));
+    node.appendChild(el("span", null, b.entry.text));
+    Object.assign(node.style, { width: 2 * b.r + "px", height: 2 * b.r + "px", fontSize: Math.max(9, b.r * 0.42) + "px", borderWidth: 1.5 + b.weight * 3.5 + "px" });
+    node.title = b.entry.text;
+    board.appendChild(node);
+    balls.set(b.entry.seq, node);
+    return node;
+  }
+  function draw(world) {
+    if (!board) return;
+    const live = /* @__PURE__ */ new Set();
+    world.balls.forEach((b) => {
+      live.add(b.entry.seq);
+      ballEl(b).style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px)`;
+    });
+    world.burns.forEach(({ ball }) => {
+      if (burning.has(ball.entry.seq)) return;
+      burning.add(ball.entry.seq);
+      const node = ballEl(ball);
+      node.style.transform = `translate(${ball.x - ball.r}px, ${ball.y - ball.r}px)`;
+      node.classList.add("burning");
+      setTimeout(() => {
+        node.remove();
+      }, 1100);
+    });
+    balls.forEach((node, seq2) => {
+      if (!live.has(seq2) && !burning.has(seq2) && !(world.winner && world.winner.entry.seq === seq2)) {
+        node.remove();
+        balls.delete(seq2);
+      }
+    });
+  }
+  function celebrate(world, name) {
+    const w = world.winner;
+    const node = w && balls.get(w.entry.seq);
+    if (node && w) {
+      node.classList.add("winner");
+      node.style.transition = "transform .8s ease-in";
+      node.style.transform = `translate(${w.x - w.r}px, ${H + 3 * w.r}px)`;
+    }
+    const bar = board ? board.getBoundingClientRect() : null;
+    if (bar && !reducedMotion()) confetti(new DOMRect(bar.left, bar.bottom - 40, bar.width, 40));
+    banner3("🏆 " + name + " won the Drop Race!", 0);
+  }
+  function retract(after) {
+    if (!root) {
+      after();
+      return;
+    }
+    root.classList.add("out");
+    setTimeout(() => {
+      closeBoard();
+      after();
+    }, 1100);
+  }
+  function sadSweep(after) {
+    if (!root || !board) {
+      after();
+      return;
+    }
+    banner3("Nobody made it through 😞", 0);
+    const face = el("div", "race-sad", "😞");
+    root.appendChild(face);
+    const size = Math.min(innerWidth, innerHeight) * 0.6;
+    const ms = reducedMotion() ? 1200 : 3600;
+    const anim2 = face.animate(
+      [{ transform: `translate(-50%, ${-size}px)` }, { transform: `translate(-50%, ${innerHeight + size * 0.2}px)` }],
+      { duration: ms, easing: "cubic-bezier(.4, 0, .7, 1)", fill: "forwards" }
+    );
+    const speed = (innerHeight + size * 1.2) / ms;
+    board.querySelectorAll(".race-pin, .race-ball").forEach((n) => {
+      const y = n.getBoundingClientRect().top;
+      setTimeout(() => n.classList.add("swept"), Math.max(0, (y + size * 0.9) / speed));
+    });
+    anim2.finished.then(() => {
+      closeBoard();
+      after();
+    }, () => {
+      closeBoard();
+      after();
+    });
+  }
+
+  // PWA/LocalChatter/src/games/race/index.ts
+  var DELAY_MS = 700;
+  var race = null;
+  var offset = -Infinity;
+  var seq = 0;
+  var entered = 0;
+  var send = (msg) => sendRaw({ type: "game", ...msg });
+  var serverNow = () => Date.now() + (offset === -Infinity ? 0 : offset);
+  var nameOf3 = (id2, name) => state.me && id2 === state.me.id ? "You" : name;
+  var raceRunning = () => !!race && !race.ended;
+  function rebuild(r) {
+    const stopStep = r.stopAt ? Math.max(1, Math.ceil((r.stopAt - r.start) / 1e3 * HZ)) : Infinity;
+    const world = new World(r.id, r.start, r.entries, stopStep);
+    world.advance(r.world.step);
+    r.world = world;
+  }
+  function placeholder() {
+    refreshLanguages();
+    const t = $("text");
+    if (raceRunning() && race && entered < roundOpen(race.world)) t.placeholder = "🎯 Your Drop Race entry";
+  }
+  var roundOpen = (w) => w.phase === "prompt" ? w.round + 1 : w.round;
+  function raceEntry(text4) {
+    if (!race || race.ended || DISPLAY || /^\s*\//.test(text4)) return false;
+    const round = roundOpen(race.world);
+    if (entered >= round) return false;
+    if (!send({ op: "drop", id: race.id, text: text4 })) return false;
+    entered = round;
+    placeholder();
+    systemLine("🎯 Your message is in the Drop Race: watch it fall!");
+    return true;
+  }
+  function raceCommand(rest) {
+    if (/^(off|stop)$/i.test(rest)) {
+      if (!raceRunning() || !race) {
+        systemLine("There's no Drop Race running.");
+        return;
+      }
+      if (!send({ op: "stop", id: race.id })) systemLine("Not connected");
+      return;
+    }
+    if (raceRunning()) {
+      systemLine("A Drop Race is already running. /droprace off stops it.");
+      return;
+    }
+    if (!send({ op: "race", id: randomId() })) systemLine("Not connected: race not started.");
+  }
+  function handleRace(msg) {
+    if (msg.at) offset = Math.max(offset, msg.at - Date.now());
+    if (!msg.id || !msg.at || !msg.from) return;
+    if (msg.op === "race") {
+      if (raceRunning()) return;
+      const entries = [];
+      const r = { id: msg.id, start: msg.at, by: "", entries, stopAt: 0, world: new World(msg.id, msg.at, entries), seen: /* @__PURE__ */ new Set(), ended: false };
+      race = r;
+      entered = 0;
+      openBoard();
+      banner3("🎯 Drop Race! Send a message: it drops from the top", 3500);
+      systemLine("🎯 " + nameOf3(msg.from.id, msg.from.name) + " started a Drop Race! Your next message is your entry: it drops from the top, and the first to reach the bottom wins. Longer words are heavier.");
+      placeholder();
+      requestAnimationFrame(frame);
+      return;
+    }
+    if (!race || msg.id !== race.id || race.ended) return;
+    if (msg.op === "drop" && msg.text) {
+      const e = { from: msg.from, text: msg.text, at: msg.at, seq: seq++ };
+      race.entries.push(e);
+      race.entries.sort((a, b) => a.at - b.at || a.seq - b.seq);
+      if (race.world.stepOf(e.at) <= race.world.step) rebuild(race);
+    } else if (msg.op === "stop" && !race.stopAt) {
+      race.stopAt = msg.at;
+      rebuild(race);
+      race.by = nameOf3(msg.from.id, msg.from.name);
+    }
+  }
+  function frame() {
+    const r = race;
+    if (!r || r.ended) return;
+    const target = Math.floor((serverNow() - DELAY_MS - r.start) / 1e3 * HZ);
+    r.world.advance(target);
+    draw(r.world);
+    react(r);
+    if (!r.ended) requestAnimationFrame(frame);
+  }
+  function react(r) {
+    const w = r.world;
+    const once = (key) => r.seen.has(key) ? false : (r.seen.add(key), true);
+    if (w.phase === "prompt" && once("prompt")) {
+      banner3("Nobody made it! Send another message for round 2", 3200);
+      systemLine("🔥 Nobody made it through the Drop Race. Send another message for round 2!");
+      placeholder();
+    }
+    if (w.phase === "running" && w.round === 2 && once("round2")) {
+      banner3("Round 2: go!", 1800);
+      placeholder();
+    }
+    if (!w.over) return;
+    r.ended = true;
+    placeholder();
+    const done = () => {
+      if (race === r) race = null;
+      placeholder();
+    };
+    if (w.phase === "won" && w.winner) {
+      const who = nameOf3(w.winner.entry.from.id, w.winner.entry.from.name);
+      celebrate(w, who);
+      systemLine("🏆 " + who + " won the Drop Race with “" + w.winner.entry.text + "”!");
+      setTimeout(() => retract(done), 4e3);
+    } else if (w.phase === "failed") {
+      systemLine("😞 Nobody made it through the Drop Race, twice. Nobody wins.");
+      sadSweep(done);
+    } else {
+      systemLine("🎯 " + r.by + " stopped the Drop Race.");
+      retract(done);
+    }
   }
 
   // PWA/LocalChatter/src/games/index.ts
-  var send = (msg) => sendRaw({ type: "game", ...msg });
-  var board = $("poll-board");
+  var send2 = (msg) => sendRaw({ type: "game", ...msg });
+  var board2 = $("poll-board");
   function updateBoard() {
     if (!DISPLAY) return;
     const list3 = shown();
-    board.querySelectorAll("[data-game]").forEach((c) => {
+    board2.querySelectorAll("[data-game]").forEach((c) => {
       if (!list3.some((g) => g.id === c.dataset.game) && !c.getAnimations().length) c.remove();
     });
     list3.forEach((g) => {
-      if (!board.querySelector('[data-game="' + CSS.escape(g.id) + '"]')) board.appendChild(gameCard(g, "board"));
+      if (!board2.querySelector('[data-game="' + CSS.escape(g.id) + '"]')) board2.appendChild(gameCard(g, "board"));
     });
-    board.hidden = !board.children.length;
+    board2.hidden = !board2.children.length;
   }
   function placeInChat(g) {
     if (DISPLAY || g.state === "won") return;
@@ -2488,7 +2951,7 @@
     if (!Array.from(phrase2).some(isLetter)) return "Give a word or phrase to guess, e.g. /hangman Under the weather";
     if (!connected() || !state.me) return "Not connected: game not started.";
     const w = { id: randomId(), kind: "hangman", phrase: phrase2, author: state.me, owner: device, at: Date.now() };
-    send({ op: "new", game: w });
+    send2({ op: "new", game: w });
     placeInChat(mergeGame(w).game);
     updateBoard();
     return "";
@@ -2503,7 +2966,7 @@
       systemLine("There are no hangman games on the displays.");
       return;
     }
-    if (!send(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
+    if (!send2(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
       systemLine("Not connected: nothing cleared");
       return;
     }
@@ -2535,6 +2998,10 @@
     if (err) systemLine(err);
   }
   function handleGame(msg) {
+    if (msg.op === "race" || msg.op === "drop" || msg.op === "stop") {
+      handleRace(msg);
+      return;
+    }
     const g = msg.id ? games.get(msg.id) : void 0;
     if (msg.op === "new" && msg.game) {
       const r = mergeGame(msg.game, msg.at);
@@ -2575,7 +3042,7 @@
     reminders.set(peer.id, setTimeout(() => {
       reminders.delete(peer.id);
       const list3 = shown().map(toWire2);
-      if (list3.length && state.peers.has(peer.id)) send({ op: "sync", to: peer.id, games: list3 });
+      if (list3.length && state.peers.has(peer.id)) send2({ op: "sync", to: peer.id, games: list3 });
     }, (DISPLAY ? 150 : 450) + Math.random() * 900));
   }
   document.addEventListener("localchatter:game", (ev) => {
@@ -2586,6 +3053,7 @@
     if (d.result === "broken") systemLine("💥 The wall broke after " + plural2(d.hits, "hit") + tally2 + "! " + d.by + " landed the final blow. It was " + DESCRIBE[d.variant] + ".");
     else systemLine("🧱 The wall went back up after " + plural2(d.hits, "hit") + tally2 + ". It was " + DESCRIBE[d.variant] + ".");
   });
+  button("race-new").addEventListener("click", () => raceCommand(""));
   var dialog = $("hangman-dialog");
   button("hangman-new").addEventListener("click", () => {
     input("hangman-phrase").value = "";
@@ -2654,7 +3122,7 @@
     node.appendChild(el("p", "poll-from", "from " + (owner ? "you" : p.author.name)));
     if (verdict) node.appendChild(el("p", "quiz-verdict", verdict === "right" ? "✅ You got it right!" : "❌ Not quite." + (over ? "" : " The answer is shown when the quiz closes.")));
     const list3 = el("ol", "poll-options");
-    p.options.forEach((label2, i) => {
+    p.options.forEach((label3, i) => {
       const row2 = el("li", "poll-option");
       const pct = shown2 && t.total ? Math.round(t.counts[i] / t.total * 100) : 0;
       const answer = p.quiz && isCorrect(p, i) && (shown2 || owner && mode === "chat");
@@ -2669,7 +3137,7 @@
       const bar = el("span", "poll-bar");
       bar.style.width = pct + "%";
       body.appendChild(bar);
-      body.appendChild(el("span", "poll-label", (mine2 === i ? "✓ " : "") + label2 + (answer ? " ✔ correct" : "")));
+      body.appendChild(el("span", "poll-label", (mine2 === i ? "✓ " : "") + label3 + (answer ? " ✔ correct" : "")));
       if (shown2) body.appendChild(el("span", "poll-count", t.counts[i] + (t.total ? " · " + pct + "%" : "")));
       row2.appendChild(body);
       if (shown2 && !p.secret && !p.quiz && t.voters[i].length) row2.appendChild(el("span", "poll-voters", t.voters[i].join(", ")));
@@ -2717,7 +3185,7 @@
   }
 
   // PWA/LocalChatter/src/polls/index.ts
-  var send2 = (msg) => sendRaw({ type: "poll", ...msg });
+  var send3 = (msg) => sendRaw({ type: "poll", ...msg });
   var quote = (p) => "“" + p.question + "”";
   var by = (from) => from ? from.name : "Someone";
   function redraw(also) {
@@ -2730,18 +3198,18 @@
     box2.appendChild(card(p, "chat"));
     append(box2);
   }
-  var board2 = $("poll-board");
+  var board3 = $("poll-board");
   function updateBoard2() {
     if (!DISPLAY) return;
     const list3 = active2();
-    board2.querySelectorAll("[data-poll]").forEach((c) => {
+    board3.querySelectorAll("[data-poll]").forEach((c) => {
       if (!list3.some((p) => p.id === c.dataset.poll)) c.remove();
     });
     list3.forEach((p, i) => {
-      const node = board2.querySelector('[data-poll="' + CSS.escape(p.id) + '"]') || card(p, "board");
-      if (board2.children[i] !== node) board2.insertBefore(node, board2.children[i] || null);
+      const node = board3.querySelector('[data-poll="' + CSS.escape(p.id) + '"]') || card(p, "board");
+      if (board3.children[i] !== node) board3.insertBefore(node, board3.children[i] || null);
     });
-    board2.hidden = !board2.children.length;
+    board3.hidden = !board3.children.length;
   }
   function createPoll(question, options, secret, correct) {
     if (!connected() || !state.me) return false;
@@ -2751,14 +3219,14 @@
       w.correct = correct;
       w.secret = false;
     }
-    send2({ op: "new", poll: w });
+    send3({ op: "new", poll: w });
     const { poll } = merge(w);
     placeInChat2(poll);
     redraw();
     return true;
   }
   function castVote(p, option) {
-    if (!state.me || !send2({ op: "vote", id: p.id, voter: device, option })) {
+    if (!state.me || !send3({ op: "vote", id: p.id, voter: device, option })) {
       systemLine("Not connected: vote not sent");
       return;
     }
@@ -2773,7 +3241,7 @@
       systemLine("The poll " + quote(p) + " is already closed.");
       return;
     }
-    if (!send2({ op: "close", id: p.id, voter: device })) {
+    if (!send3({ op: "close", id: p.id, voter: device })) {
       systemLine("Not connected: poll not closed");
       return;
     }
@@ -2790,7 +3258,7 @@
       systemLine("There are no polls on the displays.");
       return;
     }
-    if (!send2(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
+    if (!send3(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
       systemLine("Not connected: nothing cleared");
       return;
     }
@@ -2863,7 +3331,7 @@
     reminders2.set(peer.id, setTimeout(() => {
       reminders2.delete(peer.id);
       const list3 = active2().map(toWire);
-      if (list3.length && state.peers.has(peer.id)) send2({ op: "sync", to: peer.id, polls: list3 });
+      if (list3.length && state.peers.has(peer.id)) send3({ op: "sync", to: peer.id, polls: list3 });
     }, wait));
   }
 
@@ -3105,8 +3573,8 @@
           if (window.confirm('Delete "' + e.name + '" from this device?')) void remove2(e.id).then(refreshSoundboard);
         }]
       ];
-      actions2.forEach(([label2, aria, fn]) => {
-        const b = el("button", null, label2);
+      actions2.forEach(([label3, aria, fn]) => {
+        const b = el("button", null, label3);
         b.type = "button";
         b.setAttribute("aria-label", aria);
         b.addEventListener("click", fn);
@@ -3574,7 +4042,7 @@
 
   // PWA/LocalChatter/src/features/commands.ts
   function runCommand(value) {
-    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll|quiz|hangman)\b\s*([\s\S]*)$/i.exec(value);
+    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll|quiz|hangman|droprace)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     const cmd = m[1].toLowerCase();
     const raw2 = m[2];
@@ -3594,6 +4062,9 @@
         return true;
       case "hangman":
         hangmanCommand(rest);
+        return true;
+      case "droprace":
+        raceCommand(rest);
         return true;
       case "whisper":
       case "w":
@@ -3711,7 +4182,7 @@
   var recView = $("voice-recording");
   var reviewView = $("voice-review");
   var mic = button("mic");
-  var send3 = button("send");
+  var send4 = button("send");
   var text = $("text");
   var audio = $("voice-audio");
   var nameBox = input("voice-name");
@@ -3728,7 +4199,7 @@
     const empty = !text.value.trim();
     const showMic = voiceSupported && empty && panel.hidden;
     mic.hidden = !showMic;
-    send3.hidden = showMic || !panel.hidden && empty;
+    send4.hidden = showMic || !panel.hidden && empty;
   }
   function show2(view) {
     panel.hidden = !view;
@@ -3752,15 +4223,15 @@
     ctx2.createMediaStreamSource(r.stream).connect(analyser);
     const data = new Uint8Array(analyser.fftSize);
     const bar = $("voice-level");
-    const draw = () => {
+    const draw2 = () => {
       analyser.getByteTimeDomainData(data);
       let sum = 0;
       for (const v of data) sum += ((v - 128) / 128) ** 2;
       bar.style.transform = "scaleX(" + Math.min(1, Math.sqrt(sum / data.length) * 4).toFixed(3) + ")";
-      r.meter = requestAnimationFrame(draw);
+      r.meter = requestAnimationFrame(draw2);
     };
     r.ctx = ctx2;
-    draw();
+    draw2();
   }
   function startRecording() {
     if (rec) return;
@@ -3875,6 +4346,7 @@
     { name: "rain", args: "[30 | 2m | on | off]", hint: "Rain on the chat, puddling on the message bar", standalone: true },
     { name: "poll", args: "[secret] <question> | <option> | <option> · close · clear [n | all]", hint: "Ask everyone a question; results show on the displays", standalone: true },
     { name: "quiz", args: "<question> | *<right answer> | <option>…", hint: "A quiz: * marks the right answer(s)", standalone: false },
+    { name: "droprace", args: "[off]", hint: "Game: everyone's next message drops through the pins; first to the bottom wins", standalone: true },
     { name: "hangman", args: "<phrase> · clear [n | all]", hint: "Start a game of hangman: everyone's messages are guesses", standalone: true },
     { name: "banner", args: "[slow | fast | 40px] <text> | off", hint: "Put a banner across the top of the displays", standalone: false },
     { name: "sound", args: "[name]", hint: "Play a sound for everyone, or list the ones you have", standalone: true },
@@ -4310,6 +4782,7 @@
   }
   function sendChat(payload) {
     if (!connected() || !state.ws || !state.me) return false;
+    if (payload.text && !payload.to && !payload.file && !payload.sound && raceEntry(payload.text)) return true;
     const msg = payload;
     msg.type = "chat";
     msg.id = randomId();
@@ -4409,10 +4882,10 @@
       const fx = parseEffect("/" + f.effect + (f.arg ? " " + f.arg : ""));
       if (!fx) return;
       const li = el("li");
-      const label2 = el("span", "fav-label");
-      label2.appendChild(el("span", "fav-name", effectPhrase(fx)[0] + " " + EFFECT_TITLES[f.effect] + (f.arg ? " " + f.arg : "")));
-      label2.appendChild(el("span", "fav-from", f.from ? "from " + f.from : "yours"));
-      li.appendChild(label2);
+      const label3 = el("span", "fav-label");
+      label3.appendChild(el("span", "fav-name", effectPhrase(fx)[0] + " " + EFFECT_TITLES[f.effect] + (f.arg ? " " + f.arg : "")));
+      label3.appendChild(el("span", "fav-from", f.from ? "from " + f.from : "yours"));
+      li.appendChild(label3);
       const go = el("button", "fav-go", f.from ? "Echo" : "Resend");
       go.type = "button";
       go.title = f.from ? "Play " + f.from + "'s effect for everyone again" : "Send it to everyone again";
@@ -4619,7 +5092,7 @@
   }
 
   // PWA/LocalChatter/src/features/updates.ts
-  var BUILD_TIME = "2026-11-08T08:41:58.944Z";
+  var BUILD_TIME = "2026-11-08T08:55:37.022Z";
   var CHECK_EVERY_MS = 30 * 1e3;
   var status2 = (text4) => {
     $("update-status").textContent = text4;

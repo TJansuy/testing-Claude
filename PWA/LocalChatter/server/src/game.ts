@@ -5,7 +5,9 @@ import { Peer, publicPeer } from './sanitise';
 
 type Json = Record<string, unknown>;
 const isObject = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v);
-const OPS = ['new', 'clear', 'sync'];
+const OPS = ['new', 'clear', 'sync', 'race', 'drop', 'stop'];
+/** Drop Race messages go back to their sender too, so every device times them by the relay's clock. */
+export const ECHOED = ['race', 'drop', 'stop'];
 const MAX_GAMES = 20;
 
 function person(v: unknown): Peer | null {
@@ -38,6 +40,14 @@ export function sanitiseGame(msg: Json, from: Peer): Json | null {
     g.at = out.at;
     delete g.guessed;
     return { ...out, game: g };
+  }
+  if (op === 'race' || op === 'drop' || op === 'stop') {
+    // Drop Race: start one, enter a message, or stop it. id: the race.
+    const id = clean(msg.id, 64);
+    if (!id) return null;
+    if (op !== 'drop') return { ...out, id };
+    const text = typeof msg.text === 'string' ? msg.text.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 300) : '';
+    return text ? { ...out, id, text } : null;
   }
   if (op === 'clear') {
     if (msg.all === true) return { ...out, all: true };

@@ -1,5 +1,6 @@
 // Fire: flames rise from the bottom of the screen and every message bubble
 // catches light, until stopped; then it all dies down over about a second.
+import { char } from './marks';
 import { EffectControl, holdGlow, overlayCanvas, reducedMotion, vibrate } from './shared';
 
 interface Particle { x: number; y: number; vx: number; vy: number; size: number; life: number; decay: number }
@@ -21,14 +22,25 @@ function getFlameSprite(): HTMLCanvasElement {
   return s;
 }
 
-/** Sets every message alight (CSS flames on each bubble; new ones catch too). */
+/** Sets every message alight (CSS flames on each bubble; new ones catch too).
+ *  A bubble that's been burning for a moment is charred for good. */
 function burnMessages(): EffectControl {
   const body = document.body;
   body.classList.remove('fx-burnout');
   body.classList.add('fx-burning');
   let out: ReturnType<typeof setTimeout> | undefined;
+  const lit = new Map<HTMLElement, number>();
+  const scorch = setInterval(() => {
+    const now = performance.now();
+    document.querySelectorAll<HTMLElement>('#messages .msg:not(.charred)').forEach((m) => {
+      const since = lit.get(m);
+      if (since === undefined) lit.set(m, now);
+      else if (now - since >= 700) char(m);
+    });
+  }, 250);
   return {
     stop(_early, hard) {
+      clearInterval(scorch);
       clearTimeout(out);
       if (hard) { body.classList.remove('fx-burning', 'fx-burnout'); return; }
       body.classList.add('fx-burnout'); // flames die down, then go

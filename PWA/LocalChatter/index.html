@@ -18,12 +18,22 @@
   <link rel="stylesheet" href="styles/effects-more.css">
   <link rel="stylesheet" href="styles/display.css">
   <link rel="stylesheet" href="styles/voice.css">
+  <link rel="stylesheet" href="styles/polls.css">
 </head>
 <body>
   <!-- Display mode: the /banner across the top of the screen. -->
   <div id="display-banner" class="display-banner" role="status" aria-live="polite" hidden>
     <div class="db-track"><span id="display-banner-text"></span></div>
   </div>
+  <!-- Rain leaves bubbles soggy: this warps them like wet paper. -->
+  <svg class="svg-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="soggy" x="-5%" y="-10%" width="110%" height="125%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.045" numOctaves="2" seed="7"/>
+      <feDisplacementMap in="SourceGraphic" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+  <!-- Display mode: every poll that hasn't been cleared, with live results. -->
+  <section id="poll-board" class="poll-board" aria-label="Polls" aria-live="polite" hidden></section>
 
   <header id="topbar" class="topbar">
     <div class="title">
@@ -84,6 +94,10 @@
       </div>
       <div id="sb-buttons" class="effects-buttons"></div>
       <p id="sb-empty" class="hint">No sounds yet. Tap <strong>Manage sounds</strong> to add some.</p>
+    </div>
+    <div id="polls" class="favs">
+      <div class="sb-head"><strong>Polls</strong><button id="poll-new" type="button" class="link-button">📊 New poll</button></div>
+      <p class="hint">Ask everyone a question. Results show on the displays as votes come in. Type <code>/poll</code> to see the running polls.</p>
     </div>
     <div id="favs" class="favs">
       <div class="sb-head"><strong>Favourites</strong></div>
@@ -193,6 +207,23 @@
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
     </button>
   </form>
+
+  <dialog id="poll-dialog" aria-labelledby="poll-title">
+    <form id="poll-form">
+      <h2 id="poll-title">New poll</h2>
+      <label for="poll-question">Question</label>
+      <input id="poll-question" maxlength="200" placeholder="What should we have for lunch?">
+      <label>Options</label>
+      <div id="poll-options" class="poll-fields"></div>
+      <button id="poll-add" type="button" class="secondary-button">+ Add option</button>
+      <label class="check"><input type="checkbox" id="poll-secret"> Secret: votes are anonymous, and nobody sees the results until you close the poll</label>
+      <p id="poll-status" class="hint" role="status"></p>
+      <div class="actions">
+        <button id="poll-cancel" type="button" class="secondary">Cancel</button>
+        <button type="submit">Send poll</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="sounds" aria-labelledby="sounds-title">
     <form method="dialog" id="sounds-form">

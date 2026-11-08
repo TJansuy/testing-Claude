@@ -1,12 +1,14 @@
 // Rain: drops fall from the top of the screen and splash on the message bubbles
 // they hit; the rest collect in a puddle that rises on top of the message bar.
+// Bubbles soak up the rain and go soggy; soaked ones drip onto the ones below.
 // When it ends, the rain stops, the last drops land, and the puddle drains away.
+import { wet } from './marks';
 import { EffectControl, overlayCanvas, reducedMotion, vibrate } from './shared';
 
 interface Drop { x: number; y: number; vy: number; len: number }
 interface Bit { x: number; y: number; vx: number; vy: number; life: number }
 interface Ripple { x: number; r: number; life: number }
-interface Ledge { left: number; right: number; top: number }
+interface Ledge { el: HTMLElement; left: number; right: number; top: number; bottom: number }
 
 const MAX_LEVEL = 46; // css px
 const DRAIN_PER_S = 34; // css px
@@ -29,9 +31,9 @@ export function startRain(): EffectControl {
   /** The tops of the bubbles on screen, which drops hit on the way down. */
   function readLedges(): void {
     ledges = Array.from(document.querySelectorAll<HTMLElement>('#messages .msg'))
-      .map((m) => m.getBoundingClientRect())
-      .filter((r) => r.height > 0 && r.bottom > 0 && r.top < innerHeight)
-      .map((r) => ({ left: r.left * dpr, right: r.right * dpr, top: r.top * dpr }));
+      .map((m) => ({ m, r: m.getBoundingClientRect() }))
+      .filter(({ r }) => r.height > 0 && r.bottom > 0 && r.top < innerHeight)
+      .map(({ m, r }) => ({ el: m, left: r.left * dpr, right: r.right * dpr, top: r.top * dpr, bottom: r.bottom * dpr }));
   }
   /** The puddle sits on the message bar (or the bottom of the screen). */
   function floor(): number {
@@ -55,7 +57,10 @@ export function startRain(): EffectControl {
         n -= 1;
       }
     }
-    if (!stoppedAt && calm) level = Math.min(MAX_LEVEL * dpr, level + 4 * dpr * dt);
+    if (!stoppedAt && calm) {
+      level = Math.min(MAX_LEVEL * dpr, level + 4 * dpr * dt);
+      ledges.forEach((l) => wet(l.el, dt * 2)); // no drops to watch: bubbles just soak slowly
+    }
 
     // Move the drops: splash on a bubble, or land in the puddle.
     for (let i = drops.length - 1; i >= 0; i--) {
@@ -66,6 +71,8 @@ export function startRain(): EffectControl {
       if (hit) {
         for (let k = 0; k < 4; k++) bits.push({ x: d.x, y: hit.top, vx: (Math.random() - 0.5) * 160 * dpr, vy: -(60 + Math.random() * 120) * dpr, life: 1 });
         drops.splice(i, 1);
+        // A soaked bubble drips from its bottom edge onto whatever is below.
+        if (wet(hit.el) && Math.random() < 0.35) drops.push({ x: d.x, y: hit.bottom + 1, vy: 260 * dpr, len: 6 * dpr });
       } else if (d.y >= surface) {
         ripples.push({ x: d.x, r: 2 * dpr, life: 1 });
         if (!stoppedAt) level = Math.min(MAX_LEVEL * dpr, level + 0.09 * dpr);

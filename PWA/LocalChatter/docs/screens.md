@@ -74,6 +74,12 @@ chat in large text, plays effects and sounds, and has no message box.
 - The display role isn't saved: opening the normal link on the same device
   gives your usual role.
 
+### Polls
+
+Displays show every running poll on a board above the chat, with the results
+updating as votes come in (secret polls only show their results once closed).
+Polls stay until someone clears them. See [Polls](polls.md).
+
 ### Banners
 
 `/banner` puts a banner across the top of every display, in large text. Only

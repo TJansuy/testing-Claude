@@ -43,7 +43,19 @@ export interface WelcomeMessage { type: 'welcome'; you: Peer; room?: string; pee
 export interface PeerMessage { type: 'join' | 'leave' | 'rename'; peer: Peer }
 export interface ErrorMessage { type: 'error'; message?: string; about?: string }
 
-export type ServerMessage = WelcomeMessage | PeerMessage | ChatMessage | SystemMessage | EffectMessage | ErrorMessage;
+/** A poll's vote, as passed on to people who join. */
+export interface WireVote { voter: string; name: string; option: number; at: number }
+export interface WirePoll {
+  id: string; question: string; options: string[]; secret: boolean; closed?: boolean;
+  author: Peer; owner: string; at?: number; votes?: WireVote[];
+}
+/** Polls: new, vote, close (by its author), clear (from the displays, by anyone), sync (remind someone who joined). */
+export interface PollMessage {
+  type: 'poll'; op: 'new' | 'vote' | 'close' | 'clear' | 'sync'; from?: Peer; at?: number;
+  poll?: WirePoll; id?: string; voter?: string; option?: number; all?: boolean; to?: string; polls?: WirePoll[];
+}
+
+export type ServerMessage = WelcomeMessage | PeerMessage | ChatMessage | SystemMessage | EffectMessage | PollMessage | ErrorMessage;
 
 /** What the app sends for a chat message; type/id are filled in when sending. */
 export type OutgoingChat = Omit<ChatMessage, 'type' | 'id'> & { type?: 'chat'; id?: string };

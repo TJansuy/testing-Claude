@@ -21,6 +21,7 @@ export const COMMANDS: CommandInfo[] = [
   { name: 'blackhole', args: '[30 | 2m | on | off]', hint: 'Everything that arrives gets sucked into a black hole (and is gone)', standalone: true },
   { name: 'blur', args: '[30 | 2m | on | off]', hint: 'Everything slowly fades into a fuzzy cloud', standalone: true },
   { name: 'rain', args: '[30 | 2m | on | off]', hint: 'Rain on the chat, puddling on the message bar', standalone: true },
+  { name: 'poll', args: '[secret] <question> | <option> | <option> · close · clear [n | all]', hint: 'Ask everyone a question; results show on the displays', standalone: true },
   { name: 'banner', args: '[slow | fast | 40px] <text> | off', hint: 'Put a banner across the top of the displays', standalone: false },
   { name: 'sound', args: '[name]', hint: 'Play a sound for everyone, or list the ones you have', standalone: true },
   { name: 'speak', args: '<language | default>', hint: 'Write your messages in a language', standalone: true },

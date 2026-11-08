@@ -18,6 +18,17 @@ everyone in the chat, including you, and shows as a line like
 | `/blur` | Everything slowly fades into a fuzzy cloud of fog, then clears again. |
 | `/rain` | Rain falls from the top of the screen, splashes off the message bubbles on the way down and collects in a puddle on top of the message bar. When it stops, the last drops land and the puddle drains away. |
 
+### Marks they leave
+
+Some effects leave their mark on the message bubbles they reach, for good (the
+bubbles stay marked after the effect ends):
+
+| Effect | Mark |
+| --- | --- |
+| Fire | Bubbles that burn for a moment are left **charred**: sooty, scorched edges and a dim 🔥. |
+| Lightning | A bubble that's struck is left **shocked**: a jagged, uneven outline, slightly crooked. Each strike makes it rougher (up to three). |
+| Rain | A bubble that soaks up enough rain goes **soggy**: it sags and buckles like wet paper. Soaked bubbles drip onto the bubbles below them. |
+
 ### How long they last
 
 Every effect takes the same options after its name:

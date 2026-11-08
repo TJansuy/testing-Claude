@@ -35,7 +35,8 @@
     notify: "localchatter-notify",
     autohide: "localchatter-autohide",
     languages: "localchatter-languages",
-    speak: "localchatter-speak"
+    speak: "localchatter-speak",
+    device: "localchatter-device"
   };
   function load(key) {
     try {
@@ -440,6 +441,41 @@
     };
   }
 
+  // PWA/LocalChatter/src/effects/marks.ts
+  var rnd = (a, b) => a + Math.random() * (b - a);
+  function char(box2) {
+    box2.classList.add("charred");
+  }
+  function shock(box2) {
+    const hits = Math.min(3, Number(box2.dataset.shocks || 0) + 1);
+    box2.dataset.shocks = String(hits);
+    const depth = 1.5 + hits * 1.5;
+    const bite = () => rnd(0, depth).toFixed(1) + "px";
+    const pts = [];
+    const n = 14;
+    for (let i = 0; i <= n; i++) pts.push((i / n * 100).toFixed(1) + "% " + (i % 2 ? bite() : "0px"));
+    for (let i = 1; i <= n / 2; i++) pts.push("calc(100% - " + (i % 2 ? bite() : "0px") + ") " + (i / (n / 2) * 100).toFixed(1) + "%");
+    for (let i = n - 1; i >= 0; i--) pts.push((i / n * 100).toFixed(1) + "% calc(100% - " + (i % 2 ? bite() : "0px") + ")");
+    for (let i = n / 2 - 1; i > 0; i--) pts.push((i % 2 ? bite() : "0px") + " " + (i / (n / 2) * 100).toFixed(1) + "%");
+    box2.style.setProperty("--shock-clip", "polygon(" + pts.join(", ") + ")");
+    box2.style.setProperty("--shock-tilt", (rnd(0.6, 1.4) * hits * (Math.random() < 0.5 ? -1 : 1)).toFixed(2) + "deg");
+    const r = () => Math.round(rnd(2, 24)) + "px";
+    box2.style.setProperty("--shock-radius", r() + " " + r() + " " + r() + " " + r());
+    box2.classList.add("shocked");
+  }
+  var wetness = /* @__PURE__ */ new WeakMap();
+  function wet(box2, amount = 1) {
+    const w = (wetness.get(box2) || 0) + amount;
+    wetness.set(box2, w);
+    if (w >= 5 && !box2.classList.contains("soggy")) {
+      box2.style.setProperty("--sog-x", rnd(-16, -9).toFixed(1) + "deg");
+      box2.style.setProperty("--sog-y", rnd(-7, 7).toFixed(1) + "deg");
+      box2.style.setProperty("--sog-r", rnd(-2, 2).toFixed(1) + "deg");
+      box2.classList.add("soggy");
+    }
+    return box2.classList.contains("soggy");
+  }
+
   // PWA/LocalChatter/src/effects/fire.ts
   var flameSprite = null;
   function getFlameSprite() {
@@ -462,8 +498,18 @@
     body.classList.remove("fx-burnout");
     body.classList.add("fx-burning");
     let out;
+    const lit = /* @__PURE__ */ new Map();
+    const scorch = setInterval(() => {
+      const now = performance.now();
+      document.querySelectorAll("#messages .msg:not(.charred)").forEach((m) => {
+        const since = lit.get(m);
+        if (since === void 0) lit.set(m, now);
+        else if (now - since >= 700) char(m);
+      });
+    }, 250);
     return {
       stop(_early, hard) {
+        clearInterval(scorch);
         clearTimeout(out);
         if (hard) {
           body.classList.remove("fx-burning", "fx-burnout");
@@ -479,9 +525,9 @@
     const bubbles = burnMessages();
     if (reducedMotion()) {
       const glow = holdGlow("fx-fire-glow");
-      return { stop(early, hard) {
-        glow.stop(early, hard);
-        bubbles.stop(early, hard);
+      return { stop(early2, hard) {
+        glow.stop(early2, hard);
+        bubbles.stop(early2, hard);
       } };
     }
     const o = overlayCanvas("fx-fire");
@@ -537,8 +583,8 @@
     }
     requestAnimationFrame(frame);
     return {
-      stop(early, hard) {
-        bubbles.stop(early, hard);
+      stop(early2, hard) {
+        bubbles.stop(early2, hard);
         if (hard) {
           gone = true;
           o.canvas.remove();
@@ -600,7 +646,10 @@
     el2.classList.remove("struck");
     void el2.offsetWidth;
     el2.classList.add("struck");
-    setTimeout(() => el2.classList.remove("struck"), 850);
+    setTimeout(() => {
+      el2.classList.remove("struck");
+      shock(el2);
+    }, 850);
   }
   function strike(canvases) {
     vibrate([40, 80, 40]);
@@ -734,10 +783,10 @@
     }, 1650);
     if (reducedMotion()) {
       const g = holdGlow("fx-quake-glow");
-      return { stop(early, hard) {
+      return { stop(early2, hard) {
         clearTimeout(next);
-        if (early) vibrate(0);
-        g.stop(early, hard);
+        if (early2) vibrate(0);
+        g.stop(early2, hard);
       } };
     }
     const root = document.body;
@@ -745,9 +794,9 @@
     void root.offsetWidth;
     root.classList.add("fx-shake");
     return {
-      stop(early) {
+      stop(early2) {
         clearTimeout(next);
-        if (early) vibrate(0);
+        if (early2) vibrate(0);
         root.classList.remove("fx-shake");
       }
     };
@@ -771,7 +820,7 @@
     let ledgeAt = 0;
     const perSecond = Math.max(40, Math.round(w / dpr / 4));
     function readLedges() {
-      ledges = Array.from(document.querySelectorAll("#messages .msg")).map((m) => m.getBoundingClientRect()).filter((r) => r.height > 0 && r.bottom > 0 && r.top < innerHeight).map((r) => ({ left: r.left * dpr, right: r.right * dpr, top: r.top * dpr }));
+      ledges = Array.from(document.querySelectorAll("#messages .msg")).map((m) => ({ m, r: m.getBoundingClientRect() })).filter(({ r }) => r.height > 0 && r.bottom > 0 && r.top < innerHeight).map(({ m, r }) => ({ el: m, left: r.left * dpr, right: r.right * dpr, top: r.top * dpr, bottom: r.bottom * dpr }));
     }
     function floor() {
       const bar = document.getElementById("composer");
@@ -794,7 +843,10 @@
           n -= 1;
         }
       }
-      if (!stoppedAt && calm) level = Math.min(MAX_LEVEL * dpr, level + 4 * dpr * dt);
+      if (!stoppedAt && calm) {
+        level = Math.min(MAX_LEVEL * dpr, level + 4 * dpr * dt);
+        ledges.forEach((l) => wet(l.el, dt * 2));
+      }
       for (let i = drops.length - 1; i >= 0; i--) {
         const d = drops[i];
         const prev = d.y;
@@ -803,6 +855,7 @@
         if (hit) {
           for (let k = 0; k < 4; k++) bits.push({ x: d.x, y: hit.top, vx: (Math.random() - 0.5) * 160 * dpr, vy: -(60 + Math.random() * 120) * dpr, life: 1 });
           drops.splice(i, 1);
+          if (wet(hit.el) && Math.random() < 0.35) drops.push({ x: d.x, y: hit.bottom + 1, vy: 260 * dpr, len: 6 * dpr });
         } else if (d.y >= surface) {
           ripples.push({ x: d.x, r: 2 * dpr, life: 1 });
           if (!stoppedAt) level = Math.min(MAX_LEVEL * dpr, level + 0.09 * dpr);
@@ -1051,13 +1104,13 @@
   function announce(name, on) {
     document.dispatchEvent(new CustomEvent("localchatter:fx", { detail: { name, active: on } }));
   }
-  function stopEffect(name, early, hard = false) {
+  function stopEffect(name, early2, hard = false) {
     const a = active[name];
     if (!a) return;
     clearTimeout(a.timer);
     delete active[name];
     try {
-      a.ctrl.stop(early, hard);
+      a.ctrl.stop(early2, hard);
     } catch {
     }
     announce(name, false);
@@ -1583,7 +1636,7 @@
   };
   var isVoice = (name) => /^voice message\b/i.test(name);
   var extFor = (type) => ({ "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/wav": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "audio/aac": "aac", "audio/flac": "flac" })[type.split(";")[0]] || "audio";
-  function soundActions(r, snd, status2) {
+  function soundActions(r, snd, status3) {
     const wrap = el("div", "sound-actions");
     const save2 = el("button", "sound-act", "💾");
     save2.type = "button";
@@ -1593,11 +1646,11 @@
       const saving = r.blob ? addBlob(r.blob, snd.name, "library", r.url) : r.url ? addFromUrl(r.url, snd.name) : null;
       if (!saving) return;
       saving.then((e) => {
-        status2.textContent = "Saved to your sounds as “" + e.name + "” (play it with /sound " + e.name + ")";
+        status3.textContent = "Saved to your sounds as “" + e.name + "” (play it with /sound " + e.name + ")";
         save2.disabled = true;
         document.dispatchEvent(new CustomEvent("localchatter:library"));
       }, (err) => {
-        status2.textContent = err.message;
+        status3.textContent = err.message;
       });
     });
     wrap.appendChild(save2);
@@ -1634,8 +1687,8 @@
     const body = el("div", "sound");
     const label2 = el("div");
     label2.appendChild(el("div", "sound-name", (isVoice(snd.name) ? "🎙 " : "🔊 ") + snd.name));
-    const status2 = el("div", "sound-status", "Loading…");
-    label2.appendChild(status2);
+    const status3 = el("div", "sound-status", "Loading…");
+    label2.appendChild(status3);
     body.appendChild(label2);
     box2.appendChild(body);
     append(box2);
@@ -1656,22 +1709,22 @@
       btn.type = "button";
       btn.setAttribute("aria-label", "Play " + snd.name);
       body.insertBefore(btn, label2);
-      body.appendChild(soundActions(r, snd, status2));
+      body.appendChild(soundActions(r, snd, status3));
       const where = SOURCE_TEXT[source];
       const go = () => {
-        status2.textContent = "Playing " + where;
+        status3.textContent = "Playing " + where;
         playIt().then(() => {
-          status2.textContent = "Played " + where;
+          status3.textContent = "Played " + where;
           soundEvent(snd.name, source, true);
         }).catch((err) => {
           if (err && err.name === "NotAllowedError") {
-            status2.textContent = "Tap ▶ to play (" + where + ")";
+            status3.textContent = "Tap ▶ to play (" + where + ")";
             if (DISPLAY) $("stage-tap").hidden = false;
             soundEvent(snd.name, source, false, "blocked");
           } else if (source === "link") {
             unavailable("link failed");
           } else {
-            status2.textContent = "Couldn't play this sound here";
+            status3.textContent = "Couldn't play this sound here";
             soundEvent(snd.name, source, false, "error");
           }
         });
@@ -1681,11 +1734,11 @@
         go();
       });
       if (missed) {
-        status2.textContent = "Sent while you were away · tap ▶ to play";
+        status3.textContent = "Sent while you were away · tap ▶ to play";
         soundEvent(snd.name, source, false, "missed");
       } else if (state.soundOn) go();
       else {
-        status2.textContent = "Sounds are off · tap ▶ to play";
+        status3.textContent = "Sounds are off · tap ▶ to play";
         soundEvent(snd.name, source, false, "muted");
       }
     });
@@ -1790,6 +1843,335 @@
     document.body.appendChild(v);
   }
 
+  // PWA/LocalChatter/src/polls/model.ts
+  var polls = /* @__PURE__ */ new Map();
+  var early = /* @__PURE__ */ new Map();
+  var device = load(KEY.device) || (() => {
+    const id2 = randomId().slice(0, 18);
+    save(KEY.device, id2);
+    return id2;
+  })();
+  function vote(p, v) {
+    if (p.cleared || p.closed || v.option < 0 || v.option >= p.options.length) return false;
+    const had = p.votes.get(v.voter);
+    if (had && had.at > v.at) return false;
+    p.votes.set(v.voter, v);
+    return true;
+  }
+  function voteLater(id2, v) {
+    const list3 = early.get(id2) || [];
+    list3.push(v);
+    early.set(id2, list3);
+  }
+  function merge(w, at) {
+    let p = polls.get(w.id);
+    const isNew = !p;
+    if (!p) {
+      p = {
+        id: w.id,
+        question: w.question,
+        options: w.options.slice(0, 10),
+        secret: !!w.secret,
+        closed: false,
+        cleared: false,
+        author: w.author,
+        owner: w.owner || "",
+        at: w.at || at || Date.now(),
+        votes: /* @__PURE__ */ new Map()
+      };
+      polls.set(p.id, p);
+    }
+    const target = p;
+    (w.votes || []).forEach((v) => {
+      const had = target.votes.get(v.voter);
+      if (v.option < target.options.length && (!had || had.at < v.at)) target.votes.set(v.voter, v);
+    });
+    (early.get(w.id) || []).forEach((v) => vote(target, v));
+    early.delete(w.id);
+    if (w.closed) target.closed = true;
+    return { poll: target, isNew };
+  }
+  function toWire(p) {
+    return {
+      id: p.id,
+      question: p.question,
+      options: p.options,
+      secret: p.secret,
+      closed: p.closed,
+      author: p.author,
+      owner: p.owner,
+      at: p.at,
+      votes: Array.from(p.votes.values())
+    };
+  }
+  function active2() {
+    return Array.from(polls.values()).filter((p) => !p.cleared).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+  }
+  var numberOf = (p) => active2().indexOf(p) + 1;
+  function findPoll(ref) {
+    const list3 = active2();
+    if (/^#?\d+$/.test(ref)) return list3[parseInt(ref.replace("#", ""), 10) - 1];
+    const r = ref.toLowerCase();
+    return list3.find((p) => p.question.toLowerCase().startsWith(r)) || list3.find((p) => p.question.toLowerCase().includes(r));
+  }
+  function tally(p) {
+    const counts = p.options.map(() => 0);
+    const voters = p.options.map(() => []);
+    p.votes.forEach((v) => {
+      counts[v.option]++;
+      voters[v.option].push(v.name);
+    });
+    return { counts, voters, total: p.votes.size };
+  }
+  var resultsShown = (p) => !p.secret || p.closed;
+  var myVote = (p) => p.votes.get(device)?.option;
+
+  // PWA/LocalChatter/src/polls/card.ts
+  var actions = null;
+  var setActions = (a) => {
+    actions = a;
+  };
+  var cards = /* @__PURE__ */ new Map();
+  var plural = (n, word) => n + " " + word + (n === 1 ? "" : "s");
+  function state2(p) {
+    if (p.cleared) return p.closed || !p.secret ? "Ended" : "Ended without results";
+    return p.closed ? "Closed" : "Open";
+  }
+  function footer(p, total, mode) {
+    const votes = plural(total, "vote");
+    if (resultsShown(p)) return votes + (p.closed || p.cleared ? " · final results" : " · updates live");
+    if (p.cleared) return votes + " · it was cleared before the results were shown";
+    return votes + " so far · 🔒 results when " + (mode === "chat" && p.owner === device ? "you close it" : p.author.name + " closes it");
+  }
+  function fill(node, p, mode) {
+    const t = tally(p);
+    const shown = resultsShown(p);
+    const mine = myVote(p);
+    const canVote = mode === "chat" && !p.closed && !p.cleared;
+    const top = Math.max(1, ...t.counts);
+    node.replaceChildren();
+    node.classList.toggle("closed", p.closed || p.cleared);
+    node.classList.toggle("secret", p.secret);
+    const head = el("div", "poll-head");
+    if (!p.cleared) head.appendChild(el("span", "poll-num", "#" + numberOf(p)));
+    head.appendChild(el("span", "poll-kind", p.secret ? "🔒 Secret poll" : "📊 Poll"));
+    head.appendChild(el("span", "poll-state", state2(p)));
+    node.appendChild(head);
+    node.appendChild(el("p", "poll-q", p.question));
+    node.appendChild(el("p", "poll-from", "from " + (p.owner === device ? "you" : p.author.name)));
+    const list3 = el("ol", "poll-options");
+    p.options.forEach((label2, i) => {
+      const row2 = el("li", "poll-option");
+      const pct = shown && t.total ? Math.round(t.counts[i] / t.total * 100) : 0;
+      const win = shown && (p.closed || p.cleared) && t.total > 0 && t.counts[i] === top;
+      const body = canVote ? el("button", "poll-choice") : el("div", "poll-choice");
+      if (body instanceof HTMLButtonElement) {
+        body.type = "button";
+        body.setAttribute("aria-pressed", String(mine === i));
+        body.addEventListener("click", () => {
+          if (actions) actions.vote(p, i);
+        });
+      }
+      if (mine === i) row2.classList.add("picked");
+      if (win) row2.classList.add("winner");
+      const bar = el("span", "poll-bar");
+      bar.style.width = pct + "%";
+      body.appendChild(bar);
+      body.appendChild(el("span", "poll-label", (mine === i ? "✓ " : "") + label2));
+      if (shown) body.appendChild(el("span", "poll-count", t.counts[i] + (t.total ? " · " + pct + "%" : "")));
+      row2.appendChild(body);
+      if (shown && !p.secret && t.voters[i].length) row2.appendChild(el("span", "poll-voters", t.voters[i].join(", ")));
+      list3.appendChild(row2);
+    });
+    node.appendChild(list3);
+    node.appendChild(el("p", "poll-foot", footer(p, t.total, mode)));
+    if (mode === "chat" && !p.cleared) {
+      const row2 = el("div", "poll-actions");
+      if (!p.closed && p.owner === device) {
+        const close2 = el("button", "link-button", p.secret ? "Close and show results" : "Close poll");
+        close2.type = "button";
+        close2.addEventListener("click", () => {
+          if (actions) actions.close(p);
+        });
+        row2.appendChild(close2);
+      }
+      const clear = el("button", "link-button", "Clear from displays");
+      clear.type = "button";
+      clear.addEventListener("click", () => {
+        if (actions) actions.clear(p);
+      });
+      row2.appendChild(clear);
+      node.appendChild(row2);
+    }
+  }
+  function card(p, mode) {
+    const node = el("div", "poll-card poll-" + mode);
+    node.dataset.poll = p.id;
+    fill(node, p, mode);
+    const set = cards.get(p.id) || /* @__PURE__ */ new Set();
+    set.add({ node, mode });
+    cards.set(p.id, set);
+    return node;
+  }
+  function refresh(p) {
+    const set = cards.get(p.id);
+    if (!set) return;
+    set.forEach((c) => {
+      if (c.node.isConnected) fill(c.node, p, c.mode);
+      else if (!c.node.closest(".fx-ghost")) set.delete(c);
+    });
+  }
+  function refreshAll(all2) {
+    for (const p of all2) refresh(p);
+  }
+
+  // PWA/LocalChatter/src/polls/index.ts
+  var send = (msg) => sendRaw({ type: "poll", ...msg });
+  var quote = (p) => "“" + p.question + "”";
+  var by = (from) => from ? from.name : "Someone";
+  function redraw(also) {
+    refreshAll(also ? [...active2(), also] : active2());
+    updateBoard();
+  }
+  function placeInChat(p) {
+    if (DISPLAY) return;
+    const box2 = el("div", "msg poll-msg" + (p.owner === device ? " mine" : ""));
+    box2.appendChild(card(p, "chat"));
+    append(box2);
+  }
+  var board = $("poll-board");
+  function updateBoard() {
+    if (!DISPLAY) return;
+    const list3 = active2();
+    Array.from(board.children).forEach((c) => {
+      if (!list3.some((p) => p.id === c.dataset.poll)) c.remove();
+    });
+    list3.forEach((p, i) => {
+      const node = board.querySelector('[data-poll="' + CSS.escape(p.id) + '"]') || card(p, "board");
+      if (board.children[i] !== node) board.insertBefore(node, board.children[i] || null);
+    });
+    board.hidden = !list3.length;
+    board.dataset.count = String(Math.min(list3.length, 4));
+  }
+  function createPoll(question, options, secret) {
+    if (!connected() || !state.me) return false;
+    const w = { id: randomId(), question, options, secret, author: state.me, owner: device, at: Date.now() };
+    send({ op: "new", poll: w });
+    const { poll } = merge(w);
+    placeInChat(poll);
+    redraw();
+    return true;
+  }
+  function castVote(p, option) {
+    if (!state.me || !send({ op: "vote", id: p.id, voter: device, option })) {
+      systemLine("Not connected: vote not sent");
+      return;
+    }
+    if (vote(p, { voter: device, name: state.me.name, option, at: Date.now() })) redraw();
+  }
+  function closePoll(p) {
+    if (p.owner !== device) {
+      systemLine("Only " + p.author.name + ", who started it, can close the poll " + quote(p) + ".");
+      return;
+    }
+    if (p.closed) {
+      systemLine("The poll " + quote(p) + " is already closed.");
+      return;
+    }
+    if (!send({ op: "close", id: p.id, voter: device })) {
+      systemLine("Not connected: poll not closed");
+      return;
+    }
+    p.closed = true;
+    redraw();
+    systemLine("📊 You closed the poll " + quote(p) + (p.secret ? ": the results are on the displays." : "."));
+  }
+  function clearLocal(p) {
+    p.cleared = true;
+    redraw(p);
+  }
+  function clearPolls(list3, all2) {
+    if (!list3.length) {
+      systemLine("There are no polls on the displays.");
+      return;
+    }
+    if (!send(all2 ? { op: "clear", all: true } : { op: "clear", id: list3[0].id })) {
+      systemLine("Not connected: nothing cleared");
+      return;
+    }
+    list3.forEach(clearLocal);
+    systemLine("🧹 You cleared " + (all2 ? "all the polls" : "the poll " + quote(list3[0])) + " from the displays.");
+  }
+  setActions({ vote: castVote, close: closePoll, clear: (p) => clearPolls([p], false) });
+  function handlePoll(msg) {
+    const p = msg.id ? polls.get(msg.id) : void 0;
+    switch (msg.op) {
+      case "new": {
+        if (!msg.poll) return;
+        const r = merge(msg.poll, msg.at);
+        if (r.isNew) show(() => placeInChat(r.poll));
+        redraw();
+        return;
+      }
+      case "vote": {
+        if (!msg.id || !msg.voter || msg.option === void 0) return;
+        const v = { voter: msg.voter, name: by(msg.from), option: msg.option, at: msg.at || Date.now() };
+        if (!p) voteLater(msg.id, v);
+        else if (vote(p, v)) redraw();
+        return;
+      }
+      case "close":
+        if (!p || p.closed || p.cleared || msg.voter !== p.owner) return;
+        p.closed = true;
+        redraw();
+        show(() => systemNotice("📊 " + by(msg.from) + " closed the poll " + quote(p) + "."));
+        return;
+      case "clear": {
+        const list3 = msg.all ? active2() : p && !p.cleared ? [p] : [];
+        if (!list3.length) return;
+        list3.forEach(clearLocal);
+        show(() => systemNotice("🧹 " + by(msg.from) + " cleared " + (msg.all ? "all the polls" : "the poll " + quote(list3[0])) + " from the displays."));
+        return;
+      }
+      case "sync":
+        if (msg.to) cancelReminder(msg.to);
+        remembered(msg.polls || [], msg.to === (state.me && state.me.id) ? msg.from : void 0);
+    }
+  }
+  function remembered(list3, reminder) {
+    const added = [];
+    list3.forEach((w) => {
+      const had = polls.get(w.id);
+      if (had && had.cleared) return;
+      const r = merge(w);
+      if (r.isNew) added.push(r.poll);
+    });
+    if (!added.length) {
+      redraw();
+      return;
+    }
+    show(() => {
+      if (reminder) systemNotice("📊 " + reminder.name + " reminded you about " + (added.length === 1 ? "a poll that's" : added.length + " polls that are") + " running:");
+      added.forEach(placeInChat);
+    });
+    redraw();
+  }
+  var reminders = /* @__PURE__ */ new Map();
+  function cancelReminder(id2) {
+    clearTimeout(reminders.get(id2));
+    reminders.delete(id2);
+  }
+  function remindNewcomer(peer) {
+    if (!active2().length || state.me && peer.id === state.me.id) return;
+    cancelReminder(peer.id);
+    const wait = (DISPLAY ? 100 : 400) + Math.random() * 900;
+    reminders.set(peer.id, setTimeout(() => {
+      reminders.delete(peer.id);
+      const list3 = active2().map(toWire);
+      if (list3.length && state.peers.has(peer.id)) send({ op: "sync", to: peer.id, polls: list3 });
+    }, wait));
+  }
+
   // PWA/LocalChatter/src/net/handle.ts
   function handle(msg) {
     switch (msg.type) {
@@ -1825,6 +2207,7 @@
         state.peers.set(peer.id, peer);
         renderPeople();
         show(() => systemNotice(peer.name + " joined"));
+        remindNewcomer(peer);
         break;
       }
       case "leave": {
@@ -1857,6 +2240,9 @@
         show(() => renderMessage(msg, false));
         break;
       }
+      case "poll":
+        handlePoll(msg);
+        break;
       case "error":
         if (msg.message) systemLine(msg.message);
         break;
@@ -2006,7 +2392,7 @@
       const li = el("li");
       li.appendChild(el("span", "name", e.name));
       li.appendChild(el("span", "meta", e.linkOnly ? "link" : formatSize(e.size)));
-      const actions = [
+      const actions2 = [
         ["▶", "Preview " + e.name + " (only on this device)", () => {
           unlock();
           playEntry(e).catch(() => soundStatus(`Couldn't play "` + e.name + '".'));
@@ -2019,7 +2405,7 @@
           if (window.confirm('Delete "' + e.name + '" from this device?')) void remove2(e.id).then(refreshSoundboard);
         }]
       ];
-      actions.forEach(([label2, aria, fn]) => {
+      actions2.forEach(([label2, aria, fn]) => {
         const b = el("button", null, label2);
         b.type = "button";
         b.setAttribute("aria-label", aria);
@@ -2357,9 +2743,102 @@
     toggleNfc();
   });
 
+  // PWA/LocalChatter/src/polls/commands.ts
+  var MAX_OPTIONS = 10;
+  var HELP = 'Start a poll with /poll <question> | <option> | <option>, e.g. /poll Lunch? | Pizza | Tacos. Add "secret" first (/poll secret …) to hide the results until you close it. /poll close <number> closes yours; /poll clear <number> or /poll clear all takes polls off the displays.';
+  function startPoll(question, options, secret) {
+    const q = question.replace(/\s+/g, " ").trim().slice(0, 200);
+    const opts = options.map((o) => o.replace(/\s+/g, " ").trim().slice(0, 100)).filter(Boolean);
+    if (!q) return "Write a question for the poll.";
+    if (opts.length < 2) return "A poll needs at least two options.";
+    if (opts.length > MAX_OPTIONS) return "A poll can have up to " + MAX_OPTIONS + " options.";
+    const seen = new Set(opts.map((o) => o.toLowerCase()));
+    if (seen.size !== opts.length) return "Each option needs to be different.";
+    return createPoll(q, opts, secret) ? "" : "Not connected: poll not sent.";
+  }
+  function pollCommand(rest) {
+    const m = /^(close|end|clear)\b\s*(.*)$/i.exec(rest);
+    if (m) {
+      manage(m[1].toLowerCase(), m[2].trim());
+      return;
+    }
+    if (!rest) {
+      const list3 = active2();
+      if (!list3.length) {
+        systemLine("No polls are running. " + HELP);
+        return;
+      }
+      systemLine("📊 Polls running (" + list3.length + "):");
+      list3.forEach(placeInChat);
+      return;
+    }
+    const secret = /^secret\b/i.test(rest);
+    const parts = rest.replace(/^(secret|public)\b\s*/i, "").split("|");
+    if (parts.length < 3) {
+      systemLine(HELP);
+      return;
+    }
+    const err = startPoll(parts[0], parts.slice(1), secret);
+    if (err) systemLine(err);
+  }
+  function manage(verb, ref) {
+    if (verb === "clear") {
+      if (!ref || /^all$/i.test(ref)) {
+        clearPolls(active2(), true);
+        return;
+      }
+      const p2 = findPoll(ref);
+      if (p2) clearPolls([p2], false);
+      else systemLine("There's no poll " + ref + " on the displays. Type /poll to see them.");
+      return;
+    }
+    const p = ref ? findPoll(ref) : active2().filter((x) => x.owner === device && !x.closed).pop();
+    if (p) closePoll(p);
+    else systemLine(ref ? "There's no poll " + ref + ". Type /poll to see them." : "You have no open polls to close.");
+  }
+  var dialog2 = $("poll-dialog");
+  var optionsBox = $("poll-options");
+  var status = $("poll-status");
+  function addOption(value = "") {
+    if (optionsBox.children.length >= MAX_OPTIONS) return;
+    const field = document.createElement("input");
+    field.maxLength = 100;
+    field.value = value;
+    field.placeholder = "Option " + (optionsBox.children.length + 1);
+    field.setAttribute("aria-label", field.placeholder);
+    optionsBox.appendChild(field);
+    button("poll-add").hidden = optionsBox.children.length >= MAX_OPTIONS;
+  }
+  function openForm() {
+    input("poll-question").value = "";
+    input("poll-secret").checked = false;
+    optionsBox.replaceChildren();
+    addOption();
+    addOption();
+    status.textContent = "";
+    dialog2.showModal();
+    input("poll-question").focus();
+  }
+  button("poll-new").addEventListener("click", openForm);
+  button("poll-add").addEventListener("click", () => {
+    addOption();
+    optionsBox.lastElementChild.focus();
+  });
+  button("poll-cancel").addEventListener("click", () => dialog2.close());
+  $("poll-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const options = Array.from(optionsBox.querySelectorAll("input")).map((i) => i.value);
+    const err = startPoll(input("poll-question").value, options, input("poll-secret").checked);
+    if (err) {
+      status.textContent = err;
+      return;
+    }
+    dialog2.close();
+  });
+
   // PWA/LocalChatter/src/features/commands.ts
   function runCommand(value) {
-    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner)\b\s*([\s\S]*)$/i.exec(value);
+    const m = /^\s*\/(role|debug|sound|whisper|w|spy|languages|language|langs|speak|banner|poll)\b\s*([\s\S]*)$/i.exec(value);
     if (!m) return false;
     const cmd = m[1].toLowerCase();
     const raw = m[2];
@@ -2370,6 +2849,9 @@
         return true;
       case "banner":
         bannerCommand(value);
+        return true;
+      case "poll":
+        pollCommand(rest);
         return true;
       case "whisper":
       case "w":
@@ -2487,7 +2969,7 @@
   var recView = $("voice-recording");
   var reviewView = $("voice-review");
   var mic = button("mic");
-  var send = button("send");
+  var send2 = button("send");
   var text = $("text");
   var audio = $("voice-audio");
   var nameBox = input("voice-name");
@@ -2504,7 +2986,7 @@
     const empty = !text.value.trim();
     const showMic = voiceSupported && empty && panel.hidden;
     mic.hidden = !showMic;
-    send.hidden = showMic || !panel.hidden && empty;
+    send2.hidden = showMic || !panel.hidden && empty;
   }
   function show2(view) {
     panel.hidden = !view;
@@ -2648,6 +3130,7 @@
     { name: "blackhole", args: "[30 | 2m | on | off]", hint: "Everything that arrives gets sucked into a black hole (and is gone)", standalone: true },
     { name: "blur", args: "[30 | 2m | on | off]", hint: "Everything slowly fades into a fuzzy cloud", standalone: true },
     { name: "rain", args: "[30 | 2m | on | off]", hint: "Rain on the chat, puddling on the message bar", standalone: true },
+    { name: "poll", args: "[secret] <question> | <option> | <option> · close · clear [n | all]", hint: "Ask everyone a question; results show on the displays", standalone: true },
     { name: "banner", args: "[slow | fast | 40px] <text> | off", hint: "Put a banner across the top of the displays", standalone: false },
     { name: "sound", args: "[name]", hint: "Play a sound for everyone, or list the ones you have", standalone: true },
     { name: "speak", args: "<language | default>", hint: "Write your messages in a language", standalone: true },
@@ -2674,7 +3157,7 @@
   var text2 = $("text");
   var popup = $("autocomplete");
   var items = [];
-  var active2 = 0;
+  var active3 = 0;
   var dismissedFor = null;
   text2.setAttribute("aria-autocomplete", "list");
   text2.setAttribute("aria-controls", "autocomplete");
@@ -2702,7 +3185,7 @@
     if (!usageOnly) {
       li.addEventListener("pointerdown", (e) => {
         e.preventDefault();
-        active2 = i;
+        active3 = i;
         complete();
       });
     } else {
@@ -2711,8 +3194,8 @@
     return li;
   }
   function highlight() {
-    Array.from(popup.children).forEach((c, i) => c.setAttribute("aria-selected", String(i === active2)));
-    const current2 = popup.children[active2];
+    Array.from(popup.children).forEach((c, i) => c.setAttribute("aria-selected", String(i === active3)));
+    const current2 = popup.children[active3];
     if (current2) {
       text2.setAttribute("aria-activedescendant", current2.id);
       current2.scrollIntoView({ block: "nearest" });
@@ -2743,7 +3226,7 @@
         close();
         return;
       }
-      if (active2 >= items.length) active2 = 0;
+      if (active3 >= items.length) active3 = 0;
       items.forEach((it, i) => popup.appendChild(row(it.cmd, it.as, typed, i, false)));
     }
     popup.hidden = false;
@@ -2752,7 +3235,7 @@
     else text2.removeAttribute("aria-activedescendant");
   }
   function complete() {
-    const it = items[active2];
+    const it = items[active3];
     if (!it) return;
     text2.value = "/" + it.as + " ";
     text2.focus();
@@ -2767,7 +3250,7 @@
     }
     if (!items.length) return false;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      active2 = (active2 + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+      active3 = (active3 + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
       highlight();
       return true;
     }
@@ -2783,7 +3266,7 @@
     return false;
   }
   text2.addEventListener("input", () => {
-    active2 = text2.value.length <= 1 ? 0 : active2;
+    active3 = text2.value.length <= 1 ? 0 : active3;
     update();
   });
   text2.addEventListener("blur", () => setTimeout(() => {
@@ -3386,9 +3869,9 @@
   }
 
   // PWA/LocalChatter/src/features/updates.ts
-  var BUILD_TIME = "2026-11-08T07:48:47.778Z";
+  var BUILD_TIME = "2026-11-08T08:04:07.951Z";
   var CHECK_EVERY_MS = 30 * 1e3;
-  var status = (text4) => {
+  var status2 = (text4) => {
     $("update-status").textContent = text4;
   };
   function formatBuild(iso) {
@@ -3420,7 +3903,7 @@
   function onNewVersion() {
     if (updateReady) return;
     updateReady = true;
-    status("A new version has been downloaded.");
+    status2("A new version has been downloaded.");
     let recent = 0;
     try {
       recent = Number(sessionStorage.getItem("localchatter-reloaded")) || 0;
@@ -3430,7 +3913,7 @@
       reloadIntoNewVersion();
       return;
     }
-    status("A new version is ready: reload to use it.");
+    status2("A new version is ready: reload to use it.");
     offerReload();
   }
   function activeVersion() {
@@ -3450,30 +3933,30 @@
   }
   function checkForUpdates(manual = false) {
     if (!registration) {
-      if (manual) status("Updates need the app to be opened from its web address (not from a file).");
+      if (manual) status2("Updates need the app to be opened from its web address (not from a file).");
       return;
     }
     if (!manual && Date.now() - lastCheck < CHECK_EVERY_MS) return;
     lastCheck = Date.now();
     if (!navigator.onLine) {
-      status("Offline: will check for updates when you're back online.");
+      status2("Offline: will check for updates when you're back online.");
       return;
     }
     if (updateReady) return;
-    status("Checking for updates…");
+    status2("Checking for updates…");
     const reg = registration;
     reg.update().then(() => {
       if (updateReady) return;
-      if (reg.installing || reg.waiting) status("Downloading the new version…");
-      else status("Up to date (checked " + (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ").");
-    }).catch(() => status("Couldn't check for updates right now."));
+      if (reg.installing || reg.waiting) status2("Downloading the new version…");
+      else status2("Up to date (checked " + (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ").");
+    }).catch(() => status2("Couldn't check for updates right now."));
   }
   function setupUpdates() {
     $("version").textContent = formatBuild(BUILD_TIME);
     $("version").title = BUILD_TIME;
     $("check-update").addEventListener("click", () => checkForUpdates(true));
     if (!("serviceWorker" in navigator) || location.protocol === "file:") {
-      status("Opened from a file: updates and offline use need the app's web address.");
+      status2("Opened from a file: updates and offline use need the app's web address.");
       return;
     }
     const hadController = !!navigator.serviceWorker.controller;
@@ -3485,7 +3968,7 @@
       registration = reg;
       compareWithActive();
       checkForUpdates();
-    }).catch(() => status("Couldn't set up offline use and updates."));
+    }).catch(() => status2("Couldn't set up offline use and updates."));
     window.addEventListener("online", () => checkForUpdates());
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) checkForUpdates();

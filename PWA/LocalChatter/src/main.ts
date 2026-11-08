@@ -15,6 +15,7 @@ import { initSettings, openSettings } from './ui/settings';
 import { setStatus } from './ui/status';
 import { normaliseRelay } from './util';
 import './features/soundboard';
+import './polls/commands';
 import './scan/menu';
 import './ui/composer';
 

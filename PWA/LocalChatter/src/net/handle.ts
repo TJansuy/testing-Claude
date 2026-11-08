@@ -7,6 +7,7 @@ import { away, notify, show } from '../features/background';
 import { renderSystem } from '../features/roles';
 import { addStop, removeStop } from '../features/stopdock';
 import { whisperVisibility } from '../features/whispers';
+import { handlePoll, remindNewcomer } from '../polls';
 import { DEFAULT_MAX_BYTES, state } from '../state';
 import type { ServerMessage } from '../types';
 import { renderPeople } from '../ui/status';
@@ -46,6 +47,7 @@ export function handle(msg: ServerMessage): void {
       state.peers.set(peer.id, peer);
       renderPeople();
       show(() => systemNotice(peer.name + ' joined'));
+      remindNewcomer(peer); // tell them about the polls running
       break;
     }
     case 'leave': {
@@ -76,6 +78,9 @@ export function handle(msg: ServerMessage): void {
       show(() => renderMessage(msg, false));
       break;
     }
+    case 'poll':
+      handlePoll(msg);
+      break;
     case 'error':
       if (msg.message) systemLine(msg.message);
       break;

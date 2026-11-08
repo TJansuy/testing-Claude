@@ -3,6 +3,7 @@
 // random (they flash and jolt as it reaches them) and passing beside the rest.
 // Each strike flashes twice, 380 ms apart, once the bolt lands; strikes are at
 // least 1.2 s apart, so there are never more than two flashes in any second.
+import { shock } from './marks';
 import { EffectControl, overlayCanvas, reducedMotion, vibrate } from './shared';
 
 type Point = [number, number];
@@ -75,7 +76,7 @@ function jolt(el: HTMLElement): void {
   el.classList.remove('struck');
   void el.offsetWidth; // restart the animation
   el.classList.add('struck');
-  setTimeout(() => el.classList.remove('struck'), 850);
+  setTimeout(() => { el.classList.remove('struck'); shock(el); }, 850); // left frazzled
 }
 
 /** One strike. Removes its canvas when done. */

@@ -2238,28 +2238,13 @@
   }
   var myVote = (p) => p.votes.get(device)?.option;
 
-  // PWA/LocalChatter/src/games/race/sim.ts
+  // PWA/LocalChatter/src/games/race/board.ts
   var W = 500;
   var H = 850;
-  var HZ = 120;
-  var DT = 1 / HZ;
   var PIN_R = 5;
-  var PIN_TOP = 150;
-  var PIN_ROWS = 10;
-  var ROW_GAP = 66;
-  var COL_GAP = 66;
-  var READY = Math.round(1.6 * HZ);
-  var STUCK_MOVE = 14;
-  var STUCK_STEPS = Math.round(1.4 * HZ);
-  var MAX_AGE = 25 * HZ;
-  var QUIET = 6 * HZ;
-  var EMPTY_ROUND = 45 * HZ;
-  var PROMPT = 3 * HZ;
-  var PINS = [];
-  for (let row2 = 0; row2 < PIN_ROWS; row2++) {
-    const off = row2 % 2 ? COL_GAP / 2 : 0;
-    for (let x = off + 10; x <= W - 10; x += COL_GAP) PINS.push({ x, y: PIN_TOP + row2 * ROW_GAP, row: row2 });
-  }
+  var PATH_HALF = 34;
+  var TOP = 110;
+  var BOTTOM = 800;
   function rng2(seed) {
     let h = 1779033703;
     for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
@@ -2271,13 +2256,98 @@
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
-  function weightOf(text4) {
-    const words2 = text4.split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean);
-    if (!words2.length) return 0;
-    const avg = words2.reduce((n, w) => n + w.length, 0) / words2.length;
-    return Math.min(1, Math.max(0, (avg - 3) / 6));
+  function segDist2(px, py, ax, ay, bx, by2) {
+    const dx = bx - ax, dy = by2 - ay;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const x = ax + t * dx - px, y = ay + t * dy - py;
+    return x * x + y * y;
   }
-  var radiusOf = (text4) => 16 + Math.min(20, text4.length * 0.4);
+  var nearPath = (path, x, y, clear) => {
+    for (let i = 1; i < path.length; i++) {
+      if (segDist2(x, y, path[i - 1].x, path[i - 1].y, path[i].x, path[i].y) < clear * clear) return true;
+    }
+    return false;
+  };
+  function cup(cx, cy, inner, depth) {
+    const pins = [];
+    const half = inner / 2 + PIN_R;
+    const step = 2 * PIN_R + 1;
+    for (let x = -half; x <= half + 0.01; x += step) pins.push({ x: cx + x, y: cy, cup: true });
+    for (let y = step; y <= depth; y += step) {
+      pins.push({ x: cx - half - (y > depth - step ? 3 : 0), y: cy - y, cup: true });
+      pins.push({ x: cx + half + (y > depth - step ? 3 : 0), y: cy - y, cup: true });
+    }
+    return pins;
+  }
+  function makeBoard(seed) {
+    const rand = rng2(seed + "|board");
+    const path = [];
+    let px = 70 + rand() * (W - 140);
+    for (let y = 0; y <= H + 40; y += 45) {
+      path.push({ x: px, y });
+      px = Math.min(W - PATH_HALF - 12, Math.max(PATH_HALF + 12, px + (rand() - 0.5) * 90));
+    }
+    const pins = [];
+    const cups = [];
+    const nCups = 2 + Math.floor(rand() * 3);
+    for (let tries = 0; cups.length < nCups && tries < 200; tries++) {
+      const inner = 26 + rand() * 16;
+      const x = 40 + rand() * (W - 80), y = 260 + rand() * 470;
+      const reach = inner / 2 + 2 * PIN_R + 6;
+      if (nearPath(path, x, y - 20, PATH_HALF + reach + 14)) continue;
+      if (cups.some((c) => (c.x - x) * (c.x - x) + (c.y - y) * (c.y - y) < 150 * 150)) continue;
+      cups.push({ x, y, r: reach + 30 });
+      pins.push(...cup(x, y, inner, 26 + rand() * 10));
+    }
+    const spots = Array.from({ length: 3 + Math.floor(rand() * 3) }, () => ({ x: rand() * W, y: TOP + rand() * (BOTTOM - TOP), s: 0.5 + rand() * 0.7, k: 90 + rand() * 120 }));
+    const density = (x, y) => {
+      let d = 0.12;
+      for (const p of spots) d += p.s / (1 + ((x - p.x) * (x - p.x) + (y - p.y) * (y - p.y)) / (p.k * p.k));
+      return d > 1 ? 1 : d;
+    };
+    const scattered = [];
+    for (let i = 0; i < 2600; i++) {
+      const x = 8 + rand() * (W - 16), y = TOP + rand() * (BOTTOM - TOP);
+      const gap = 96 - 58 * density(x, y);
+      if (nearPath(path, x, y, PATH_HALF + PIN_R)) continue;
+      if (cups.some((c) => (c.x - x) * (c.x - x) + (c.y - 20 - y) * (c.y - 20 - y) < c.r * c.r)) continue;
+      if (scattered.some((p) => (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) < gap * gap)) continue;
+      scattered.push({ x, y, cup: false });
+    }
+    return { pins: pins.concat(scattered), path };
+  }
+
+  // PWA/LocalChatter/src/games/race/sim.ts
+  var HZ = 120;
+  var DT = 1 / HZ;
+  var MAX_SPEED = 900;
+  var READY = Math.round(1.6 * HZ);
+  var STUCK_MOVE = 14;
+  var STUCK_STEPS = Math.round(1.4 * HZ);
+  var MAX_AGE = 25 * HZ;
+  var QUIET = 6 * HZ;
+  var EMPTY_ROUND = 45 * HZ;
+  var PROMPT = 3 * HZ;
+  var wordsOf = (text4) => text4.split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean);
+  function physicsOf(text4) {
+    const words2 = wordsOf(text4);
+    const n = Math.max(1, words2.length);
+    const avg = words2.length ? words2.reduce((t, w) => t + w.length, 0) / words2.length : 1;
+    const r = Math.min(40, 10 + 7 * Math.sqrt(n - 1));
+    const density = Math.min(16, 0.5 + avg * avg / 16);
+    const root2 = Math.sqrt(density);
+    return {
+      r,
+      density,
+      mass: density * r * r,
+      gravity: 360 * (1 + 0.25 * root2),
+      drag: 1.3 / (1 + 0.5 * density),
+      bounce: 0.75 / (1 + 0.18 * density)
+    };
+  }
+  var heft = (b) => Math.min(1, (b.density - 0.5) / 15.5);
   var World = class {
     /** entries: sorted by the relay's time; stopStep: when someone stopped it. */
     constructor(seed, start2, entries, stopStep = Infinity) {
@@ -2297,6 +2367,7 @@
       this.count = 0;
       this.next = 0;
       this.rand = rng2(seed);
+      this.board = makeBoard(seed);
     }
     /** The step an entry arrives at (by the relay's clock). */
     stepOf(at) {
@@ -2339,18 +2410,15 @@
       }
     }
     drop(e) {
-      const r = radiusOf(e.text);
-      const weight = weightOf(e.text);
+      const ph = physicsOf(e.text);
       this.balls.push({
         n: this.count++,
         entry: e,
-        r,
-        weight,
-        mass: r * r * (0.6 + weight),
-        x: r + this.rand() * (W - 2 * r),
-        y: -r,
-        vx: (this.rand() - 0.5) * 60,
-        vy: 40,
+        ...ph,
+        x: ph.r + this.rand() * (W - 2 * ph.r),
+        y: -ph.r - this.rand() * 30,
+        vx: (this.rand() - 0.5) * 80,
+        vy: 30 + this.rand() * 40,
         age: 0,
         round: this.round,
         ax: 0,
@@ -2367,16 +2435,20 @@
     physics() {
       const balls2 = this.balls;
       for (const b of balls2) {
-        const g = 520 * (0.75 + 0.6 * b.weight);
-        const drag = 1.1 - 0.8 * b.weight;
-        b.vy += g * DT;
-        b.vx *= 1 - drag * DT;
-        b.vy *= 1 - drag * DT;
+        b.vy += b.gravity * DT;
+        b.vx *= 1 - b.drag * DT;
+        b.vy *= 1 - b.drag * DT;
+        const sp2 = b.vx * b.vx + b.vy * b.vy;
+        if (sp2 > MAX_SPEED * MAX_SPEED) {
+          const k = MAX_SPEED / Math.sqrt(sp2);
+          b.vx *= k;
+          b.vy *= k;
+        }
         b.x += b.vx * DT;
         b.y += b.vy * DT;
         b.age++;
-        const e = 0.72 - 0.45 * b.weight;
-        for (const p of PINS) {
+        const e = b.bounce;
+        for (const p of this.board.pins) {
           if (p.y < b.y - b.r - PIN_R || p.y > b.y + b.r + PIN_R) continue;
           const dx = b.x - p.x, dy = b.y - p.y;
           const min = b.r + PIN_R;
@@ -2390,7 +2462,7 @@
           if (vn < 0) {
             b.vx -= (1 + e) * vn * nx;
             b.vy -= (1 + e) * vn * ny;
-            b.vx += (this.rand() - 0.5) * 30 * (1 - b.weight);
+            b.vx += (this.rand() - 0.5) * 30 * e;
           }
         }
         if (b.x < b.r) {
@@ -2418,7 +2490,7 @@
           b.y += ny * push * a.mass;
           const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
           if (vn < 0) {
-            const e = Math.min(0.72 - 0.45 * a.weight, 0.72 - 0.45 * b.weight);
+            const e = Math.min(a.bounce, b.bounce);
             const imp = -(1 + e) * vn / (1 / a.mass + 1 / b.mass);
             a.vx -= imp / a.mass * nx;
             a.vy -= imp / a.mass * ny;
@@ -2662,16 +2734,16 @@
     const scale = Math.min(innerWidth / W, bottom / H);
     board.style.transform = `translate(${(innerWidth - W * scale) / 2}px, ${bottom - H * scale}px) scale(${scale})`;
   }
-  function openBoard() {
+  function openBoard(world) {
     closeBoard();
     root = el("div", "race");
     root.setAttribute("aria-hidden", "true");
     board = el("div", "race-board");
     board.style.width = W + "px";
     board.style.height = H + "px";
-    PINS.forEach((p) => {
-      const pin = el("i", "race-pin");
-      Object.assign(pin.style, { left: p.x - PIN_R + "px", top: p.y - PIN_R + "px", width: 2 * PIN_R + "px", height: 2 * PIN_R + "px", animationDelay: p.row * 70 + "ms" });
+    world.board.pins.forEach((p) => {
+      const pin = el("i", "race-pin" + (p.cup ? " cup" : ""));
+      Object.assign(pin.style, { left: p.x - PIN_R + "px", top: p.y - PIN_R + "px", width: 2 * PIN_R + "px", height: 2 * PIN_R + "px", animationDelay: Math.round(p.y * 0.9) + "ms" });
       pin.dataset.y = String(p.y);
       board.appendChild(pin);
     });
@@ -2708,8 +2780,10 @@
     else colourBubble(node, b.entry.from);
     node.appendChild(el("b", null, mine2 ? "You" : b.entry.from.name));
     node.appendChild(el("span", null, b.entry.text));
-    Object.assign(node.style, { width: 2 * b.r + "px", height: 2 * b.r + "px", fontSize: Math.max(9, b.r * 0.42) + "px", borderWidth: 1.5 + b.weight * 3.5 + "px" });
+    Object.assign(node.style, { width: 2 * b.r + "px", height: 2 * b.r + "px", fontSize: (b.r < 17 ? 10 : Math.max(9, b.r * 0.42)) + "px", borderWidth: 1.5 + heft(b) * 4 + "px" });
     node.title = b.entry.text;
+    if (b.r < 17) node.classList.add("tiny");
+    node.style.setProperty("--heft", heft(b).toFixed(2));
     board.appendChild(node);
     balls.set(b.entry.seq, node);
     return node;
@@ -2845,7 +2919,7 @@
       const r = { id: msg.id, start: msg.at, by: "", entries, stopAt: 0, world: new World(msg.id, msg.at, entries), seen: /* @__PURE__ */ new Set(), ended: false };
       race = r;
       entered = 0;
-      openBoard();
+      openBoard(r.world);
       banner3("🎯 Drop Race! Send a message: it drops from the top", 3500);
       systemLine("🎯 " + nameOf3(msg.from.id, msg.from.name) + " started a Drop Race! Your next message is your entry: it drops from the top, and the first to reach the bottom wins. Longer words are heavier.");
       placeholder();
@@ -5092,7 +5166,7 @@
   }
 
   // PWA/LocalChatter/src/features/updates.ts
-  var BUILD_TIME = "2026-11-08T08:55:37.022Z";
+  var BUILD_TIME = "2026-11-08T09:07:41.224Z";
   var CHECK_EVERY_MS = 30 * 1e3;
   var status2 = (text4) => {
     $("update-status").textContent = text4;

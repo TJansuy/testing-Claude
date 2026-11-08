@@ -5,7 +5,7 @@ import { el } from '../../dom';
 import { reducedMotion } from '../../effects/shared';
 import { state } from '../../state';
 import { confetti } from '../card';
-import { Ball, H, PIN_R, PINS, W, World } from './sim';
+import { Ball, H, heft, PIN_R, W, World } from './sim';
 
 let root: HTMLElement | null = null;
 let board: HTMLElement | null = null;
@@ -21,16 +21,16 @@ function layout(): void {
   board.style.transform = `translate(${(innerWidth - W * scale) / 2}px, ${bottom - H * scale}px) scale(${scale})`;
 }
 
-export function openBoard(): void {
+export function openBoard(world: World): void {
   closeBoard();
   root = el('div', 'race');
   root.setAttribute('aria-hidden', 'true');
   board = el('div', 'race-board');
   board.style.width = W + 'px';
   board.style.height = H + 'px';
-  PINS.forEach((p) => {
-    const pin = el('i', 'race-pin');
-    Object.assign(pin.style, { left: p.x - PIN_R + 'px', top: p.y - PIN_R + 'px', width: 2 * PIN_R + 'px', height: 2 * PIN_R + 'px', animationDelay: p.row * 70 + 'ms' });
+  world.board.pins.forEach((p) => {
+    const pin = el('i', 'race-pin' + (p.cup ? ' cup' : ''));
+    Object.assign(pin.style, { left: p.x - PIN_R + 'px', top: p.y - PIN_R + 'px', width: 2 * PIN_R + 'px', height: 2 * PIN_R + 'px', animationDelay: Math.round(p.y * 0.9) + 'ms' });
     pin.dataset.y = String(p.y);
     board!.appendChild(pin);
   });
@@ -67,8 +67,10 @@ function ballEl(b: Ball): HTMLElement {
   if (mine) node.classList.add('mine'); else colourBubble(node, b.entry.from);
   node.appendChild(el('b', null, mine ? 'You' : b.entry.from.name));
   node.appendChild(el('span', null, b.entry.text));
-  Object.assign(node.style, { width: 2 * b.r + 'px', height: 2 * b.r + 'px', fontSize: Math.max(9, b.r * 0.42) + 'px', borderWidth: 1.5 + b.weight * 3.5 + 'px' });
+  Object.assign(node.style, { width: 2 * b.r + 'px', height: 2 * b.r + 'px', fontSize: (b.r < 17 ? 10 : Math.max(9, b.r * 0.42)) + 'px', borderWidth: 1.5 + heft(b) * 4 + 'px' });
   node.title = b.entry.text;
+  if (b.r < 17) node.classList.add('tiny'); // too small for its text: it's labelled above instead
+  node.style.setProperty('--heft', heft(b).toFixed(2)); // denser messages look darker and heavier
   board!.appendChild(node);
   balls.set(b.entry.seq, node);
   return node;

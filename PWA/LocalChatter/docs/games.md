@@ -39,24 +39,38 @@ breaks, the bricks tumble off the bottom of the screen and the game ends.
 
 `/droprace` (or 🎯 **Drop Race**) turns the screen into a pinboard: metal pins
 come out of the background, and while the race runs **the next message each
-person sends is their entry**. Instead of going to the chat, it drops from the
-top of the board and bounces its way down through the pins and the other
-messages. The first to drop out of the bottom wins: "🏆 Bob won the Drop Race
-with “hello there”!", with confetti.
+person sends is their entry**. Instead of going to the chat, it drops from a
+random spot along the top of the board and bounces its way down through the pins
+and the other messages. The first to drop out of the bottom wins: "🏆 Bob won
+the Drop Race with “hello there”!", with confetti.
 
 - **One entry each per round.** Your messages after that go to the chat as normal.
-- **Longer words are heavier**: a message with long words falls faster and
-  bounces less. Long messages make bigger bubbles, and a big enough one can get
-  wedged between the pins.
-- **Stuck on the pins?** A message that stops moving for a moment catches fire and
-  burns away, so the others can get past.
+- **Every race has its own board.** Pins are scattered at random: crowded in
+  places, sparse in others. There's always a clear way down, wide enough for any
+  message of up to about twelve words. Bigger messages have to find a gap.
+- **Cups**: a few U-shaped pockets of tightly packed brass pins. Small messages
+  can drop into one, and dense ones don't bounce back out.
+- **How a message behaves:**
+
+  | | Comes from | Effect |
+  | --- | --- | --- |
+  | Size | How many words | One word is tiny (its text is shown just above it); a long sentence is big. |
+  | Density | How long its words are | Long words make it denser: it falls faster, drifts less and barely bounces. |
+  | Mass | Size × density | Decides who gets pushed aside when messages collide. |
+
+  So one very long word is tiny but extremely dense and heavy. A big sentence of
+  ordinary words can still outweigh it and shove it out of the way, while a
+  sentence of short words is light and floaty. Denser messages are drawn darker,
+  with a thicker rim.
+- **Stuck?** A message that barely moves for a moment (wedged between pins, or
+  caught in a cup) catches fire and burns away, so the others can get past.
 - **Nobody made it?** If every entry burns, everyone is asked for another message
   and the race runs again. If that fails too, nobody wins: a giant unhappy face
   comes down the screen and sweeps away the pins and whatever's left.
 - `/droprace off` stops it (anyone); the pins sink back. One race at a time.
 - Every screen plays the same race and agrees on the winner, whatever its size:
-  the board is the same shape everywhere, the bounces follow the same seeded
-  rules, and each entry drops at the time the relay received it. To make sure
+  the board is the same shape everywhere and is built from the race's seed,
+  the bounces follow the same seeded rules, and each entry drops at the time the relay received it. To make sure
   every entry has arrived before its turn, each screen plays the race about
   ¾ of a second behind.
 - People who join during a race don't see it; their messages go to the chat.

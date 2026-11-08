@@ -74,7 +74,7 @@ export function handleRace(msg: GameMessage): void {
     const r: Race = { id: msg.id, start: msg.at, by: '', entries, stopAt: 0, world: new World(msg.id, msg.at, entries), seen: new Set(), ended: false };
     race = r;
     entered = 0;
-    openBoard();
+    openBoard(r.world);
     banner('🎯 Drop Race! Send a message: it drops from the top', 3500);
     systemLine('🎯 ' + nameOf(msg.from.id, msg.from.name) + ' started a Drop Race! Your next message is your entry: it drops from the top, and the first to reach the bottom wins. Longer words are heavier.');
     placeholder();

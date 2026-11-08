@@ -62,3 +62,15 @@
 @media (prefers-reduced-motion: reduce) {
   .race-pin { animation-duration: .01s; }
 }
+/* Cups of tightly packed pins: brass */
+.race-pin.cup { background: radial-gradient(circle at 35% 30%, #fff7d6, #e0b44c 40%, #9a6b14 80%, #5c3d06); }
+/* Denser messages look darker and heavier */
+.race-ball { filter: brightness(calc(1 - var(--heft, 0) * .3)) saturate(calc(1 + var(--heft, 0) * .6)); box-shadow: 0 calc(3px + var(--heft, 0) * 5px) calc(8px + var(--heft, 0) * 6px) rgb(0 0 0 / calc(.25 + var(--heft, 0) * .25)); }
+/* Tiny ones (a single word): the text sits just above the bubble */
+.race-ball.tiny { overflow: visible; padding: 0; }
+.race-ball.tiny b { display: none; }
+.race-ball.tiny span {
+  position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%);
+  display: block; white-space: nowrap; padding: 1px 5px; border-radius: 6px;
+  background: rgb(15 23 42 / .75); color: #fff; font-size: 9px; font-weight: 600;
+}

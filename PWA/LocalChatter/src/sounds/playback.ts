@@ -69,13 +69,14 @@ export function playEntry(entry: SoundEntry): Promise<void> {
 }
 
 export type SoundSource = 'cache' | 'message' | 'link' | 'none';
-export interface Resolved { source: SoundSource; play: (() => Promise<void>) | null }
+/** How to play a received sound, plus its audio (or link) so it can be saved. */
+export interface Resolved { source: SoundSource; play: (() => Promise<void>) | null; blob?: Blob | null; url?: string }
 
 /** Works out how to play a received sound: from the cache, then from the audio in
  *  the message, then from its link. Audio from a message is cached for next time. */
 export function resolve(sound: SoundRef): Promise<Resolved> {
   return get(String(sound.id || '')).catch(() => undefined).then((hit) => {
-    if (hit && (hit.blob || hit.url)) return { source: 'cache' as const, play: () => playEntry(hit) };
+    if (hit && (hit.blob || hit.url)) return { source: 'cache' as const, play: () => playEntry(hit), blob: hit.blob, url: hit.url };
     if (sound.data) {
       let blob: Blob | null;
       try { blob = base64ToBlob(sound.data, /^audio\//.test(sound.type || '') ? sound.type as string : guessType(sound.name)); } catch { blob = null; }
@@ -84,11 +85,11 @@ export function resolve(sound: SoundRef): Promise<Resolved> {
         // Cached under the hash of the audio actually received, so a message can't
         // overwrite another sound by claiming its id.
         return addBlob(b, sound.name, 'received', sound.url).catch(() => null)
-          .then(() => ({ source: 'message' as const, play: () => playBlob(b) }));
+          .then(() => ({ source: 'message' as const, play: () => playBlob(b), blob: b, url: safeUrl(sound.url) }));
       }
     }
     const url = safeUrl(sound.url);
-    if (url) return { source: 'link' as const, play: () => playElement(url) };
+    if (url) return { source: 'link' as const, play: () => playElement(url), url };
     return { source: 'none' as const, play: null };
   });
 }

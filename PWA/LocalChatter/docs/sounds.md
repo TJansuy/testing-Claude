@@ -26,6 +26,32 @@ it isn't available on this device."
 - Phones don't allow sound until you've tapped the page once. If a sound
   arrives before that, it shows *Tap ▶ to play*.
 
+### Voice messages
+
+When the message box is empty, the Send button becomes a **microphone**. Tap it
+to record (a timer and level meter show it's listening; recordings stop by
+themselves at 2 minutes). Tap **■ Stop** to finish, or **✕** to throw it away.
+
+You can then play it back and rename it before you:
+
+- **Send** it. It goes as a sound message with the audio included, so every
+  device can play it, and it shows with a 🎙.
+- **💾 Save to my sounds**, to send again later with `/sound <name>` (and on
+  the soundboard, for admins).
+- **Re-record**, or **✕** discard it.
+
+Recordings use AAC (`.m4a`) where the browser can record it, since every device
+including iPhone can play that; otherwise WebM/Opus. The browser asks for
+microphone permission the first time.
+
+### Replay, save and download
+
+Every sound message (voice or not, yours or someone else's) has:
+
+- **▶** to play it again,
+- **💾** to save it to your sounds (then `/sound <name>` plays it for everyone),
+- **⬇** to download the audio file (when the audio is on this device).
+
 ### Soundboard (admins)
 
 Open the ✨ tray. Tap a sound to play it for everyone (in debug mode, *Send as*

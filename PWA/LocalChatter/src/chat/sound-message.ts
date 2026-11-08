@@ -3,8 +3,8 @@
 import { $, el } from '../dom';
 import { sendChat } from '../net/connection';
 import type { SoundEntry } from '../sounds/db';
-import { toMessage } from '../sounds/library';
-import { resolve, SoundSource, unlock } from '../sounds/playback';
+import { addBlob, addFromUrl, toMessage } from '../sounds/library';
+import { Resolved, resolve, SoundSource, unlock } from '../sounds/playback';
 import { KEY, load } from '../storage';
 import { DISPLAY, state } from '../state';
 import type { ChatMessage, SoundRef } from '../types';
@@ -15,6 +15,45 @@ import { spoofedBy } from './message';
 const SOURCE_TEXT: Record<Exclude<SoundSource, 'none'>, string> = {
   cache: 'from this device', message: 'from the message', link: 'from a link',
 };
+
+/** Voice messages are sounds named "Voice message (0:05)"; they get a 🎙. */
+export const isVoice = (name: string): boolean => /^voice message\b/i.test(name);
+const extFor = (type: string): string => ({ 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/ogg': 'ogg', 'audio/webm': 'webm', 'audio/aac': 'aac', 'audio/flac': 'flac' } as Record<string, string>)[type.split(';')[0]] || 'audio';
+
+/** 💾 save to your sounds, and ⬇ download the audio file. */
+function soundActions(r: Resolved, snd: SoundRef, status: HTMLElement): HTMLElement {
+  const wrap = el('div', 'sound-actions');
+  const save = el('button', 'sound-act', '💾');
+  save.type = 'button';
+  save.title = 'Save to my sounds';
+  save.setAttribute('aria-label', 'Save ' + snd.name + ' to my sounds');
+  save.addEventListener('click', () => {
+    const saving = r.blob ? addBlob(r.blob, snd.name, 'library', r.url) : r.url ? addFromUrl(r.url, snd.name) : null;
+    if (!saving) return;
+    saving.then((e) => {
+      status.textContent = 'Saved to your sounds as “' + e.name + '” (play it with /sound ' + e.name + ')';
+      save.disabled = true;
+      document.dispatchEvent(new CustomEvent('localchatter:library'));
+    }, (err: Error) => { status.textContent = err.message; });
+  });
+  wrap.appendChild(save);
+  if (r.blob) {
+    const blob = r.blob;
+    const dl = el('a', 'sound-act', '⬇');
+    dl.title = 'Download';
+    dl.setAttribute('aria-label', 'Download ' + snd.name);
+    dl.download = snd.name.replace(/[\\/:*?"<>|]/g, '').trim() + '.' + extFor(blob.type || snd.type || '');
+    // Made when tapped, so a long chat doesn't hold an object URL per sound.
+    dl.href = '#';
+    dl.addEventListener('click', () => {
+      const url = URL.createObjectURL(blob);
+      dl.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    });
+    wrap.appendChild(dl);
+  }
+  return wrap;
+}
 
 /** Tells anything listening (tests, mainly) what happened to a sound. */
 function soundEvent(name: string, source: SoundSource, played: boolean, reason = ''): void {
@@ -34,7 +73,7 @@ export function renderSound(msg: ChatMessage, mine: boolean, who: string): HTMLE
   box.appendChild(meta);
   const body = el('div', 'sound');
   const label = el('div');
-  label.appendChild(el('div', 'sound-name', '🔊 ' + snd.name));
+  label.appendChild(el('div', 'sound-name', (isVoice(snd.name) ? '🎙 ' : '🔊 ') + snd.name));
   const status = el('div', 'sound-status', 'Loading…');
   label.appendChild(status);
   body.appendChild(label);
@@ -56,6 +95,7 @@ export function renderSound(msg: ChatMessage, mine: boolean, who: string): HTMLE
     btn.type = 'button';
     btn.setAttribute('aria-label', 'Play ' + snd.name);
     body.insertBefore(btn, label);
+    body.appendChild(soundActions(r, snd, status));
     const where = SOURCE_TEXT[source];
     const go = (): void => {
       status.textContent = 'Playing ' + where;

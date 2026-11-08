@@ -20,6 +20,7 @@ const ASSETS = [
   'styles/panels.css',
   'styles/effects.css',
   'styles/display.css',
+  'styles/voice.css',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',

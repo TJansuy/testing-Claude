@@ -11,10 +11,10 @@
   function $(id2) {
     return document.getElementById(id2);
   }
-  function el(tag, cls, text3) {
+  function el(tag, cls, text4) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
-    if (text3 != null) e.textContent = text3;
+    if (text4 != null) e.textContent = text4;
     return e;
   }
   var input = (id2) => $(id2);
@@ -66,8 +66,8 @@
   function cleanName(name) {
     return String(name || "").replace(/[^\p{L}\p{N} '\-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 24);
   }
-  function split(text3) {
-    return String(text3 || "").split(",").map(cleanName).filter(Boolean);
+  function split(text4) {
+    return String(text4 || "").split(",").map(cleanName).filter(Boolean);
   }
   function known() {
     try {
@@ -143,10 +143,10 @@
   ];
   var SYSTEM_STYLE = ["0x", "1F", "A7", "3C", "E9", "0b", "10", "01", "11", "FF", "7E", "D4", "//", "##"];
   var styleFor = (lang) => id(lang) === "system" ? SYSTEM_STYLE : STYLES[hash(id(lang)) % STYLES.length];
-  function gibberish(text3, lang, seed) {
+  function gibberish(text4, lang, seed) {
     const style = styleFor(lang);
     const r = rng(hash(id(lang) + "|" + seed));
-    return String(text3).replace(/[\p{L}\p{N}]+/gu, (word) => {
+    return String(text4).replace(/[\p{L}\p{N}]+/gu, (word) => {
       const len = Array.from(word).length;
       let out = "";
       while (out.length < len) out += style[Math.floor(r() * style.length)];
@@ -156,9 +156,9 @@
       return out;
     });
   }
-  function render(text3, lang, seed) {
-    if (understands(lang || "default")) return text3;
-    return gibberish(text3, lang || "default", seed);
+  function render(text4, lang, seed) {
+    if (understands(lang || "default")) return text4;
+    return gibberish(text4, lang || "default", seed);
   }
   var hue = (name) => hash(id(name)) % 360;
 
@@ -178,20 +178,20 @@
     }
     if (stick) list.scrollTop = list.scrollHeight;
   }
-  function systemLine(text3) {
-    append(el("p", "system", text3));
+  function systemLine(text4) {
+    append(el("p", "system", text4));
   }
   var original = /* @__PURE__ */ new WeakMap();
   var notUnderstood = (lang) => "In " + nameOf(lang) + ", which you don't understand";
-  function langText(tag, cls, text3, lang, seed) {
+  function langText(tag, cls, text4, lang, seed) {
     const e = el(tag, (cls ? cls + " " : "") + "lc");
-    original.set(e, { text: text3, lang, seed });
-    e.textContent = render(text3, lang, seed);
+    original.set(e, { text: text4, lang, seed });
+    e.textContent = render(text4, lang, seed);
     if (!understands(lang)) e.title = notUnderstood(lang);
     return e;
   }
-  function systemNotice(text3, cls) {
-    append(langText("p", "system" + (cls ? " " + cls : ""), text3, "system", text3 + "|" + Date.now()));
+  function systemNotice(text4, cls) {
+    append(langText("p", "system" + (cls ? " " + cls : ""), text4, "system", text4 + "|" + Date.now()));
   }
   function refreshLanguages() {
     document.querySelectorAll(".lc").forEach((n) => {
@@ -609,9 +609,9 @@
     } while (c === 847);
     return String.fromCharCode(c);
   }
-  function zalgoify(text3, strength) {
+  function zalgoify(text4, strength) {
     let out = "";
-    Array.from(text3).forEach((ch) => {
+    Array.from(text4).forEach((ch) => {
       out += ch;
       if (/\s/.test(ch)) return;
       const n = 1 + Math.floor(Math.random() * strength);
@@ -628,9 +628,9 @@
     const known2 = zalgo.nodes.get(node);
     if (known2 && node.nodeValue === known2.mangled) return;
     const strength = node.parentElement && node.parentElement.closest("#effects-tray") ? 8 : 5;
-    const rec = { orig: node.nodeValue || "", mangled: zalgoify(node.nodeValue || "", strength) };
-    zalgo.nodes.set(node, rec);
-    node.nodeValue = rec.mangled;
+    const rec2 = { orig: node.nodeValue || "", mangled: zalgoify(node.nodeValue || "", strength) };
+    zalgo.nodes.set(node, rec2);
+    node.nodeValue = rec2.mangled;
   }
   function corruptTree(root) {
     if (root.nodeType === Node.TEXT_NODE) {
@@ -645,16 +645,16 @@
   }
   function boil() {
     const surge = 3 + Math.round(4 + 3 * Math.sin(Date.now() / 700));
-    zalgo.nodes.forEach((rec, node) => {
+    zalgo.nodes.forEach((rec2, node) => {
       if (!node.isConnected) {
         zalgo.nodes.delete(node);
         return;
       }
-      if (node.nodeValue !== rec.mangled) return;
+      if (node.nodeValue !== rec2.mangled) return;
       if (Math.random() < 0.25) return;
       const extra = node.parentElement && node.parentElement.closest("#effects-tray") ? 3 : 0;
-      rec.mangled = zalgoify(rec.orig, surge + extra);
-      node.nodeValue = rec.mangled;
+      rec2.mangled = zalgoify(rec2.orig, surge + extra);
+      node.nodeValue = rec2.mangled;
     });
   }
   function muteLiveRegions() {
@@ -697,8 +697,8 @@
     zalgo.timer = void 0;
     if (zalgo.observer) zalgo.observer.disconnect();
     zalgo.observer = null;
-    zalgo.nodes.forEach((rec, node) => {
-      if (node.isConnected && node.nodeValue === rec.mangled) node.nodeValue = rec.orig;
+    zalgo.nodes.forEach((rec2, node) => {
+      if (node.isConnected && node.nodeValue === rec2.mangled) node.nodeValue = rec2.orig;
     });
     zalgo.nodes.clear();
     unmuteLiveRegions();
@@ -726,8 +726,8 @@
     lightning: startLightning,
     zalgo: startZalgoEffect
   };
-  function parseEffect(text3) {
-    const m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text3 || ""));
+  function parseEffect(text4) {
+    const m = /^\s*\/([a-z]+)(?:\s+(\S+))?\s*$/i.exec(String(text4 || ""));
     if (!m) return null;
     const name = COMMANDS[m[1].toLowerCase()];
     if (!name) return null;
@@ -836,8 +836,8 @@
   var DEFAULT_SPEED = 60;
   var MAX_TEXT = 300;
   var PAUSE_MS = 1500;
-  function parseBanner(text3) {
-    const m = /^\s*\/banner\b\s*([\s\S]*)$/i.exec(String(text3 || ""));
+  function parseBanner(text4) {
+    const m = /^\s*\/banner\b\s*([\s\S]*)$/i.exec(String(text4 || ""));
     if (!m) return null;
     let rest = m[1].trim();
     if (/^(off|clear|stop)$/i.test(rest)) return { off: true };
@@ -1221,9 +1221,9 @@
   function playBlob(blob) {
     const c = audioContext();
     if (!c || c.state !== "running") return playElement(URL.createObjectURL(blob));
-    return blob.arrayBuffer().then((buf) => c.decodeAudioData(buf)).then((audio) => {
+    return blob.arrayBuffer().then((buf) => c.decodeAudioData(buf)).then((audio2) => {
       const src = c.createBufferSource();
-      src.buffer = audio;
+      src.buffer = audio2;
       src.connect(c.destination);
       playing.add(src);
       src.onended = () => playing.delete(src);
@@ -1251,7 +1251,7 @@
   }
   function resolve(sound) {
     return get(String(sound.id || "")).catch(() => void 0).then((hit) => {
-      if (hit && (hit.blob || hit.url)) return { source: "cache", play: () => playEntry(hit) };
+      if (hit && (hit.blob || hit.url)) return { source: "cache", play: () => playEntry(hit), blob: hit.blob, url: hit.url };
       if (sound.data) {
         let blob;
         try {
@@ -1261,11 +1261,11 @@
         }
         if (blob) {
           const b = blob;
-          return addBlob(b, sound.name, "received", sound.url).catch(() => null).then(() => ({ source: "message", play: () => playBlob(b) }));
+          return addBlob(b, sound.name, "received", sound.url).catch(() => null).then(() => ({ source: "message", play: () => playBlob(b), blob: b, url: safeUrl(sound.url) }));
         }
       }
       const url = safeUrl(sound.url);
-      if (url) return { source: "link", play: () => playElement(url) };
+      if (url) return { source: "link", play: () => playElement(url), url };
       return { source: "none", play: null };
     });
   }
@@ -1276,6 +1276,42 @@
     message: "from the message",
     link: "from a link"
   };
+  var isVoice = (name) => /^voice message\b/i.test(name);
+  var extFor = (type) => ({ "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/wav": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "audio/aac": "aac", "audio/flac": "flac" })[type.split(";")[0]] || "audio";
+  function soundActions(r, snd, status2) {
+    const wrap = el("div", "sound-actions");
+    const save2 = el("button", "sound-act", "💾");
+    save2.type = "button";
+    save2.title = "Save to my sounds";
+    save2.setAttribute("aria-label", "Save " + snd.name + " to my sounds");
+    save2.addEventListener("click", () => {
+      const saving = r.blob ? addBlob(r.blob, snd.name, "library", r.url) : r.url ? addFromUrl(r.url, snd.name) : null;
+      if (!saving) return;
+      saving.then((e) => {
+        status2.textContent = "Saved to your sounds as “" + e.name + "” (play it with /sound " + e.name + ")";
+        save2.disabled = true;
+        document.dispatchEvent(new CustomEvent("localchatter:library"));
+      }, (err) => {
+        status2.textContent = err.message;
+      });
+    });
+    wrap.appendChild(save2);
+    if (r.blob) {
+      const blob = r.blob;
+      const dl = el("a", "sound-act", "⬇");
+      dl.title = "Download";
+      dl.setAttribute("aria-label", "Download " + snd.name);
+      dl.download = snd.name.replace(/[\\/:*?"<>|]/g, "").trim() + "." + extFor(blob.type || snd.type || "");
+      dl.href = "#";
+      dl.addEventListener("click", () => {
+        const url = URL.createObjectURL(blob);
+        dl.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 3e4);
+      });
+      wrap.appendChild(dl);
+    }
+    return wrap;
+  }
   function soundEvent(name, source, played, reason = "") {
     document.dispatchEvent(new CustomEvent("localchatter:sound", { detail: { name, source, played, reason } }));
   }
@@ -1292,7 +1328,7 @@
     box2.appendChild(meta);
     const body = el("div", "sound");
     const label2 = el("div");
-    label2.appendChild(el("div", "sound-name", "🔊 " + snd.name));
+    label2.appendChild(el("div", "sound-name", (isVoice(snd.name) ? "🎙 " : "🔊 ") + snd.name));
     const status2 = el("div", "sound-status", "Loading…");
     label2.appendChild(status2);
     body.appendChild(label2);
@@ -1315,6 +1351,7 @@
       btn.type = "button";
       btn.setAttribute("aria-label", "Play " + snd.name);
       body.insertBefore(btn, label2);
+      body.appendChild(soundActions(r, snd, status2));
       const where = SOURCE_TEXT[source];
       const go = () => {
         status2.textContent = "Playing " + where;
@@ -1629,8 +1666,8 @@
   });
 
   // PWA/LocalChatter/src/features/soundboard.ts
-  var soundStatus = (text3) => {
-    $("sound-status").textContent = text3;
+  var soundStatus = (text4) => {
+    $("sound-status").textContent = text4;
   };
   function refreshSoundboard() {
     return library().then((lib) => {
@@ -1785,12 +1822,12 @@
     if (!can("viewSystem")) return;
     const me = state.me && state.me.id;
     const name = (p) => p && p.id === me ? "You" : p && p.name || "Someone";
-    let text3;
-    if (msg.kind === "role") text3 = name(msg.from) + " changed role: " + msg.old + " → " + msg.role;
-    else if (msg.kind === "effect") text3 = name(msg.from) + " triggered " + msg.name + " for " + (msg.to === "all" ? "everyone" : msg.to === me ? "you" : nameOf2(msg.to));
-    else if (msg.kind === "debug") text3 = name(msg.from) + " turned debug mode " + (msg.on ? "on" : "off");
+    let text4;
+    if (msg.kind === "role") text4 = name(msg.from) + " changed role: " + msg.old + " → " + msg.role;
+    else if (msg.kind === "effect") text4 = name(msg.from) + " triggered " + msg.name + " for " + (msg.to === "all" ? "everyone" : msg.to === me ? "you" : nameOf2(msg.to));
+    else if (msg.kind === "debug") text4 = name(msg.from) + " turned debug mode " + (msg.on ? "on" : "off");
     else return;
-    systemNotice("🛡️ " + text3, "audit");
+    systemNotice("🛡️ " + text4, "audit");
   }
   var debugToggle = input("debug-toggle");
   debugToggle.addEventListener("change", () => setDebug(debugToggle.checked));
@@ -1808,7 +1845,7 @@
   }
   function decodeRecord(record) {
     const data = record.data;
-    const text3 = (enc) => {
+    const text4 = (enc) => {
       try {
         return new TextDecoder(enc || "utf-8").decode(data);
       } catch {
@@ -1819,10 +1856,10 @@
       case "empty":
         return "";
       case "text":
-        return text3(record.encoding);
+        return text4(record.encoding);
       case "url":
       case "absolute-url":
-        return text3();
+        return text4();
       case "smart-poster":
         try {
           return (record.toRecords ? record.toRecords() : []).map(decodeRecord).filter(Boolean).join("\n");
@@ -1830,11 +1867,11 @@
           return "";
         }
       case "mime":
-        if (/^text\/|json|xml|vcard/i.test(record.mediaType || "")) return text3();
+        if (/^text\/|json|xml|vcard/i.test(record.mediaType || "")) return text4();
         return "[" + (record.mediaType || "binary") + " data, " + formatSize(data ? data.byteLength : 0) + "]";
       default: {
         if (!data) return "";
-        const s = text3();
+        const s = text4();
         return /[\u0000-\u0008\u000e-\u001f�]/.test(s) ? "[" + record.recordType + " record]" : s;
       }
     }
@@ -1845,14 +1882,14 @@
     return "Empty NFC tag" + (event.serialNumber ? " (" + event.serialNumber + ")" : "");
   }
   function onTag(event) {
-    const text3 = tagMessage(event).slice(0, 4e3);
-    const key = (event.serialNumber || "") + "|" + text3;
+    const text4 = tagMessage(event).slice(0, 4e3);
+    const key = (event.serialNumber || "") + "|" + text4;
     const now = Date.now();
     if (key === nfc.last && now - nfc.lastAt < 4e3) return;
     nfc.last = key;
     nfc.lastAt = now;
     vibrate2(50);
-    if (!sendChat({ text: text3, via: "nfc" })) systemLine("Not connected: NFC tag wasn't sent");
+    if (!sendChat({ text: text4, via: "nfc" })) systemLine("Not connected: NFC tag wasn't sent");
   }
   function stopNfc() {
     if (nfc.abort) nfc.abort.abort();
@@ -1892,8 +1929,8 @@
   };
   var dialog = $("qr");
   var video = $("qr-video");
-  var qrStatus = (text3) => {
-    $("qr-status").textContent = text3;
+  var qrStatus = (text4) => {
+    $("qr-status").textContent = text4;
   };
   function loadJsQr() {
     if (window.jsQR) return Promise.resolve();
@@ -1956,9 +1993,9 @@
       scanSoon();
       return;
     }
-    void decodeFrame().then((text3) => {
+    void decodeFrame().then((text4) => {
       if (!qr.stream) return;
-      if (text3 && text3.trim()) onQr(text3);
+      if (text4 && text4.trim()) onQr(text4);
       else scanSoon();
     });
   }
@@ -1972,10 +2009,10 @@
     stopCamera();
     if (dialog.open) dialog.close();
   }
-  function onQr(text3) {
+  function onQr(text4) {
     vibrate2(50);
     closeQr();
-    if (!sendChat({ text: text3.slice(0, 4e3), via: "qr" })) systemLine("Not connected: the QR code wasn't sent");
+    if (!sendChat({ text: text4.slice(0, 4e3), via: "qr" })) systemLine("Not connected: the QR code wasn't sent");
   }
   dialog.addEventListener("close", stopCamera);
   $("qr-close").addEventListener("click", closeQr);
@@ -2134,6 +2171,165 @@
     systemLine("You now write in " + (speaking() || "Default") + ".");
   }
 
+  // PWA/LocalChatter/src/features/voice.ts
+  var MAX_MS = 2 * 60 * 1e3;
+  var TYPES = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+  var voiceSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && typeof MediaRecorder !== "undefined";
+  var panel = $("voice");
+  var recView = $("voice-recording");
+  var reviewView = $("voice-review");
+  var mic = button("mic");
+  var send = button("send");
+  var text = $("text");
+  var audio = $("voice-audio");
+  var nameBox = input("voice-name");
+  var voiceStatus = (t) => {
+    $("voice-status").textContent = t;
+  };
+  var rec = null;
+  var clip = null;
+  var clock = (ms) => {
+    const s = Math.round(ms / 1e3);
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  };
+  function syncMic() {
+    const empty = !text.value.trim();
+    const showMic = voiceSupported && empty && panel.hidden;
+    mic.hidden = !showMic;
+    send.hidden = showMic || !panel.hidden && empty;
+  }
+  function show2(view) {
+    panel.hidden = !view;
+    recView.hidden = view !== "recording";
+    reviewView.hidden = view !== "review";
+    syncMic();
+  }
+  function stopTracks(r) {
+    clearInterval(r.tick);
+    if (r.meter) cancelAnimationFrame(r.meter);
+    r.stream.getTracks().forEach((t) => t.stop());
+    if (r.ctx) r.ctx.close().catch(() => {
+    });
+  }
+  function startMeter(r) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx2 = new AC();
+    const analyser = ctx2.createAnalyser();
+    analyser.fftSize = 512;
+    ctx2.createMediaStreamSource(r.stream).connect(analyser);
+    const data = new Uint8Array(analyser.fftSize);
+    const bar = $("voice-level");
+    const draw = () => {
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (const v of data) sum += ((v - 128) / 128) ** 2;
+      bar.style.transform = "scaleX(" + Math.min(1, Math.sqrt(sum / data.length) * 4).toFixed(3) + ")";
+      r.meter = requestAnimationFrame(draw);
+    };
+    r.ctx = ctx2;
+    draw();
+  }
+  function startRecording() {
+    if (rec) return;
+    discardClip();
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then((stream) => {
+      const type = TYPES.find((t) => MediaRecorder.isTypeSupported(t)) || "";
+      const recorder = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
+      const r = { recorder, stream, chunks: [], started: Date.now(), discard: false };
+      rec = r;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size) r.chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        stopTracks(r);
+        rec = null;
+        if (r.discard || !r.chunks.length) {
+          show2(null);
+          return;
+        }
+        const blob = new Blob(r.chunks, { type: (recorder.mimeType || type || "audio/webm").split(";")[0] });
+        review(blob, Date.now() - r.started);
+      };
+      recorder.start(250);
+      $("voice-time").textContent = "0:00";
+      r.tick = setInterval(() => {
+        const ms = Date.now() - r.started;
+        $("voice-time").textContent = clock(ms) + " / " + clock(MAX_MS);
+        if (ms >= MAX_MS) recorder.stop();
+      }, 250);
+      startMeter(r);
+      show2("recording");
+    }).catch((err) => {
+      systemLine(err && err.name === "NotAllowedError" ? "Microphone access was blocked. Allow it for this site in your browser settings, then try again." : err && err.name === "NotFoundError" ? "No microphone was found." : "Couldn't start recording: " + (err && err.message || "unknown error"));
+    });
+  }
+  function review(blob, ms) {
+    clip = { blob, ms, url: URL.createObjectURL(blob) };
+    audio.src = clip.url;
+    nameBox.value = "Voice message (" + clock(ms) + ")";
+    voiceStatus("");
+    button("voice-save").disabled = false;
+    show2("review");
+  }
+  function discardClip() {
+    if (clip) URL.revokeObjectURL(clip.url);
+    clip = null;
+    audio.removeAttribute("src");
+  }
+  var clipName = () => nameBox.value.trim() || "Voice message (" + clock(clip ? clip.ms : 0) + ")";
+  function sendClip() {
+    if (!clip) return;
+    const c = clip;
+    addBlob(c.blob, clipName(), "received").then((entry) => toMessage(entry, true, state.maxBytes)).then((sound) => {
+      if (!sound.data) {
+        voiceStatus("That recording is too long to send.");
+        return;
+      }
+      if (!sendChat({ sound })) {
+        voiceStatus("Not connected: not sent yet.");
+        return;
+      }
+      audio.pause();
+      discardClip();
+      show2(null);
+    }, (err) => voiceStatus(err.message));
+  }
+  function saveClip() {
+    if (!clip) return;
+    addBlob(clip.blob, clipName(), "library").then((e) => {
+      voiceStatus("Saved to your sounds as “" + e.name + "”. Play it any time with /sound " + e.name + ".");
+      button("voice-save").disabled = true;
+      void refreshSoundboard();
+    }, (err) => voiceStatus(err.message));
+  }
+  mic.addEventListener("click", startRecording);
+  $("voice-stop").addEventListener("click", () => {
+    if (rec) rec.recorder.stop();
+  });
+  $("voice-cancel").addEventListener("click", () => {
+    if (rec) {
+      rec.discard = true;
+      rec.recorder.stop();
+    }
+  });
+  $("voice-send").addEventListener("click", sendClip);
+  $("voice-save").addEventListener("click", saveClip);
+  $("voice-again").addEventListener("click", () => {
+    audio.pause();
+    startRecording();
+  });
+  $("voice-discard").addEventListener("click", () => {
+    audio.pause();
+    discardClip();
+    show2(null);
+  });
+  text.addEventListener("input", syncMic);
+  document.addEventListener("localchatter:library", () => {
+    void refreshSoundboard();
+  });
+  syncMic();
+
   // PWA/LocalChatter/src/features/command-list.ts
   var COMMANDS2 = [
     { name: "whisper", aliases: ["w"], args: "<names>: <message>", hint: "Message only the people you name", standalone: false },
@@ -2164,20 +2360,20 @@
   }
 
   // PWA/LocalChatter/src/ui/autocomplete.ts
-  var text = $("text");
+  var text2 = $("text");
   var popup = $("autocomplete");
   var items = [];
   var active2 = 0;
   var dismissedFor = null;
-  text.setAttribute("aria-autocomplete", "list");
-  text.setAttribute("aria-controls", "autocomplete");
-  text.setAttribute("aria-expanded", "false");
+  text2.setAttribute("aria-autocomplete", "list");
+  text2.setAttribute("aria-controls", "autocomplete");
+  text2.setAttribute("aria-expanded", "false");
   var isOpen2 = () => !popup.hidden;
   function close() {
     popup.hidden = true;
     items = [];
-    text.setAttribute("aria-expanded", "false");
-    text.removeAttribute("aria-activedescendant");
+    text2.setAttribute("aria-expanded", "false");
+    text2.removeAttribute("aria-activedescendant");
   }
   function row(cmd, as, typed, i, usageOnly) {
     const li = el("li", "ac-item");
@@ -2207,12 +2403,12 @@
     Array.from(popup.children).forEach((c, i) => c.setAttribute("aria-selected", String(i === active2)));
     const current2 = popup.children[active2];
     if (current2) {
-      text.setAttribute("aria-activedescendant", current2.id);
+      text2.setAttribute("aria-activedescendant", current2.id);
       current2.scrollIntoView({ block: "nearest" });
     }
   }
   function update() {
-    const value = text.value;
+    const value = text2.value;
     if (dismissedFor !== null && value === dismissedFor) return;
     dismissedFor = null;
     const m = /^\/(\S*)(\s?)/.exec(value);
@@ -2240,21 +2436,21 @@
       items.forEach((it, i) => popup.appendChild(row(it.cmd, it.as, typed, i, false)));
     }
     popup.hidden = false;
-    text.setAttribute("aria-expanded", "true");
+    text2.setAttribute("aria-expanded", "true");
     if (items.length) highlight();
-    else text.removeAttribute("aria-activedescendant");
+    else text2.removeAttribute("aria-activedescendant");
   }
   function complete() {
     const it = items[active2];
     if (!it) return;
-    text.value = "/" + it.as + " ";
-    text.focus();
-    text.dispatchEvent(new Event("input"));
+    text2.value = "/" + it.as + " ";
+    text2.focus();
+    text2.dispatchEvent(new Event("input"));
   }
   function autocompleteKey(e) {
     if (!isOpen2() || e.isComposing) return false;
     if (e.key === "Escape") {
-      dismissedFor = text.value;
+      dismissedFor = text2.value;
       close();
       return true;
     }
@@ -2265,7 +2461,7 @@
       return true;
     }
     if (e.key === "Tab" || e.key === "Enter" && !e.shiftKey) {
-      const exact = find(text.value.slice(1));
+      const exact = find(text2.value.slice(1));
       if (e.key === "Enter" && exact && exact.standalone) {
         close();
         return false;
@@ -2275,30 +2471,30 @@
     }
     return false;
   }
-  text.addEventListener("input", () => {
-    active2 = text.value.length <= 1 ? 0 : active2;
+  text2.addEventListener("input", () => {
+    active2 = text2.value.length <= 1 ? 0 : active2;
     update();
   });
-  text.addEventListener("blur", () => setTimeout(() => {
-    if (document.activeElement !== text) close();
+  text2.addEventListener("blur", () => setTimeout(() => {
+    if (document.activeElement !== text2) close();
   }, 150));
-  text.addEventListener("focus", update);
+  text2.addEventListener("focus", update);
 
   // PWA/LocalChatter/src/ui/composer.ts
-  var text2 = $("text");
+  var text3 = $("text");
   var form = $("composer");
   function autosize() {
-    text2.style.height = "auto";
-    text2.style.height = Math.min(text2.scrollHeight, 160) + "px";
+    text3.style.height = "auto";
+    text3.style.height = Math.min(text3.scrollHeight, 160) + "px";
   }
   function prefill(value) {
     closeDashboard();
-    text2.value = value;
-    text2.focus();
+    text3.value = value;
+    text3.focus();
     autosize();
   }
-  text2.addEventListener("input", autosize);
-  text2.addEventListener("keydown", (e) => {
+  text3.addEventListener("input", autosize);
+  text3.addEventListener("keydown", (e) => {
     if (autocompleteKey(e)) {
       e.preventDefault();
       return;
@@ -2310,12 +2506,13 @@
   });
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const value = text2.value;
+    const value = text3.value;
     if (!value.trim()) return;
     if (runCommand(value) || sendChat({ text: value })) {
-      text2.value = "";
+      text3.value = "";
       autosize();
       update();
+      syncMic();
     }
   });
   function sendFile(file) {
@@ -2341,7 +2538,7 @@
     Array.from(fileInput.files || []).forEach(sendFile);
     fileInput.value = "";
   });
-  text2.addEventListener("paste", (e) => {
+  text3.addEventListener("paste", (e) => {
     const files2 = e.clipboardData && e.clipboardData.files;
     if (files2 && files2.length) {
       e.preventDefault();
@@ -2350,13 +2547,13 @@
   });
 
   // PWA/LocalChatter/src/ui/status.ts
-  function setStatus(kind, text3) {
+  function setStatus(kind, text4) {
     const s = $("status");
     s.dataset.state = kind;
-    s.textContent = text3;
+    s.textContent = text4;
     $("header-tab").dataset.state = kind;
     const isOn = kind === "on";
-    ["send", "attach", "effects", "scan"].forEach((id2) => {
+    ["send", "mic", "attach", "effects", "scan"].forEach((id2) => {
       button(id2).disabled = !isOn;
     });
     if (!isOn) {
@@ -2411,12 +2608,12 @@
   }
 
   // PWA/LocalChatter/src/ui/settings.ts
-  var nameBox = input("name");
+  var nameBox2 = input("name");
   var relayBox = input("relay");
   var langsBox = input("langs");
   var speakBox = select("speak");
   function openSettings() {
-    nameBox.value = state.name;
+    nameBox2.value = state.name;
     relayBox.value = state.relay;
     langsBox.value = known().join(", ");
     fillSpeak(known(), speaking());
@@ -2447,7 +2644,7 @@
   $("status").addEventListener("click", openSettings);
   $("settings-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const name = nameBox.value.trim().slice(0, 32);
+    const name = nameBox2.value.trim().slice(0, 32);
     const relay = normaliseRelay(relayBox.value);
     if (relayBox.value.trim() && !relay) {
       relayBox.setCustomValidity("Enter an address like wss://192.168.1.50:8443/ws");
@@ -2864,10 +3061,10 @@
   }
 
   // PWA/LocalChatter/src/features/updates.ts
-  var BUILD_TIME = "2026-11-08T07:22:52.104Z";
+  var BUILD_TIME = "2026-11-08T07:34:20.204Z";
   var CHECK_EVERY_MS = 30 * 1e3;
-  var status = (text3) => {
-    $("update-status").textContent = text3;
+  var status = (text4) => {
+    $("update-status").textContent = text4;
   };
   function formatBuild(iso) {
     const d = new Date(iso);

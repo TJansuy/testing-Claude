@@ -17,7 +17,7 @@ export function setStatus(kind: StatusKind, text: string): void {
   s.textContent = text;
   $('header-tab').dataset.state = kind;
   const isOn = kind === 'on';
-  ['send', 'attach', 'effects', 'scan'].forEach((id) => { button(id).disabled = !isOn; });
+  ['send', 'mic', 'attach', 'effects', 'scan'].forEach((id) => { button(id).disabled = !isOn; });
   if (!isOn) { closeEffectsPanel(); closeScanMenu(); }
   dashboard.classList.toggle('offline', !isOn);
   // Keep scanning through brief reconnects; stop only when the user disconnects.

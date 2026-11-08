@@ -5,6 +5,7 @@ import { runCommand } from '../features/commands';
 import { sendChat } from '../net/connection';
 import { state } from '../state';
 import { formatSize } from '../util';
+import { syncMic } from '../features/voice';
 import { autocompleteKey, update as updateAutocomplete } from './autocomplete';
 import { closeDashboard } from './dashboard';
 
@@ -43,6 +44,7 @@ form.addEventListener('submit', (e) => {
     text.value = '';
     autosize();
     updateAutocomplete();
+    syncMic();
   }
 });
 

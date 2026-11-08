@@ -1,0 +1,68 @@
+/* Voice messages: recording and reviewing, above the message box */
+
+.voice {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  z-index: 16;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 -6px 24px rgb(0 0 0 / .14);
+  animation: ac-up .16s ease-out;
+}
+.voice-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.voice-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); animation: voice-pulse 1s ease-in-out infinite; }
+@keyframes voice-pulse { 50% { opacity: .3; } }
+.voice-time { font-variant-numeric: tabular-nums; color: var(--muted); }
+#voice-recording { flex-wrap: nowrap; }
+#voice-recording strong { white-space: nowrap; }
+.voice-time { white-space: nowrap; }
+.voice-meter { flex: 1 1 60px; min-width: 16px; height: 6px; border-radius: 3px; background: var(--bg); overflow: hidden; }
+.voice-meter span { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform .08s linear; }
+.voice-btn {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.voice-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.voice-btn:disabled { opacity: .5; cursor: default; }
+#voice-audio { display: block; width: 100%; height: 40px; margin-bottom: 8px; }
+.voice-label { display: block; margin-bottom: 4px; font-size: .85rem; font-weight: 600; }
+#voice-name {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+@media (prefers-reduced-motion: reduce) { .voice, .voice-dot { animation: none; } }
+
+/* Save and download on sound messages */
+.msg .sound-actions { display: flex; gap: 4px; margin-left: auto; }
+.msg .sound-act {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: inherit;
+  font-size: 1rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.msg .sound-act:disabled { opacity: .45; cursor: default; }

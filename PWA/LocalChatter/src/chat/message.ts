@@ -1,15 +1,15 @@
 // Chat bubbles: text, files and images, with sender colours, languages,
 // whispers and spoof markers.
 import { el } from '../dom';
-import { parseEffect, play } from '../effects';
+import { parseEffect } from '../effects';
 import { whisperNames } from '../features/whispers';
 import * as LANG from '../languages';
-import { can, DISPLAY } from '../state';
+import { can } from '../state';
 import type { ChatMessage, Peer } from '../types';
 import { base64ToBlob, formatSize, formatTime } from '../util';
 import { renderEffect } from './effect-line';
 import { append, colourBubble, langText } from './list';
-import { displaySound, renderSound } from './sound-message';
+import { renderSound } from './sound-message';
 
 const INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
 
@@ -23,12 +23,6 @@ export function renderMessage(msg: ChatMessage, mine: boolean): HTMLElement | nu
   const shown = msg.as || msg.from;
   const who = mine ? (msg.as ? 'You (as ' + msg.as.name + ')' : 'You') : (shown && shown.name) || 'Someone';
   const effect = !msg.file && !msg.sound ? parseEffect(msg.text) : null;
-  if (DISPLAY) {
-    // A display only plays effects and sounds; it never shows messages.
-    if (effect) play(effect.name, effect.arg);
-    else if (msg.sound) displaySound(msg.sound);
-    return null;
-  }
   if (msg.sound) return renderSound(msg, mine, who);
   if (effect) { renderEffect(effect, msg, who); return null; }
 

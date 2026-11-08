@@ -162,52 +162,6 @@
   }
   var hue = (name) => hash(id(name)) % 360;
 
-  // PWA/LocalChatter/src/state.ts
-  var DISPLAY = new URLSearchParams(location.search).has("display");
-  var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
-  var state = {
-    ws: null,
-    relay: "",
-    name: "",
-    me: null,
-    peers: /* @__PURE__ */ new Map(),
-    maxBytes: DEFAULT_MAX_BYTES,
-    /** The user wants to be connected (reconnect if it drops). */
-    wanted: false,
-    retry: 0,
-    retryTimer: 0,
-    role: "member",
-    debug: false,
-    soundOn: true,
-    /** True while drawing messages that arrived in the background (not replayed). */
-    catchingUp: false
-  };
-  var ROLES = {
-    member: { description: "Chat as normal." },
-    monitor: { description: "Also sees system messages, such as role changes.", viewSystem: true },
-    spy: { description: "Can spy on chosen people to see whispers to and from them (/spy <names>).", spy: true },
-    display: { description: "A screen that only shows effects and plays sounds, never messages. Open the app's /Display link.", display: true },
-    admin: {
-      description: "Sees system messages and who really sent spoofed messages, has a soundboard, and can use debug mode.",
-      viewSystem: true,
-      debug: true,
-      impersonate: true,
-      seeSpoofer: true,
-      soundboard: true
-    }
-  };
-  function can(perm) {
-    return !!(ROLES[state.role] || ROLES.member)[perm];
-  }
-  function nameOf2(id2) {
-    if (state.me && id2 === state.me.id) return state.me.name;
-    const p = id2 ? state.peers.get(id2) : void 0;
-    return p ? p.name : "someone";
-  }
-  function connected() {
-    return !!state.ws && state.ws.readyState === WebSocket.OPEN && !!state.me;
-  }
-
   // PWA/LocalChatter/src/chat/list.ts
   var MAX_MESSAGES = 300;
   var list = $("messages");
@@ -225,7 +179,7 @@
     if (stick) list.scrollTop = list.scrollHeight;
   }
   function systemLine(text2) {
-    if (!DISPLAY) append(el("p", "system", text2));
+    append(el("p", "system", text2));
   }
   var original = /* @__PURE__ */ new WeakMap();
   var notUnderstood = (lang) => "In " + nameOf(lang) + ", which you don't understand";
@@ -237,7 +191,7 @@
     return e;
   }
   function systemNotice(text2, cls) {
-    if (!DISPLAY) append(langText("p", "system" + (cls ? " " + cls : ""), text2, "system", text2 + "|" + Date.now()));
+    append(langText("p", "system" + (cls ? " " + cls : ""), text2, "system", text2 + "|" + Date.now()));
   }
   function refreshLanguages() {
     document.querySelectorAll(".lc").forEach((n) => {
@@ -340,9 +294,33 @@
     flameSprite = s;
     return s;
   }
+  function burnMessages() {
+    const body = document.body;
+    body.classList.remove("fx-burnout");
+    body.classList.add("fx-burning");
+    let out;
+    return {
+      stop(_early, hard) {
+        clearTimeout(out);
+        if (hard) {
+          body.classList.remove("fx-burning", "fx-burnout");
+          return;
+        }
+        body.classList.add("fx-burnout");
+        out = setTimeout(() => body.classList.remove("fx-burning", "fx-burnout"), 1e3);
+      }
+    };
+  }
   function startFire() {
     vibrate([60, 40, 60]);
-    if (reducedMotion()) return holdGlow("fx-fire-glow");
+    const bubbles = burnMessages();
+    if (reducedMotion()) {
+      const glow = holdGlow("fx-fire-glow");
+      return { stop(early, hard) {
+        glow.stop(early, hard);
+        bubbles.stop(early, hard);
+      } };
+    }
     const o = overlayCanvas("fx-fire");
     const { ctx: ctx2, w, h, dpr } = o;
     const sprite = getFlameSprite();
@@ -396,7 +374,8 @@
     }
     requestAnimationFrame(frame);
     return {
-      stop(_early, hard) {
+      stop(early, hard) {
+        bubbles.stop(early, hard);
         if (hard) {
           gone = true;
           o.canvas.remove();
@@ -408,19 +387,57 @@
   }
 
   // PWA/LocalChatter/src/effects/lightning.ts
-  function boltPath(x, y, len, angle, rough, depth, out) {
-    const pts = [[x, y]];
-    const steps = 14;
-    for (let i = 1; i <= steps; i++) {
-      x += Math.sin(angle) * len / steps + (Math.random() - 0.5) * rough;
-      y += Math.cos(angle) * len / steps;
-      pts.push([x, y]);
-      if (depth > 0 && Math.random() < 0.12) {
-        boltPath(x, y, len * 0.4, angle + (Math.random() < 0.5 ? -0.7 : 0.7), rough * 0.6, depth - 1, out);
-      }
+  var GROW_MS = 280;
+  function jag(a, b, rough, dpr) {
+    const dist = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const n = Math.max(2, Math.ceil(dist / (22 * dpr)));
+    const out = [];
+    for (let i = 1; i <= n; i++) {
+      const t = i / n;
+      const j = i === n ? 0 : (Math.random() - 0.5) * rough;
+      out.push([a[0] + (b[0] - a[0]) * t + j, a[1] + (b[1] - a[1]) * t]);
     }
-    out.push({ pts, width: depth + 1 });
     return out;
+  }
+  function branch(start2, from, dpr) {
+    const angle = (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
+    const len = (50 + Math.random() * 70) * dpr;
+    const end = [start2[0] + Math.sin(angle) * len, start2[1] + Math.cos(angle) * len];
+    return { pts: [start2, ...jag(start2, end, 14 * dpr, dpr)], width: 1, from };
+  }
+  function plan(w, h, dpr) {
+    const msgs = Array.from(document.querySelectorAll("#messages .msg")).map((el2) => ({ el: el2, r: el2.getBoundingClientRect() })).filter(({ r }) => r.height > 0 && r.bottom > 0 && r.top < innerHeight).sort((a, b) => a.r.top - b.r.top);
+    const hit = msgs.map(() => Math.random() < 0.5);
+    if (msgs.length && !hit.some(Boolean)) hit[Math.floor(Math.random() * msgs.length)] = true;
+    if (msgs.length > 1 && hit.every(Boolean)) hit[Math.floor(Math.random() * msgs.length)] = false;
+    const way = [[msgs.length ? (msgs[0].r.left + Math.random() * msgs[0].r.width) * dpr : w * (0.25 + Math.random() * 0.5), 0]];
+    const hits = [];
+    msgs.forEach(({ el: el2, r }, i) => {
+      const y = (r.top + r.height / 2) * dpr;
+      if (hit[i]) {
+        way.push([(r.left + r.width * (0.2 + Math.random() * 0.6)) * dpr, y]);
+        hits.push({ el: el2, y });
+      } else {
+        const x = r.left > innerWidth - r.right ? Math.max(6, r.left - 14 - Math.random() * 18) : Math.min(innerWidth - 6, r.right + 14 + Math.random() * 18);
+        way.push([x * dpr, y]);
+      }
+    });
+    const last = way[way.length - 1];
+    way.push([Math.min(w, Math.max(0, last[0] + (Math.random() - 0.5) * 80 * dpr)), h]);
+    const main = [way[0]];
+    for (let i = 1; i < way.length; i++) main.push(...jag(way[i - 1], way[i], 18 * dpr, dpr));
+    const bolts = [{ pts: main, width: 3, from: 0 }];
+    for (let k = 0; k < 3; k++) {
+      const at = 2 + Math.floor(Math.random() * Math.max(1, main.length - 4));
+      if (main[at]) bolts.push(branch(main[at], at, dpr));
+    }
+    return { bolts, hits, skipped: msgs.length - hits.length };
+  }
+  function jolt(el2) {
+    el2.classList.remove("struck");
+    void el2.offsetWidth;
+    el2.classList.add("struck");
+    setTimeout(() => el2.classList.remove("struck"), 850);
   }
   function strike(canvases) {
     vibrate([40, 80, 40]);
@@ -428,11 +445,14 @@
     const o = overlayCanvas("fx-lightning");
     canvases.add(o.canvas);
     const { ctx: ctx2, w, h, dpr } = o;
-    const bolts = boltPath(w * (0.25 + Math.random() * 0.5), 0, h * 0.85, (Math.random() - 0.5) * 0.3, 40 * dpr, 2, []);
-    const strikes = calm ? [0] : [0, 380];
-    const END_MS = calm ? 1400 : 1100;
+    const { bolts, hits, skipped } = plan(w, h, dpr);
+    document.dispatchEvent(new CustomEvent("localchatter:strike", { detail: { hit: hits.length, skipped } }));
+    const main = bolts[0].pts;
+    const flashes = calm ? [] : [GROW_MS, GROW_MS + 380];
+    const END_MS = GROW_MS + (calm ? 1400 : 1100);
     const start2 = performance.now();
-    function drawBolt(alpha) {
+    const struck = /* @__PURE__ */ new Set();
+    function drawBolts(alpha, upTo) {
       ctx2.save();
       ctx2.globalAlpha = alpha;
       ctx2.lineCap = "round";
@@ -440,13 +460,15 @@
       ctx2.shadowColor = "rgba(160, 200, 255, 1)";
       ctx2.shadowBlur = 24 * dpr;
       bolts.forEach((b) => {
-        ctx2.strokeStyle = "rgba(200, 225, 255, 1)";
-        ctx2.lineWidth = b.width * 2.5 * dpr;
+        if (b.from >= upTo) return;
+        const pts = b === bolts[0] ? b.pts.slice(0, upTo + 1) : b.pts;
         ctx2.beginPath();
-        b.pts.forEach((p, i) => {
+        pts.forEach((p, i) => {
           if (i) ctx2.lineTo(p[0], p[1]);
           else ctx2.moveTo(p[0], p[1]);
         });
+        ctx2.strokeStyle = "rgba(200, 225, 255, 1)";
+        ctx2.lineWidth = b.width * 2.5 * dpr;
         ctx2.stroke();
         ctx2.strokeStyle = "#ffffff";
         ctx2.lineWidth = b.width * dpr;
@@ -456,18 +478,29 @@
     }
     function frame(now) {
       if (!o.canvas.isConnected) return;
-      const t = now - start2;
+      const t = Math.max(0, now - start2);
       ctx2.clearRect(0, 0, w, h);
-      let a = 0;
-      strikes.forEach((s) => {
-        if (t >= s) a = Math.max(a, 1 - (t - s) / (calm ? 1400 : 650));
+      const upTo = Math.min(main.length - 1, Math.ceil((main.length - 1) * Math.min(1, t / GROW_MS)));
+      const tipY = main[upTo][1];
+      hits.forEach((hit) => {
+        if (!struck.has(hit) && tipY >= hit.y) {
+          struck.add(hit);
+          jolt(hit.el);
+        }
       });
-      a = Math.max(0, a);
-      if (!calm && a > 0) {
-        ctx2.fillStyle = "rgba(225, 235, 255, " + 0.55 * a + ")";
-        ctx2.fillRect(0, 0, w, h);
-      }
-      if (a > 0) drawBolt(calm ? a * 0.8 : a);
+      let a = t < GROW_MS ? 1 : 0;
+      const fadeMs = calm ? 1400 : 650;
+      if (t >= GROW_MS) a = Math.max(0, 1 - (t - GROW_MS) / fadeMs);
+      flashes.forEach((f) => {
+        if (t < f) return;
+        const k = Math.max(0, 1 - (t - f) / fadeMs);
+        a = Math.max(a, k);
+        if (k > 0) {
+          ctx2.fillStyle = "rgba(225, 235, 255, " + 0.55 * k + ")";
+          ctx2.fillRect(0, 0, w, h);
+        }
+      });
+      if (a > 0) drawBolts(calm ? a * 0.8 : a, upTo);
       if (t < END_MS) requestAnimationFrame(frame);
       else {
         o.canvas.remove();
@@ -523,8 +556,8 @@
       const t = i / steps;
       let envelope = t < peakAt ? t / peakAt : Math.pow(1 - (t - peakAt) / (1 - peakAt), 1.6);
       envelope += 0.35 * Math.exp(-Math.pow((t - aftershock) / 0.06, 2));
-      const jolt = 0.65 + Math.random() * 0.35;
-      out.push(Math.min(1, envelope * jolt));
+      const jolt2 = 0.65 + Math.random() * 0.35;
+      out.push(Math.min(1, envelope * jolt2));
     }
     return rumblePattern(out);
   }
@@ -558,7 +591,7 @@
   }
 
   // PWA/LocalChatter/src/effects/zalgo.ts
-  var TARGETS = [".topbar", "#messages", "#effects-tray", "#stage", "#banner"];
+  var TARGETS = [".topbar", "#messages", "#effects-tray", "#banner"];
   var zalgo = { active: false, observer: null, nodes: /* @__PURE__ */ new Map() };
   var zalgoActive = () => zalgo.active;
   function randomMark() {
@@ -709,6 +742,52 @@
   var isActive = (name) => !!active[name];
   var activeNames = () => Object.keys(active);
   var canVibrate = "vibrate" in navigator;
+
+  // PWA/LocalChatter/src/state.ts
+  var DISPLAY = new URLSearchParams(location.search).has("display");
+  var DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
+  var state = {
+    ws: null,
+    relay: "",
+    name: "",
+    me: null,
+    peers: /* @__PURE__ */ new Map(),
+    maxBytes: DEFAULT_MAX_BYTES,
+    /** The user wants to be connected (reconnect if it drops). */
+    wanted: false,
+    retry: 0,
+    retryTimer: 0,
+    role: "member",
+    debug: false,
+    soundOn: true,
+    /** True while drawing messages that arrived in the background (not replayed). */
+    catchingUp: false
+  };
+  var ROLES = {
+    member: { description: "Chat as normal." },
+    monitor: { description: "Also sees system messages, such as role changes.", viewSystem: true },
+    spy: { description: "Can spy on chosen people to see whispers to and from them (/spy <names>).", spy: true },
+    display: { description: "A big-screen view for a TV or spare screen: shows the chat, effects and sounds, with no message box. Turn it on in Settings or open the app's /Display link.", display: true },
+    admin: {
+      description: "Sees system messages and who really sent spoofed messages, has a soundboard, and can use debug mode.",
+      viewSystem: true,
+      debug: true,
+      impersonate: true,
+      seeSpoofer: true,
+      soundboard: true
+    }
+  };
+  function can(perm) {
+    return !!(ROLES[state.role] || ROLES.member)[perm];
+  }
+  function nameOf2(id2) {
+    if (state.me && id2 === state.me.id) return state.me.name;
+    const p = id2 ? state.peers.get(id2) : void 0;
+    return p ? p.name : "someone";
+  }
+  function connected() {
+    return !!state.ws && state.ws.readyState === WebSocket.OPEN && !!state.me;
+  }
 
   // PWA/LocalChatter/src/features/whispers.ts
   function whisperNames(to) {
@@ -1128,6 +1207,7 @@
         }).catch((err) => {
           if (err && err.name === "NotAllowedError") {
             status.textContent = "Tap ▶ to play (" + where + ")";
+            if (DISPLAY) $("stage-tap").hidden = false;
             soundEvent(snd.name, source, false, "blocked");
           } else if (source === "link") {
             unavailable("link failed");
@@ -1161,16 +1241,6 @@
       if (!sendChat({ sound })) systemLine('Not connected: "' + entry.name + `" wasn't sent`);
     });
   }
-  function displaySound(sound) {
-    void resolve(sound).then((r) => {
-      if (!r.play || !state.soundOn) return;
-      r.play().then(() => soundEvent(sound.name, r.source, true), (err) => {
-        const blocked = !!err && err.name === "NotAllowedError";
-        if (blocked) $("stage-tap").hidden = false;
-        soundEvent(sound.name, r.source, false, blocked ? "blocked" : "error");
-      });
-    });
-  }
 
   // PWA/LocalChatter/src/chat/message.ts
   var INLINE_IMAGE = /^image\/(png|jpeg|gif|webp|avif|bmp)$/;
@@ -1181,11 +1251,6 @@
     const shown = msg.as || msg.from;
     const who = mine ? msg.as ? "You (as " + msg.as.name + ")" : "You" : shown && shown.name || "Someone";
     const effect = !msg.file && !msg.sound ? parseEffect(msg.text) : null;
-    if (DISPLAY) {
-      if (effect) play(effect.name, effect.arg);
-      else if (msg.sound) displaySound(msg.sound);
-      return null;
-    }
     if (msg.sound) return renderSound(msg, mine, who);
     if (effect) {
       renderEffect(effect, msg, who);
@@ -2081,6 +2146,15 @@
     if (speakBox.value !== current) speakBox.value = "";
   }
   langsBox.addEventListener("input", () => fillSpeak(split(langsBox.value), speakBox.value));
+  langsBox.addEventListener("change", () => {
+    setKnown(split(langsBox.value));
+    fillSpeak(known(), speaking());
+    refreshLanguages();
+  });
+  speakBox.addEventListener("change", () => {
+    setSpeaking(speakBox.value);
+    refreshLanguages();
+  });
   $("open-settings").addEventListener("click", openSettings);
   $("status").addEventListener("click", openSettings);
   $("settings-form").addEventListener("submit", (e) => {
@@ -2484,18 +2558,17 @@
     if (navigator.wakeLock) navigator.wakeLock.request("screen").catch(() => {
     });
   }
+  var toggle = input("display-on");
+  toggle.checked = DISPLAY;
+  toggle.addEventListener("change", () => location.assign(toggle.checked ? "Display/" : "./"));
   function startDisplay() {
     document.body.classList.add("display-mode");
-    $("stage").hidden = false;
     const tap = $("stage-tap");
     tap.hidden = unlocked();
     tap.addEventListener("click", () => {
       unlock();
       tap.hidden = true;
     });
-    const exit = $("exit-display");
-    exit.hidden = false;
-    exit.addEventListener("click", () => location.assign("./"));
     keepScreenOn();
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) keepScreenOn();

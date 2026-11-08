@@ -26,7 +26,7 @@ and it changes back to the real text if you learn the language later.
 | `/speak Elvish` | Write your messages in Elvish (one you understand). The message box says *Message everyone in Elvish*. |
 | `/speak default` | Back to ordinary messages. |
 
-Settings has the same: *Languages you understand* and *You write in*.
+Settings has the same: *Languages you understand* and *You write in*. Changes there apply straight away; you don't need to press Save.
 
 - Messages in a named language get a coloured ring (each language its own
   colour) and a *🗣 Elvish* tag. A whisper in a language has both its dashed

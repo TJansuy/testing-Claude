@@ -31,10 +31,11 @@ wide screens. Turn it off in Settings (*On phones, hide the header after a few s
 
 ## Display
 
-A display is a screen (a TV, tablet or spare phone) that plays the chat's
-effects and sounds, and never shows messages, whispers or system messages.
+A display is a big-screen view for a TV, tablet or spare phone. It shows the
+chat in large text, plays effects and sounds, and has no message box.
 
-- Open `<app>/Display`, e.g.
+- Turn on **Display mode** in Settings (and off again to go back), or open
+  `<app>/Display`, e.g.
   `https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/Display`. Note the
   capital **D**: GitHub Pages is case-sensitive.
 - Or tap **Set up as a display** on the server's setup page, or type
@@ -42,11 +43,13 @@ effects and sounds, and never shows messages, whispers or system messages.
 - On a display, ⚙️ opens just the settings.
 - It joins as "Display" (rename it in Settings) and keeps the screen awake
   where the browser allows.
+- It shows what everyone can see: whispers to other people and monitor-only
+  system messages stay hidden.
 - Sound needs one tap on the screen first (*Tap to turn on sound*).
 - Effects aimed at the display by an admin in debug mode, and whispered effects
   sent to it, play too.
 - The display role isn't saved: opening the normal link on the same device
-  gives your usual role. *Exit display* in Settings goes back to the chat.
+  gives your usual role.
 
 ## In the background
 

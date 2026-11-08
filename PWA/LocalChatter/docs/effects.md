@@ -10,9 +10,9 @@ everyone in the chat, including you, and shows as a line like
 
 | Message | Effect |
 | --- | --- |
-| `/fire` | Flames rise from the bottom of the screen. |
+| `/fire` | Flames rise from the bottom of the screen, and every message bubble catches fire. |
 | `/earthquake` (or `/quake`) | The screen shakes and Android phones rumble. |
-| `/lightning` | Lightning strikes, with two flashes per strike. |
+| `/lightning` | Lightning strikes down through the chat, hitting some messages at random (they flash and jolt) and passing beside others, with two flashes per strike. |
 | `/zalgo` | Corrupts the chat: every message, the header and the dashboard turn into zalgo text, and the dashboard glitches. |
 
 ### How long they last
@@ -26,7 +26,7 @@ Every effect takes the same options after its name:
 | `on` | `/zalgo on` | Until anyone sends the matching `off`. |
 | `off` | `/fire off` | Stops it now ("Cara put out the fire"). |
 
-Long fire keeps burning; a long earthquake shakes (and rumbles) in waves; long
+Long fire keeps burning (messages that arrive meanwhile catch fire too); a long earthquake shakes (and rumbles) in waves; long
 lightning strikes again every 1.2–3 seconds, so there are never more than two
 flashes in any second. Sending an effect again while it's running resets its
 timer.

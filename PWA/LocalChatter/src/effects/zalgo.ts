@@ -3,7 +3,7 @@
 // original is remembered and put back exactly.
 import { EffectControl, vibrate } from './shared';
 
-const TARGETS = ['.topbar', '#messages', '#effects-tray', '#stage', '#banner'];
+const TARGETS = ['.topbar', '#messages', '#effects-tray', '#banner'];
 interface Record_ { orig: string; mangled: string }
 const zalgo = { active: false, observer: null as MutationObserver | null, nodes: new Map<Text, Record_>() };
 

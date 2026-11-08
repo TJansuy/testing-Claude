@@ -39,6 +39,18 @@ function fillSpeak(langs: string[], current: string): void {
 }
 langsBox.addEventListener('input', () => fillSpeak(LANG.split(langsBox.value), speakBox.value));
 
+// Language choices apply straight away, without needing Save (which is about
+// your name and the server). "change" fires when you leave the box or pick an option.
+langsBox.addEventListener('change', () => {
+  LANG.setKnown(LANG.split(langsBox.value));
+  fillSpeak(LANG.known(), LANG.speaking());
+  refreshLanguages();
+});
+speakBox.addEventListener('change', () => {
+  LANG.setSpeaking(speakBox.value);
+  refreshLanguages();
+});
+
 $('open-settings').addEventListener('click', openSettings);
 $('status').addEventListener('click', openSettings);
 

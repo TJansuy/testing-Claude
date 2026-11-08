@@ -41,7 +41,7 @@ export const ROLES: Record<string, Role> = {
   member: { description: 'Chat as normal.' },
   monitor: { description: 'Also sees system messages, such as role changes.', viewSystem: true },
   spy: { description: 'Can spy on chosen people to see whispers to and from them (/spy <names>).', spy: true },
-  display: { description: 'A screen that only shows effects and plays sounds, never messages. Open the app\'s /Display link.', display: true },
+  display: { description: 'A big-screen view for a TV or spare screen: shows the chat, effects and sounds, with no message box. Turn it on in Settings or open the app\'s /Display link.', display: true },
   admin: {
     description: 'Sees system messages and who really sent spoofed messages, has a soundboard, and can use debug mode.',
     viewSystem: true, debug: true, impersonate: true, seeSpoofer: true, soundboard: true,

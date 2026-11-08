@@ -4,7 +4,7 @@
 export {};
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE = 'localchatter-v13';
+const CACHE = 'localchatter-v14';
 const ASSETS = [
   './',
   'index.html',

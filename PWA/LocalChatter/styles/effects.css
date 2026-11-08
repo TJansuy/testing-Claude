@@ -107,3 +107,55 @@ body.fx-zalgo .topbar h1 { text-shadow: 2px 0 rgb(255 0 60 / .6), -2px 0 rgb(0 2
 }
 .fx-dock button .left { font-weight: 400; opacity: .75; font-variant-numeric: tabular-nums; }
 body.wide .fx-dock { right: calc(clamp(320px, 30vw, 440px) + 16px); bottom: 84px; }
+
+/* Fire: every message bubble burns, each flickering on its own rhythm */
+body.fx-burning .msg { position: relative; animation: msg-burn 1.6s ease-in-out infinite; animation-delay: var(--burn-delay, 0s); }
+body.fx-burning .msg:nth-child(3n) { --burn-delay: -.4s; }
+body.fx-burning .msg:nth-child(3n + 1) { --burn-delay: -.9s; }
+body.fx-burning .msg:nth-child(4n) { --burn-delay: -1.3s; }
+body.fx-burning .msg::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: calc(100% - 8px);
+  height: 26px;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 9px 20px at 8% 100%, rgb(255 230 140 / .95), rgb(255 120 0 / .75) 45%, transparent 72%),
+    radial-gradient(ellipse 12px 26px at 26% 100%, rgb(255 240 170 / .95), rgb(255 100 0 / .7) 45%, transparent 72%),
+    radial-gradient(ellipse 8px 17px at 44% 100%, rgb(255 220 120 / .9), rgb(255 90 0 / .7) 45%, transparent 72%),
+    radial-gradient(ellipse 13px 24px at 63% 100%, rgb(255 240 170 / .95), rgb(255 110 0 / .75) 45%, transparent 72%),
+    radial-gradient(ellipse 9px 19px at 82% 100%, rgb(255 225 130 / .9), rgb(255 100 0 / .7) 45%, transparent 72%),
+    radial-gradient(ellipse 7px 15px at 96% 100%, rgb(255 210 110 / .9), rgb(240 80 0 / .7) 45%, transparent 72%);
+  transform-origin: 50% 100%;
+  animation: flame-flicker .45s ease-in-out infinite alternate;
+  animation-delay: var(--burn-delay, 0s);
+}
+body.fx-burning.fx-burnout .msg { animation: none; transition: box-shadow 1s; }
+body.fx-burning.fx-burnout .msg::before { animation: flame-out 1s ease-in forwards; }
+@keyframes msg-burn {
+  0%, 100% { box-shadow: 0 0 0 1px rgb(255 120 0 / .55), 0 -3px 14px rgb(255 100 0 / .5); }
+  50%      { box-shadow: 0 0 0 1px rgb(255 170 0 / .8), 0 -7px 24px rgb(255 140 0 / .7); }
+}
+@keyframes flame-flicker {
+  from { transform: scaleY(.72) skewX(-4deg); opacity: .8; }
+  to   { transform: scaleY(1.18) skewX(4deg); opacity: 1; }
+}
+@keyframes flame-out { to { transform: scaleY(.2); opacity: 0; } }
+
+/* Lightning: a message the bolt hits flashes and jolts; the ones it passes are untouched */
+.msg.struck { animation: struck .8s ease-out; }
+@keyframes struck {
+  0%   { filter: brightness(2.4) saturate(.2); transform: translate(-4px, 0); box-shadow: 0 0 0 2px #fff, 0 0 28px rgb(170 210 255); }
+  12%  { transform: translate(4px, -1px); }
+  24%  { transform: translate(-3px, 1px); filter: brightness(1.7) saturate(.5); }
+  45%  { transform: none; box-shadow: 0 0 0 2px rgb(170 210 255 / .7), 0 0 16px rgb(140 190 255 / .6); }
+  100% { filter: none; box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No flicker or jolt: a steady glow and outline instead. */
+  body.fx-burning .msg, body.fx-burning .msg::before { animation: none; box-shadow: 0 0 0 1px rgb(255 140 0 / .7), 0 -4px 16px rgb(255 120 0 / .5); }
+  .msg.struck { animation: none; box-shadow: 0 0 0 2px rgb(170 210 255); }
+}

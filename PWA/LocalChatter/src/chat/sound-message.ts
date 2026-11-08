@@ -6,7 +6,7 @@ import type { SoundEntry } from '../sounds/db';
 import { toMessage } from '../sounds/library';
 import { resolve, SoundSource, unlock } from '../sounds/playback';
 import { KEY, load } from '../storage';
-import { state } from '../state';
+import { DISPLAY, state } from '../state';
 import type { ChatMessage, SoundRef } from '../types';
 import { formatTime } from '../util';
 import { append, colourBubble, systemLine } from './list';
@@ -66,6 +66,7 @@ export function renderSound(msg: ChatMessage, mine: boolean, who: string): HTMLE
         if (err && err.name === 'NotAllowedError') {
           // The browser blocks sound until the page has been tapped.
           status.textContent = 'Tap ▶ to play (' + where + ')';
+          if (DISPLAY) $('stage-tap').hidden = false; // a display has one big button for this
           soundEvent(snd.name, source, false, 'blocked');
         } else if (source === 'link') {
           unavailable('link failed'); // e.g. offline
@@ -89,16 +90,3 @@ export function sendSound(entry: SoundEntry): void {
     if (!sendChat({ sound })) systemLine('Not connected: "' + entry.name + '" wasn\'t sent');
   });
 }
-
-/** Display mode: just play it, no bubble. */
-export function displaySound(sound: SoundRef): void {
-  void resolve(sound).then((r) => {
-    if (!r.play || !state.soundOn) return;
-    r.play().then(() => soundEvent(sound.name, r.source, true), (err: Error) => {
-      const blocked = !!err && err.name === 'NotAllowedError';
-      if (blocked) $('stage-tap').hidden = false;
-      soundEvent(sound.name, r.source, false, blocked ? 'blocked' : 'error');
-    });
-  });
-}
-

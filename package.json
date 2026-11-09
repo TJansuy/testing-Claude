@@ -4,11 +4,13 @@
   "description": "Build tooling for the PWA experiments. Source is TypeScript in each app's src/ folder; the built JavaScript is committed so GitHub Pages can serve it as-is.",
   "scripts": {
     "build": "node build.mjs",
-    "check": "tsc -p PWA/LocalChatter && tsc -p PWA/LocalChatter/tsconfig.sw.json && tsc -p PWA/Sample && tsc -p PWA/Sample/tsconfig.sw.json",
+    "check": "tsc -p PWA/LocalChatter && tsc -p PWA/LocalChatter/tsconfig.sw.json && tsc -p PWA/Sample && tsc -p PWA/Sample/tsconfig.sw.json && tsc -p PWA/Rally && tsc -p PWA/Rally/tsconfig.sw.json && asc PWA/Rally/assembly/physics.ts --noEmit",
     "watch": "node build.mjs --watch"
   },
   "devDependencies": {
+    "assemblyscript": "0.28.20",
     "esbuild": "0.24.0",
+    "qrcode-generator": "2.0.4",
     "typescript": "5.6.3"
   }
 }

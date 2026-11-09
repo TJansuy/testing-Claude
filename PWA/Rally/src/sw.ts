@@ -1,11 +1,11 @@
 // Service worker: caches the game so it opens with no internet connection
-// (practice works offline; network play needs the server on your LAN).
+// (practice works offline, and so does playing someone: that never uses the internet).
 export {};
 declare const self: ServiceWorkerGlobalScope;
 declare const __BUILD_TIME__: string;
 
 const CACHE = 'rally-' + __BUILD_TIME__;
-const ASSETS = ['./', 'index.html', 'app.js', 'physics.wasm', 'styles.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
+const ASSETS = ['./', 'index.html', 'app.js', 'physics.wasm', 'styles.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'vendor/jsQR.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' })))));

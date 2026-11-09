@@ -1,19 +1,25 @@
 # Rally
 
-A proof of concept: tennis for two on the local network, seen from the side.
-The ball's flight is a real physics simulation running in **WebAssembly**, and
-everything is drawn with **WebGL**. A game starts as soon as a second person
-joins; anyone else who joins watches. You can also practise against the
-computer, offline.
+A proof of concept: tennis for two, seen from the side, played straight from
+one device to another. The ball's flight is a real physics simulation running
+in **WebAssembly**, and everything is drawn with **WebGL**. There's no server
+at all: the two devices connect directly over the Wi-Fi they share (or one
+phone's hotspot), with no internet needed. The game starts as soon as they're
+connected. You can also practise against the computer, offline.
 
 ## Playing
 
-1. Start the [Rally server](#the-server) on a machine on your network.
-2. On each device, open the server's address (e.g. `https://192.168.1.50:8444/`),
-   accept its certificate, and tap **Play Rally**. That opens the game with the
-   server filled in.
-3. Enter a name and tap **Play on the network**. When a second person joins,
-   the game starts.
+1. Both devices open Rally and join the same Wi-Fi, or one connects to the
+   other's hotspot.
+2. One player taps **Host a game**. A QR code appears.
+3. The other player scans it with their phone's camera (it's a link that opens
+   Rally ready to join), or taps **Join a game** and scans it there. A QR code
+   appears on their screen too: their reply.
+4. The host taps **Scan their reply** and scans it (or scans it with their
+   phone's own camera: the link hands the reply to the waiting game).
+5. The devices connect, and the game starts.
+
+No camera? Each code can be copied and pasted instead, e.g. sent in a message.
 
 | | |
 | --- | --- |
@@ -50,45 +56,35 @@ reads to draw, and which the network copies.
 Heights are drawn stretched (about 2.8× on a widescreen) because a court is 24 m
 long but the ball rarely goes above 4 m; the physics isn't stretched.
 
-## Playing over the network
+## Playing device to device (`src/p2p.ts`, `src/sdp.ts`, `src/lobby.ts`)
 
-The left player's device runs the game: it gets the right player's racket from
-the server and sends the game's state back about 60 times a second. The right
-player's device sends its racket and also runs the physics between updates, so
-the ball moves smoothly; it keeps its own steady game time and fast-forwards
-each update to it, so only real differences are corrected (on a LAN at 60 fps,
-its ball is within a fraction of a millimetre of the host's). Watchers do the
-same without a racket. If a player leaves, the next person in takes their
-place and a new game starts.
+The two devices talk directly with **WebRTC** data channels. Setting up a WebRTC
+connection normally needs a server to pass each side's connection details to the
+other; here people pass them by hand instead, as QR codes:
 
-## The server
+- WebRTC describes a connection in a few kilobytes of text, too much for a QR
+  code you can scan across a table. A data-only connection needs just five
+  things from it (the ICE username and password, the certificate fingerprint,
+  its role, and the addresses to try), so that's all a code holds: about 100
+  characters. The other device rebuilds a standard description from it.
+- No internet servers are asked for addresses (no STUN or TURN), so it works on
+  a network with no internet at all. That also means both devices have to be on
+  the same network.
+- Browsers hide a device's local address behind a random `name.local` name,
+  which the other device looks up on the local network (mDNS). Most home and
+  hotspot networks allow that. Some guest or office Wi-Fi networks block devices
+  from seeing each other, and then they can't connect.
+- Two channels: one for the game's state and rackets, unordered and never
+  resent (a late update is useless, the next is on its way), and a reliable one
+  for everything else.
 
-A small Node.js server in [`server/`](server/), run in Docker on any machine on
-the network (a laptop, a Raspberry Pi, a NAS…):
-
-```sh
-cd PWA/Rally/server
-RALLY_HOST=192.168.1.50 docker compose up -d --build
-```
-
-No Docker? With Node.js 20+: `npm ci && ADVERTISED_HOST=192.168.1.50 npm start`.
-
-It serves a page at `https://<address>:8444/` that devices open once to accept
-its certificate (it makes its own, because there's no public certificate for a
-local address), with a **Play Rally** button that opens the game connected to it.
-The game itself talks to it over a WebSocket on `/rally`: it pairs the first two
-people as players, starts a game as soon as there are two, and passes their
-messages between them. Anyone else watches; when a player leaves, the next
-person takes their place. It keeps no game state and logs nothing about players.
-
-| Compose variable | Server variable | Default | |
-| --- | --- | --- | --- |
-| `RALLY_HOST` | `ADVERTISED_HOST` | *(empty)* | The server's LAN address, for its certificate and page. If empty, whatever address a device used. |
-| `RALLY_PORT` | `ADVERTISED_PORT` | `8444` | The port devices use. |
-| `RALLY_GAME_URL` | `GAME_URL` | `https://tjansuy.github.io/testing-Claude/PWA/Rally/` | Where the game is hosted. |
-| – | `PORT` | `8444` | The port inside the container. |
-| – | `CERT_DIR` | `/certs` | Where the certificate is kept (a Docker volume). |
-| – | `TLS` | `on` | `off` serves plain HTTP/WS, only for use behind your own TLS proxy. |
+The host's device runs the game: it gets the other player's racket and sends
+the game's state back about 60 times a second. The other device sends its
+racket and also runs the physics between updates, so the ball moves smoothly;
+it keeps its own steady game time and fast-forwards each update to it, so only
+real differences are corrected (at 60 fps, its ball stays within a millimetre or
+so of the host's). If either player leaves, the other is told and goes back to
+the start. It's two players only: there's no watching.
 
 ## The computer player (`src/bot.ts`)
 
@@ -103,14 +99,17 @@ opponent, and both players in the demo that plays while you wait.
 | --- | --- |
 | `assembly/physics.ts` | The physics and rules (AssemblyScript), built to `physics.wasm`. |
 | `src/physics.ts` | Loads the module, and names the slots in its state. |
-| `src/game.ts` | The game loop (fixed 1/120 s ticks) and its modes: demo, practice, host, guest, watch. |
+| `src/game.ts` | The game loop (fixed 1/120 s ticks) and its modes: demo, practice, host, guest. |
 | `src/render.ts` | The WebGL renderer: one shader that draws every shape as a signed-distance field. |
 | `src/scene.ts` | The court, net, rackets, ball, trail, shadow and sparks. |
 | `src/bot.ts` | The computer player. |
-| `src/input.ts`, `src/hud.ts`, `src/sound.ts`, `src/net.ts`, `src/main.ts` | Controls, scoreboard, synthesised sounds, the connection, and the lobby. |
-| `src/sw.ts` | Service worker: caches everything, so practice works offline. |
+| `src/p2p.ts`, `src/sdp.ts` | The direct connection (WebRTC) and its short codes. |
+| `src/lobby.ts`, `src/qr.ts` | Hosting and joining, and drawing and scanning QR codes. |
+| `src/input.ts`, `src/hud.ts`, `src/sound.ts`, `src/main.ts` | Controls, scoreboard, synthesised sounds, and starting up. |
+| `src/sw.ts` | Service worker: caches everything, so it opens with no internet. |
+| `vendor/jsQR.js` | QR decoder (jsQR 1.4.0, Apache-2.0), for browsers without a built-in one. QR codes are drawn with qrcode-generator (MIT), bundled. |
 
-The server is in `server/` (see below).
 
 Build from the repository root with `npm run build` (TypeScript with esbuild, and
-the physics with AssemblyScript); `npm run check` type-checks both.
+the physics with AssemblyScript); `npm run check` type-checks both. Rally is all
+static files: GitHub Pages (or any web server) serves it as it is.

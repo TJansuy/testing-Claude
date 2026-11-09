@@ -21,7 +21,6 @@ body { background: #1e2a5a; color: var(--ink); font-family: system-ui, -apple-sy
 
 .bar { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 8px; }
 .bar button { min-width: 44px; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); font: inherit; font-size: 1.1rem; cursor: pointer; }
-.watching { color: var(--muted); font-size: .85rem; }
 
 .lobby { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92vw, 420px); max-height: 92vh; overflow: auto; padding: 22px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 20px 60px rgb(0 0 0 / .4); }
 .lobby[hidden] { display: none; }
@@ -41,3 +40,15 @@ details ul { padding-left: 18px; }
 @media (orientation: portrait) and (max-width: 700px) {
   .rotate { display: block; position: fixed; left: 0; right: 0; bottom: 70px; margin: 0; text-align: center; color: var(--muted); font-size: .85rem; pointer-events: none; }
 }
+
+.lobby h2 { margin: 16px 0 4px; font-size: 1rem; }
+.small { margin: 0 0 8px; color: var(--muted); font-size: .85rem; }
+.qr { display: block; width: min(100%, 260px); aspect-ratio: 1; margin: 8px auto; border-radius: 10px; background: #fff; }
+.row { display: flex; gap: 8px; margin-top: 8px; }
+.row input { flex: 1; min-width: 0; }
+.lobby .row button { width: auto; margin: 0; padding: 0 16px; }
+.scanner { width: min(92vw, 480px); padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: #10162f; color: var(--ink); }
+.scanner::backdrop { background: rgb(0 0 0 / .6); }
+.scanner h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.scanner video { display: block; width: 100%; border-radius: 10px; background: #000; }
+.scanner button { width: 100%; margin-top: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }

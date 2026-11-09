@@ -1,20 +1,19 @@
 // The game loop, in fixed 1/120 s ticks.
 //   demo      two computer players (while you wait, or before you join)
 //   practice  you (left) against the computer
-//   host      online, left side: this device runs the physics and sends the state
-//   guest     online, right side: sends its racket; runs the physics too, between
+//   host      against another device, left side: this device runs the physics and sends the state
+//   guest     against another device, right side: sends its racket; runs the physics too, between
 //             updates, so the ball moves smoothly, and takes the host's state as it comes,
 //             moved on to its own (smoothly kept) game time, so only real differences get corrected
-//   watch     online, watching: like the guest, without a racket
 import { Bot } from './bot';
 import { Controls } from './input';
-import type { Link } from './net';
+import type { Link } from './p2p';
 import { EV, I, N, Physics, Side } from './physics';
 import { Renderer } from './render';
 import { burst, draw } from './scene';
 import { play } from './sound';
 
-export type Mode = 'demo' | 'practice' | 'host' | 'guest' | 'watch';
+export type Mode = 'demo' | 'practice' | 'host' | 'guest';
 const TICK = 1 / 120;
 const SEND_EVERY = 2; // ticks between state updates (60 a second)
 
@@ -25,13 +24,13 @@ export class Game {
   onEvents: (events: number) => void = () => {};
   private bots: [Bot | null, Bot | null] = [null, null];
   private remote: [number, number, number] = [9, 1, 0];
-  private ahead = 0;   // how far our game time runs ahead of the host's updates, smoothed (guest, watch)
+  private ahead = 0;   // how far our game time runs ahead of the host's updates, smoothed (guest)
   private acc = 0;
   private last = 0;
   private ticks = 0;
   private dirty = false; // time to send an update (at most one per frame)
   private pending = 0; // events since the last state update (host)
-  private heard = 0;   // events from the host since the last frame (guest, watch)
+  private heard = 0;   // events from the host since the last frame (guest)
   /** How far our ball was from the host's, when its updates arrive (metres; median of the last 120). */
   readonly drift: number[] = [];
 
@@ -40,7 +39,7 @@ export class Game {
   }
 
   /** Which side this device plays (−1 if none). */
-  get side(): -1 | Side { return this.mode === 'guest' ? 1 : this.mode === 'watch' || this.mode === 'demo' ? -1 : 0; }
+  get side(): -1 | Side { return this.mode === 'guest' ? 1 : this.mode === 'demo' ? -1 : 0; }
 
   /** Starts a fresh game in a mode. autoplay: the computer plays your side too (demos and tests). */
   start(mode: Mode, seed: number, autoplay = false): void {
@@ -60,7 +59,7 @@ export class Game {
   /** The other player's racket (host). */
   remoteInput(x: number, y: number, tilt: number): void { this.remote = [x, y, tilt]; }
 
-  /** The host's state (guest and watch): take it all, except our own racket. */
+  /** The host's state (guest): take it all, except our own racket. */
   hostState(s: number[], events: number): void {
     if (s.length < N - 2) return;
     const st = this.phys.s;
@@ -92,7 +91,6 @@ export class Game {
 
   private tick(): number {
     const p = this.phys;
-    if (this.mode === 'watch') { p.step(TICK); p.takeEvents(); return 0; }
     if (this.mode === 'guest') {
       const [x, y, t] = this.input(1);
       p.setInput(1, x, y, t);
@@ -126,7 +124,7 @@ export class Game {
     this.acc += dt;
     let events = 0;
     while (this.acc >= TICK) { events |= this.tick(); this.acc -= TICK; }
-    if (this.mode === 'guest' || this.mode === 'watch') { events |= this.heard; this.heard = 0; }
+    if (this.mode === 'guest') { events |= this.heard; this.heard = 0; }
     if (this.dirty && this.link) this.send();
     if (events) {
       burst(events, this.phys.s);

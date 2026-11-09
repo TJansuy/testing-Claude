@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rally</title>
-  <meta name="description" content="Tennis for two on your local network, with real ball physics (WebAssembly) and WebGL graphics.">
+  <meta name="description" content="Tennis for two, device to device on the same Wi-Fi: real ball physics (WebAssembly) and WebGL graphics, no server.">
   <meta name="theme-color" content="#1e2a5a">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -21,7 +21,6 @@
   </header>
 
   <div class="bar">
-    <span id="watching" class="watching"></span>
     <button id="tilt-up" type="button" aria-label="Open the racket face (more lift)" title="Open the face (Q or scroll up)">⤴</button>
     <button id="tilt-down" type="button" aria-label="Close the racket face (hit down)" title="Close the face (E or scroll down)">⤵</button>
     <button id="mute" type="button" aria-label="Sound on or off">🔊</button>
@@ -30,15 +29,41 @@
 
   <section id="lobby" class="lobby" aria-labelledby="title">
     <h1 id="title">Rally</h1>
-    <p class="lede">Tennis for two on your local network. The game starts as soon as a second person joins.</p>
-    <form id="join">
+    <p class="lede">Tennis for two, straight from one device to the other: no server and no internet needed, just the same Wi-Fi (or one phone's hotspot).</p>
+
+    <div id="home">
       <label for="name">Your name</label>
       <input id="name" maxlength="24" autocomplete="nickname" placeholder="Player">
-      <label for="server">Server</label>
-      <input id="server" inputmode="url" spellcheck="false" autocapitalize="off" placeholder="wss://192.168.1.50:8444/rally">
-      <button type="submit" class="primary">Play on the network</button>
-    </form>
-    <button id="practice" type="button">Practise against the computer</button>
+      <button id="host-btn" type="button" class="primary">Host a game</button>
+      <button id="join-btn" type="button">Join a game</button>
+      <button id="practice" type="button">Practise against the computer</button>
+    </div>
+
+    <div id="host-pane" hidden>
+      <h2>1. Show this to the other player</h2>
+      <p class="small">They scan it with their phone's camera, or with <strong>Join a game</strong>.</p>
+      <canvas id="invite-qr" class="qr" aria-label="Invite QR code"></canvas>
+      <div class="row"><input id="invite-text" readonly aria-label="Invite link"><button id="invite-copy" type="button">Copy</button></div>
+      <h2>2. Then scan their reply</h2>
+      <button id="reply-scan" type="button" class="primary">Scan their reply</button>
+      <div class="row"><input id="reply-code" placeholder="…or paste their reply" aria-label="Their reply"><button id="reply-go" type="button">Connect</button></div>
+    </div>
+
+    <div id="join-pane" hidden>
+      <div id="join-get">
+        <h2>Scan the host's invite</h2>
+        <button id="invite-scan" type="button" class="primary">Scan the invite</button>
+        <div class="row"><input id="invite-code" placeholder="…or paste the invite link" aria-label="Invite link"><button id="invite-go" type="button">Join</button></div>
+      </div>
+      <div id="join-reply" hidden>
+        <h2>Show this to the host</h2>
+        <p class="small">They tap <strong>Scan their reply</strong>. The game starts as soon as you're connected.</p>
+        <canvas id="reply-qr" class="qr" aria-label="Reply QR code"></canvas>
+        <div class="row"><input id="reply-text" readonly aria-label="Your reply"><button id="reply-copy" type="button">Copy</button></div>
+      </div>
+    </div>
+
+    <button id="back" type="button" hidden>Back</button>
     <p id="lobby-status" class="note" role="status"></p>
     <details>
       <summary>How to play</summary>
@@ -47,10 +72,17 @@
         <li>Swing upwards to brush the ball with topspin, so it dips into the court. Hitting it while moving down gives backspin, so it floats.</li>
         <li>Low down the racket face opens up to lift the ball over the net; up high it closes to hit down. Tilt it more with scroll, Q/E or ⤴ ⤵.</li>
         <li>The ball has to clear the net and land in. One bounce on your side, then you have to hit it back. First to 7, winning by 2.</li>
-        <li>To play on the network, someone runs the Rally server on it. Open its address in the browser, accept its certificate, and tap <strong>Play Rally</strong>.</li>
+        <li>To play someone: one of you taps <strong>Host a game</strong>, the other scans the QR code that appears, then the host scans the one that appears on the other screen. No camera? Copy and paste the codes instead, e.g. in a message.</li>
       </ul>
     </details>
   </section>
+
+  <dialog id="scanner" class="scanner" aria-labelledby="scan-title">
+    <h2 id="scan-title">Scan</h2>
+    <video id="scan-video" playsinline muted></video>
+    <p id="scan-note" class="small" role="status"></p>
+    <button id="scan-close" type="button">Cancel</button>
+  </dialog>
   <p class="rotate">Turn your phone sideways for a bigger court.</p>
 
   <script src="app.js"></script>

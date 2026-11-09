@@ -2,7 +2,7 @@
 "use strict";
 (() => {
   // PWA/Rally/src/sw.ts
-  var CACHE = "rally-2026-11-09T17:59:14.048Z";
+  var CACHE = "rally-2026-11-09T18:25:11.977Z";
   var ASSETS = ["./", "index.html", "app.js", "physics.wasm", "styles.css", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png"];
   self.addEventListener("install", (event) => {
     event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: "reload" })))));

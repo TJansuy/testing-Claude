@@ -1,4 +1,4 @@
-// The connection to the Rally server (/rally on the LocalChatter relay).
+// The connection to the Rally server (server/, on your LAN), on /rally.
 //   → join {name}                       → in {x, y, tilt}  (the right player's racket)
 //   → st {s, e}  (the game's state, from the left player)
 //   ← lobby {side, names, watching}     ← start {names, seed}   ← stop {why}

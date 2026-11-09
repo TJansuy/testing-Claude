@@ -68,7 +68,7 @@ async function boot(): Promise<void> {
     e.preventDefault();
     unlockSound();
     const url = server.value.trim();
-    if (!/^wss?:\/\//i.test(url)) { $('lobby-status').textContent = 'Enter the server\'s address, e.g. wss://192.168.1.50:8443/rally (its setup page has a Play Rally link that fills this in).'; return; }
+    if (!/^wss?:\/\//i.test(url)) { $('lobby-status').textContent = 'Enter the server\'s address, e.g. wss://192.168.1.50:8444/rally (the server\'s page has a Play Rally button that fills this in).'; return; }
     store.set(KEY.name, name.value.trim());
     store.set(KEY.server, url);
     $('lobby-status').textContent = 'Connecting…';

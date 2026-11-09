@@ -8,9 +8,8 @@ computer, offline.
 
 ## Playing
 
-1. Start the [LocalChatter server](../LocalChatter/README.md#quick-start) on
-   a machine on your network (Rally uses the same server, on `/rally`).
-2. On each device, open the server's address (e.g. `https://192.168.1.50:8443/`),
+1. Start the [Rally server](#the-server) on a machine on your network.
+2. On each device, open the server's address (e.g. `https://192.168.1.50:8444/`),
    accept its certificate, and tap **Play Rally**. That opens the game with the
    server filled in.
 3. Enter a name and tap **Play on the network**. When a second person joins,
@@ -62,6 +61,35 @@ its ball is within a fraction of a millimetre of the host's). Watchers do the
 same without a racket. If a player leaves, the next person in takes their
 place and a new game starts.
 
+## The server
+
+A small Node.js server in [`server/`](server/), run in Docker on any machine on
+the network (a laptop, a Raspberry Pi, a NAS…):
+
+```sh
+cd PWA/Rally/server
+RALLY_HOST=192.168.1.50 docker compose up -d --build
+```
+
+No Docker? With Node.js 20+: `npm ci && ADVERTISED_HOST=192.168.1.50 npm start`.
+
+It serves a page at `https://<address>:8444/` that devices open once to accept
+its certificate (it makes its own, because there's no public certificate for a
+local address), with a **Play Rally** button that opens the game connected to it.
+The game itself talks to it over a WebSocket on `/rally`: it pairs the first two
+people as players, starts a game as soon as there are two, and passes their
+messages between them. Anyone else watches; when a player leaves, the next
+person takes their place. It keeps no game state and logs nothing about players.
+
+| Compose variable | Server variable | Default | |
+| --- | --- | --- | --- |
+| `RALLY_HOST` | `ADVERTISED_HOST` | *(empty)* | The server's LAN address, for its certificate and page. If empty, whatever address a device used. |
+| `RALLY_PORT` | `ADVERTISED_PORT` | `8444` | The port devices use. |
+| `RALLY_GAME_URL` | `GAME_URL` | `https://tjansuy.github.io/testing-Claude/PWA/Rally/` | Where the game is hosted. |
+| – | `PORT` | `8444` | The port inside the container. |
+| – | `CERT_DIR` | `/certs` | Where the certificate is kept (a Docker volume). |
+| – | `TLS` | `on` | `off` serves plain HTTP/WS, only for use behind your own TLS proxy. |
+
 ## The computer player (`src/bot.ts`)
 
 It plays with the real physics: it copies the game into a second WebAssembly
@@ -82,7 +110,7 @@ opponent, and both players in the demo that plays while you wait.
 | `src/input.ts`, `src/hud.ts`, `src/sound.ts`, `src/net.ts`, `src/main.ts` | Controls, scoreboard, synthesised sounds, the connection, and the lobby. |
 | `src/sw.ts` | Service worker: caches everything, so practice works offline. |
 
-The server side is in LocalChatter's server: `server/src/rally.ts`.
+The server is in `server/` (see below).
 
 Build from the repository root with `npm run build` (TypeScript with esbuild, and
 the physics with AssemblyScript); `npm run check` type-checks both.

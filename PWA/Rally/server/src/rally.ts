@@ -1,9 +1,9 @@
-// Rally (the LAN tennis game in PWA/Rally) on /rally: pairs players and
-// passes their messages on. The first two people in are the players; a game
+// The game on /rally: pairs players and passes their messages on. The first two people in are the players; a game
 // starts as soon as there are two, and anyone else watches. The left player's
 // device runs the physics and sends the game's state; the right player's
 // device sends its racket. The server keeps no game state: it only knows who
 // is playing, and checks the shape of what it forwards.
+import type { Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { clean } from './config';
 
@@ -72,8 +72,10 @@ function onMessage(c: Client, raw: Buffer): void {
   }
 }
 
-export function rallyServer(): { wss: WebSocketServer; stop(): void } {
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+export const playing = (): number => [...clients].filter((c) => c.name).length;
+
+export function rallyServer(server: Server): () => void {
+  const wss = new WebSocketServer({ server, path: '/rally', maxPayload: 4096 });
   wss.on('connection', (ws) => {
     if (clients.size >= MAX_CLIENTS) { ws.close(1013, 'Too many people'); return; }
     const c: Client = { ws, name: '', side: -1, alive: true };
@@ -98,5 +100,5 @@ export function rallyServer(): { wss: WebSocketServer; stop(): void } {
       c.ws.ping();
     }
   }, 15000);
-  return { wss, stop: () => { clearInterval(heartbeat); for (const c of clients) c.ws.close(1001, 'Server shutting down'); } };
+  return () => { clearInterval(heartbeat); for (const c of clients) c.ws.close(1001, 'Server shutting down'); };
 }

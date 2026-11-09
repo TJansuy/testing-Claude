@@ -4,8 +4,6 @@
 //   this server's LAN address and port.
 // - Accepts WebSocket connections on /ws and forwards every chat message to
 //   everyone else who is connected right now.
-// - Hosts Rally (the LAN tennis game) on /rally: pairs players and passes
-//   their messages on.
 //
 // No history is kept: messages are forwarded and then dropped. Nothing is
 // written to disk (except the TLS certificate) and message contents are never logged.
@@ -13,16 +11,11 @@ import http from 'node:http';
 import https from 'node:https';
 import { ADVERTISED_HOST, ADVERTISED_PORT, APP_URL, MAX_MESSAGE_MB, PORT, USE_TLS } from './config';
 import { handleRequest } from './http';
-import { rallyServer } from './rally';
 import { startRelay } from './relay';
-import { attachUpgrades, route } from './upgrade';
 import { loadTls } from './tls';
 
 const server = USE_TLS ? https.createServer(loadTls(), handleRequest) : http.createServer(handleRequest);
-const stopRelay = startRelay();
-const rally = rallyServer();
-route('/rally', rally.wss);
-attachUpgrades(server);
+const stopRelay = startRelay(server);
 
 server.listen(PORT, () => {
   console.log(`LocalChatter relay listening on port ${PORT}`);
@@ -33,7 +26,6 @@ server.listen(PORT, () => {
 
 function shutdown(): void {
   stopRelay();
-  rally.stop();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 2000).unref();
 }

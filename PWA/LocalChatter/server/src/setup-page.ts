@@ -1,6 +1,6 @@
 // The setup page devices open to accept the certificate and point their app here.
 import type { IncomingMessage } from 'node:http';
-import { ADVERTISED_HOST, ADVERTISED_PORT, APP_URL, PORT, ROOM_NAME, USE_TLS } from './config';
+import { ADVERTISED_HOST, ADVERTISED_PORT, APP_URL, PORT, RALLY_URL, ROOM_NAME, USE_TLS } from './config';
 
 export interface RelayAddress { origin: string; ws: string }
 
@@ -20,6 +20,11 @@ export function relayFor(req: IncomingMessage): RelayAddress {
   let host = String(req.headers.host || '');
   if (!/^[A-Za-z0-9.\-:[\]]{1,255}$/.test(host)) host = `localhost:${PORT}`;
   return { origin: `${http}://${host}`, ws: `${ws}://${host}/ws` };
+}
+
+/** Rally connects to /rally on the same server. */
+function rallyUrl(relayWs: string): string {
+  return `${RALLY_URL}#server=${encodeURIComponent(relayWs.replace(/\/ws$/, '/rally'))}`;
 }
 
 function setupUrl(relayWs: string, display = false): string {
@@ -68,8 +73,14 @@ export function setupPage(r: RelayAddress, connected: number): string {
 
   <section class="card">
     <h2>Set up a display</h2>
-    <p>For a TV, tablet or spare screen: it plays effects and sounds from the chat, and never shows messages.</p>
+    <p>For a TV, tablet or spare screen: it shows the chat, polls and games, and plays effects and sounds, with no message box.</p>
     <a class="button secondary" href="${escapeHtml(setupUrl(r.ws, true))}">Set up as a display</a>
+  </section>
+
+  <section class="card">
+    <h2>Play Rally</h2>
+    <p>A tennis game for two on the same network. The game starts as soon as a second person joins; anyone else watches.</p>
+    <a class="button secondary" href="${escapeHtml(rallyUrl(r.ws))}">Play Rally</a>
   </section>
 
   <section class="card">

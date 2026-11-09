@@ -11,6 +11,7 @@ Set these as environment variables (or the `LOCALCHATTER_*` names with Docker Co
 | `LOCALCHATTER_HOST` | `ADVERTISED_HOST` | *(empty)* | LAN address devices use to reach the server. Goes in the certificate and on the setup page. If empty, the address a device opened the setup page with is used. |
 | `LOCALCHATTER_PORT` | `ADVERTISED_PORT` | `8443` | Port devices use. |
 | `LOCALCHATTER_APP_URL` | `APP_URL` | `https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/` | Where the app is hosted. Change this if your GitHub Pages URL differs. |
+| `LOCALCHATTER_RALLY_URL` | `RALLY_URL` | *(beside the app: `../Rally/`)* | Where the [Rally](../../Rally/README.md) tennis game is hosted, for the setup page's **Play Rally** link. |
 | `LOCALCHATTER_ROOM` | `ROOM_NAME` | `LocalChatter` | Room name shown in the app. |
 | `LOCALCHATTER_MAX_MB` | `MAX_MESSAGE_MB` | `25` | Largest message in MB. Files are sent base64-encoded, so the largest file is about ¾ of this. |
 | – | `MAX_PEERS` | `200` | Most people connected at once. |
@@ -28,6 +29,7 @@ so a new certificate is made for the new address (devices will need to accept it
 | --- | --- |
 | `/` | Setup page with the **Set up LocalChatter** button and the server address. |
 | `/ws` | WebSocket the app connects to. |
+| `/rally` | WebSocket for [Rally](../../Rally/README.md), the LAN tennis game: pairs the first two players, starts a game as soon as there are two, lets everyone else watch, and passes the players' messages between them. It keeps no game state. |
 | `/config.json` | Room name, relay address, number connected. |
 | `/health` | Returns `ok` (used by the Docker health check). |
 

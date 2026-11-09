@@ -1,12 +1,12 @@
 // The WebSocket relay on /ws: forwards every message to everyone else connected
 // right now, then drops it. No history; contents are never logged.
 import crypto from 'node:crypto';
-import type { Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { clean, MAX_BUFFERED, MAX_BYTES, MAX_NAME, MAX_PEERS, ROOM_NAME } from './config';
 import { ECHOED, sanitiseGame } from './game';
 import { sanitisePoll } from './poll';
 import { Peer, publicPeer, sanitiseChat, sanitiseNotice } from './sanitise';
+import { route } from './upgrade';
 
 interface Connection extends Peer { alive: boolean }
 const peers = new Map<WebSocket, Connection>();
@@ -75,9 +75,10 @@ function onMessage(ws: WebSocket, peer: Connection, raw: Buffer): void {
   }
 }
 
-/** Starts the relay on an HTTP(S) server. Returns a function that stops it. */
-export function startRelay(server: Server): () => void {
-  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: MAX_BYTES });
+/** Starts the chat relay on /ws. Returns a function that stops it. */
+export function startRelay(): () => void {
+  const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_BYTES });
+  route('/ws', wss);
   wss.on('connection', (ws) => {
     if (peers.size >= MAX_PEERS) { ws.close(1013, 'Room is full'); return; }
     const peer: Connection = { id: crypto.randomUUID().slice(0, 8), name: '', alive: true };

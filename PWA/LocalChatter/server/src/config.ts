@@ -19,6 +19,8 @@ export const ADVERTISED_HOST = (env.ADVERTISED_HOST || '').trim();
 export const ADVERTISED_PORT = toInt(env.ADVERTISED_PORT, PORT);
 /** Where the LocalChatter app is hosted. */
 export const APP_URL = env.APP_URL || 'https://tjansuy.github.io/testing-Claude/PWA/LocalChatter/';
+/** Where the Rally tennis game is hosted (by default, beside LocalChatter). */
+export const RALLY_URL = env.RALLY_URL || new URL('../Rally/', APP_URL).href;
 export const ROOM_NAME = clean(env.ROOM_NAME, 60) || 'LocalChatter';
 /** Largest single WebSocket message, in megabytes (files are sent base64-encoded). */
 export const MAX_MESSAGE_MB = Math.max(1, toInt(env.MAX_MESSAGE_MB, 25));

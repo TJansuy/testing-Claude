@@ -1,0 +1,16 @@
+{
+  "name": "steamcast-youtube",
+  "private": true,
+  "description": "YouTube casting (DIAL + YouTube lounge) for SteamCast, via yt-cast-receiver. Started and driven by the Python app.",
+  "type": "module",
+  "main": "receiver.mjs",
+  "scripts": {
+    "test": "node --test test/bridge.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "yt-cast-receiver": "2.1.0"
+  }
+}

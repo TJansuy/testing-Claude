@@ -12,6 +12,12 @@ class FakePlayer:
     def snapshot(self):
         return dict(self.state)
 
+    def video_info(self):
+        return {"codec": "", "size": "", "fps": 0, "decoder": "software", "dropped_frames": 0}
+
+    def show_message(self, text, ms=4000):
+        self.calls.append(("message", text))
+
     def add_listener(self, fn):
         self.listeners.append(fn)
 

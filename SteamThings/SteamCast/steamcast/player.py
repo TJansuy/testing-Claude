@@ -19,14 +19,17 @@ import time
 from typing import Callable
 
 from .config import Config, runtime_dir
+from .mpv_options import mpv_args
 
 log = logging.getLogger(__name__)
 
 OBSERVED = ("time-pos", "duration", "pause", "volume", "mute", "idle-active",
-            "media-title", "paused-for-cache")
+            "media-title", "paused-for-cache", "hwdec-current", "video-codec",
+            "width", "height", "container-fps", "frame-drop-count",
+            "decoder-frame-drop-count")
 
 
-def find_mpv(cfg: Config, ipc_dir: str) -> list[str] | None:
+def find_mpv(cfg: Config, ipc_dir: str, extra_dirs: tuple[str, ...] = ()) -> list[str] | None:
     """mpv from the config, from PATH, or the Flathub build (the usual way on SteamOS)."""
     if cfg.mpv_command:
         return shlex.split(cfg.mpv_command)
@@ -40,17 +43,20 @@ def find_mpv(cfg: Config, ipc_dir: str) -> list[str] | None:
             share = ipc_dir
             if xdg_run and ipc_dir.startswith(xdg_run + "/"):
                 share = "xdg-run/" + ipc_dir[len(xdg_run) + 1:]
-            return ["flatpak", "run", f"--filesystem={share}", "io.mpv.Mpv"]
+            shares = [f"--filesystem={share}"] + [f"--filesystem={d}:ro" for d in extra_dirs]
+            return ["flatpak", "run", *shares, "io.mpv.Mpv"]
     return None
 
 
 class Player:
-    def __init__(self, cfg: Config, idle_text: str = ""):
+    def __init__(self, cfg: Config, idle_text: str = "", ytdl_path: str | None = None):
         self.cfg = cfg
         self.idle_text = idle_text
+        self.ytdl_path = ytdl_path
         self.ipc_dir = str(runtime_dir())
         self.sock_path = os.path.join(self.ipc_dir, "mpv.sock")
-        self.command = find_mpv(cfg, self.ipc_dir)
+        extra = (os.path.dirname(ytdl_path),) if ytdl_path else ()
+        self.command = find_mpv(cfg, self.ipc_dir, extra)
         self.proc: subprocess.Popen | None = None
         self.sock: socket.socket | None = None
         self.url: str | None = None
@@ -64,19 +70,7 @@ class Player:
 
     # --- lifecycle -------------------------------------------------------
     def mpv_args(self) -> list[str]:
-        cfg = self.cfg
-        args = ["--idle=yes", "--force-window=yes", "--keep-open=no",
-                f"--input-ipc-server={self.sock_path}", "--title=SteamCast",
-                "--image-display-duration=inf", "--hwdec=auto-safe",
-                "--script-opts=osc-idlescreen=no", "--osd-font-size=38",
-                "--msg-level=all=error", f"--audio-channels={cfg.audio_channels}"]
-        if cfg.fullscreen:
-            args.append("--fs")
-        if cfg.passthrough:
-            args.append(f"--audio-spdif={cfg.passthrough}")
-        if cfg.audio_device:
-            args.append(f"--audio-device={cfg.audio_device}")
-        return args + shlex.split(cfg.mpv_args)
+        return mpv_args(self.cfg, self.sock_path, self.ytdl_path)
 
     def start(self, timeout: float = 30.0) -> None:
         if not self.command:
@@ -188,6 +182,27 @@ class Player:
             "end_reason": self.end_reason,
         }
 
+    def video_info(self) -> dict:
+        """How the current video is being decoded, for the log and remote page."""
+        p = self._props
+        hwdec = p.get("hwdec-current") or ""
+        return {
+            "codec": p.get("video-codec") or "",
+            "size": f"{p.get('width')}x{p.get('height')}" if p.get("width") else "",
+            "fps": round(float(p.get("container-fps") or 0), 3),
+            "decoder": f"hardware ({hwdec})" if hwdec and hwdec != "no" else "software",
+            "dropped_frames": int(p.get("frame-drop-count") or 0)
+            + int(p.get("decoder-frame-drop-count") or 0),
+        }
+
+    def _log_video(self) -> None:
+        info = self.video_info()
+        if not info["codec"]:
+            return  # audio only
+        level = logging.WARNING if info["decoder"] == "software" else logging.INFO
+        log.log(level, "video: %s %s @ %s fps, %s decoding", info["codec"].split(" /")[0],
+                info["size"], info["fps"], info["decoder"])
+
     def _notify(self) -> None:
         s = self.snapshot()
         key = (s["url"], s["idle"], s["buffering"], s["paused"], s["duration"],
@@ -227,10 +242,14 @@ class Player:
             if name == "idle-active" and value:
                 self.loading = False
                 self.show_idle()
+            if name in ("hwdec-current", "frame-drop-count", "decoder-frame-drop-count",
+                        "time-pos", "width", "height", "video-codec", "container-fps"):
+                return
         elif event == "start-file":
             self.loading = True
         elif event == "file-loaded":
             self.loading = False
+            threading.Timer(2.0, self._log_video).start()
         elif event == "end-file":
             self.loading = False
             reason = msg.get("reason")

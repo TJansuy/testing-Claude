@@ -45,6 +45,19 @@ class Config:
     # Bitstream these codecs to an AV receiver, e.g. "ac3,eac3,dts-hd,truehd".
     passthrough: str = ""
     audio_device: str = ""
+    # --- video ---
+    hwdec: str = "auto-safe"  # hardware decoding (VA-API on SteamOS)
+    smooth_motion: bool = True  # display-synced timing + frame blending
+    video_profile: str = "default"  # "fast" for weak GPUs / 4K output
+    cache_mb: int = 400  # network read-ahead
+    # --- YouTube ---
+    youtube: bool = True
+    youtube_port: int = 8091
+    # Up to 1080p60, avoiding AV1 (no hardware decoder on the Steam Deck).
+    youtube_format: str = ("bestvideo[height<=?1080][fps<=?60][vcodec!^=av01]"
+                           "+bestaudio/best[height<=?1080]")
+    node_command: str = ""
+    ytdlp_command: str = ""
     mpv_command: str = ""
     mpv_args: str = ""
     uxplay_command: str = ""
@@ -90,7 +103,7 @@ def device_id(directory: Path) -> str:
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="steamcast",
-        description="Receive Google Cast, DLNA and AirPlay on a SteamOS TV box.")
+        description="Receive YouTube, Google Cast, DLNA and AirPlay on a SteamOS TV box.")
     p.add_argument("--config", type=Path, help="INI file (default ~/.config/steamcast/steamcast.ini)")
     p.add_argument("--name", help="name shown to phones and laptops")
     p.add_argument("--http-port", type=int)
@@ -100,6 +113,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     p.add_argument("--no-dlna", action="store_true")
     p.add_argument("--no-googlecast", action="store_true")
     p.add_argument("--no-airplay", action="store_true")
+    p.add_argument("--no-youtube", action="store_true")
     p.add_argument("--verbose", "-v", action="store_true")
     return p.parse_args(argv)
 
@@ -121,6 +135,7 @@ def load_config(argv: list[str] | None = None) -> Config:
     cfg.dlna &= not args.no_dlna
     cfg.googlecast &= not args.no_googlecast
     cfg.airplay &= not args.no_airplay
+    cfg.youtube &= not args.no_youtube
     if args.verbose:
         cfg.log_level = "DEBUG"
     return cfg

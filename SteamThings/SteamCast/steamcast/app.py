@@ -12,6 +12,8 @@ from .mdns import Service, advertise
 from .net import local_ip, mdns_hostname
 from .player import Player
 from .web import Router, WebServer
+from .youtube import YouTubeReceiver
+from .ytdlp import find_ytdlp, update_in_background
 
 log = logging.getLogger("steamcast")
 
@@ -25,12 +27,27 @@ class App:
         self.stopping = threading.Event()
         self.parts: list = []  # started components, stopped in reverse order
         self.services: list[str] = []
+        self.youtube_code: str | None = None
 
     def idle_text(self) -> str:
-        enabled = [n for n, on in (("Google Cast", self.cfg.googlecast), ("DLNA", self.cfg.dlna),
-                                   ("AirPlay", self.cfg.airplay)) if on]
-        return (f"{self.name}\n\nReady: {' · '.join(enabled)}\n"
+        enabled = self.services or [n for n, on in (
+            ("YouTube", self.cfg.youtube), ("Google Cast", self.cfg.googlecast),
+            ("DLNA", self.cfg.dlna), ("AirPlay", self.cfg.airplay)) if on]
+        text = (f"{self.name}\n\nReady: {' · '.join(enabled)}\n"
                 f"Remote: http://{self.ip}:{self.cfg.http_port}/")
+        if self.youtube_code:
+            code = " ".join(self.youtube_code[i:i + 3] for i in range(0, len(self.youtube_code), 3))
+            text += f"\nYouTube TV code: {code}"
+        return text
+
+    def refresh_idle(self) -> None:
+        self.player.idle_text = self.idle_text()
+        if self.player.snapshot()["idle"]:
+            self.player.show_idle()
+
+    def _youtube_code(self, code: str) -> None:
+        self.youtube_code = code
+        self.refresh_idle()
 
     def _try(self, label: str, fn) -> None:
         try:
@@ -40,7 +57,9 @@ class App:
 
     def start(self) -> None:
         cfg = self.cfg
-        self.player = Player(cfg, self.idle_text())
+        ytdl = find_ytdlp(cfg)
+        update_in_background(ytdl)
+        self.player = Player(cfg, self.idle_text(), ytdl)
         self.player.start()
         router = Router()
         mdns_services: list[Service] = []
@@ -49,18 +68,25 @@ class App:
             self._try("DLNA", lambda: self._start_dlna(router))
         if cfg.googlecast:
             self._try("Google Cast", lambda: self._start_cast(mdns_services))
-        remote.register(router, self.player, self.name, self.services)
+        remote.register(router, self.player, self.name, self.services,
+                        lambda: {"youtube_code": self.youtube_code})
         web = WebServer(cfg.http_port, router)
         web.start()
         self.parts.append(web)
         if mdns_services:
             self._try("mDNS", lambda: self.parts.append(advertise(
                 cfg.mdns, mdns_hostname(self.device_id), self.ip, mdns_services)))
+        if cfg.youtube:
+            youtube = YouTubeReceiver(cfg, self.name, self.player, self._youtube_code)
+            if youtube.start():
+                self.parts.append(youtube)
+                self.services.insert(0, "YouTube")
         if cfg.airplay:
             airplay = AirPlay(cfg, self.name, self.player)
             if airplay.start():
                 self.parts.append(airplay)
                 self.services.append("AirPlay")
+        self.refresh_idle()
         log.info("%s ready on %s (%s); remote page http://%s:%d/", self.name, self.ip,
                  ", ".join(self.services) or "remote page only", self.ip, cfg.http_port)
 

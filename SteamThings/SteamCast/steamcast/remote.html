@@ -19,7 +19,8 @@
   .row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; }
   .row button { flex: 1; }
   #now { font-weight: 600; overflow-wrap: anywhere; }
-  #time { color: var(--muted); font-variant-numeric: tabular-nums; }
+  #time, .detail { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .detail { font-size: .85rem; }
   input[type=range] { width: 100%; }
 </style>
 </head>
@@ -27,6 +28,10 @@
 <main>
   <h1>{{NAME}}</h1>
   <div class="services" id="services"></div>
+  <section id="ytcode" hidden>
+    YouTube on a phone that isn't on this Wi-Fi? In the YouTube app go to
+    Settings → Watch on TV → Enter TV code: <strong id="code"></strong>
+  </section>
   <section>
     <form id="form">
       <input type="url" id="url" placeholder="Paste a video, audio or stream link" required>
@@ -36,6 +41,7 @@
   <section>
     <div id="now">Nothing playing</div>
     <div id="time"></div>
+    <div id="video" class="detail"></div>
     <input type="range" id="seek" min="0" max="0" step="1" aria-label="Position">
     <div class="row">
       <button class="secondary" data-api="pause">Pause</button>
@@ -60,6 +66,11 @@
     $("services").textContent = "Receiving: " + s.services.join(" · ");
     $("now").textContent = s.idle ? "Nothing playing" : (s.title || s.url || "Playing");
     $("time").textContent = s.idle ? "" : fmt(s.position) + " / " + fmt(s.duration) + (s.paused ? " (paused)" : "");
+    const v = s.video || {};
+    $("video").textContent = s.idle || !v.codec ? "" :
+      `${v.codec} ${v.size} @ ${v.fps} fps · ${v.decoder} decoding · ${v.dropped_frames} dropped frames`;
+    $("ytcode").hidden = !s.youtube_code;
+    $("code").textContent = (s.youtube_code || "").replace(/(\d{3})(?=\d)/g, "$1 ");
     if (!dragging) { $("seek").max = Math.floor(s.duration); $("seek").value = Math.floor(s.position); }
     if (document.activeElement !== $("volume")) $("volume").value = Math.round(s.volume);
   }

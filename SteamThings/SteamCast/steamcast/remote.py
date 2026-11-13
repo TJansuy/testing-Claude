@@ -20,12 +20,13 @@ def _body(req: Request) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def register(router: Router, player, name: str, services: list[str]) -> None:
+def register(router: Router, player, name: str, services: list[str], extra=dict) -> None:
     page = resources.files(__package__).joinpath("remote.html").read_text()
     page = page.replace("{{NAME}}", name.replace("<", "&lt;"))
 
     def status(_req: Request) -> Response:
-        return _json({"name": name, "services": services, **player.snapshot()})
+        return _json({"name": name, "services": services, **player.snapshot(),
+                      "video": player.video_info(), **extra()})
 
     def play(req: Request) -> Response:
         data = _body(req)

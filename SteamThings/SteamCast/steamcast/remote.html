@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{NAME}}</title>
+<style>
+  :root { color-scheme: light dark; --accent: #1a9fff; --bg: #f4f5f7; --card: #fff; --muted: #667; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #14161a; --card: #1e2128; --muted: #99a; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.4 system-ui, sans-serif; background: var(--bg); }
+  main { max-width: 34rem; margin: 0 auto; padding: 1rem; }
+  h1 { font-size: 1.3rem; margin: .5rem 0 0; }
+  .services { color: var(--muted); font-size: .9rem; margin-bottom: 1rem; }
+  section { background: var(--card); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+  input[type=url] { width: 100%; padding: .7rem; font: inherit; border-radius: 8px; border: 1px solid #8884; }
+  button { font: inherit; padding: .7rem 1rem; border-radius: 8px; border: 0; background: var(--accent); color: #fff; }
+  button.secondary { background: #8883; color: inherit; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; }
+  .row button { flex: 1; }
+  #now { font-weight: 600; overflow-wrap: anywhere; }
+  #time { color: var(--muted); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{NAME}}</h1>
+  <div class="services" id="services"></div>
+  <section>
+    <form id="form">
+      <input type="url" id="url" placeholder="Paste a video, audio or stream link" required>
+      <div class="row"><button type="submit">Play on TV</button></div>
+    </form>
+  </section>
+  <section>
+    <div id="now">Nothing playing</div>
+    <div id="time"></div>
+    <input type="range" id="seek" min="0" max="0" step="1" aria-label="Position">
+    <div class="row">
+      <button class="secondary" data-api="pause">Pause</button>
+      <button class="secondary" data-api="resume">Play</button>
+      <button class="secondary" data-api="stop">Stop</button>
+    </div>
+    <label for="volume">Volume</label>
+    <input type="range" id="volume" min="0" max="100" step="1">
+  </section>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const fmt = (s) => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+    return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s % 60).padStart(2, "0"); };
+  let dragging = false;
+  async function api(path, body) {
+    const res = await fetch("/api/" + path, body === undefined ? {} :
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    show(await res.json());
+  }
+  function show(s) {
+    $("services").textContent = "Receiving: " + s.services.join(" · ");
+    $("now").textContent = s.idle ? "Nothing playing" : (s.title || s.url || "Playing");
+    $("time").textContent = s.idle ? "" : fmt(s.position) + " / " + fmt(s.duration) + (s.paused ? " (paused)" : "");
+    if (!dragging) { $("seek").max = Math.floor(s.duration); $("seek").value = Math.floor(s.position); }
+    if (document.activeElement !== $("volume")) $("volume").value = Math.round(s.volume);
+  }
+  $("form").addEventListener("submit", (e) => { e.preventDefault(); api("play", { url: $("url").value }); });
+  document.querySelectorAll("[data-api]").forEach((b) => b.addEventListener("click", () => api(b.dataset.api, {})));
+  $("seek").addEventListener("input", () => { dragging = true; });
+  $("seek").addEventListener("change", () => { dragging = false; api("seek", { position: +$("seek").value }); });
+  $("volume").addEventListener("change", () => api("volume", { level: +$("volume").value }));
+  api("status"); setInterval(() => api("status").catch(() => {}), 2000);
+</script>
+</body>
+</html>
